@@ -1,0 +1,33 @@
+<html>
+<head>
+<script src="py_utils.js"></script>
+<script src="py_classes.js"></script>
+<script src="py_tokenizer.js"></script>
+<script src="stack.js"></script>
+<script src="py2js.js"></script>
+<script>
+var js=null
+function to_js(){
+    var src_elt = document.getElementById("src")
+    var src = src_elt.value
+    js = py2js(src)
+    document.getElementById("src2js").value = js
+}
+function run(){
+    js = document.getElementById("src2js").value
+    $run(js)
+}
+</script>
+</head>
+<body>
+<table>
+<tr>
+<td><textarea id="src" cols=60 rows=20></textarea></td>
+<td><button onClick="to_js()">></button></td>
+<td><textarea id="src2js" cols=60 rows=20></textarea></td>
+<td align="top"><button onClick="run()">run</button></td>
+</tr>
+</table>
+
+</body>
+</html>
