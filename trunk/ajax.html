@@ -1,0 +1,44 @@
+<html>
+<head>
+<style>
+body,td,th{font-family:sans-serif}
+a.sort_link{margin-left:10px;text-decoration:none}
+</style>
+
+<script src="py_tokenizer.js"></script>
+<script src="py_utils.js"></script>
+<script src="py_classes.js"></script>
+<script src="py_dom.js"></script>
+<script src="py_ajax.js"></script>
+<script src="py2js.js"></script>
+
+</head>
+<body onLoad="brython()">
+
+<input id="name">
+<button onClick="go()">ajax !</button>
+<div id="result">(empty)</div>
+
+<script id="ascript" type="text/brython">
+def on_complete(status,text):
+    status = int(status)
+    if status==0:
+        doc["result"].set_html("server doesn't reply")
+    elif status==200:
+        doc["result"].set_html(text)
+
+def err_msg():
+    doc["result"].set_html("server didn't reply after %s seconds" %timeout)
+
+timeout = 4
+
+def go():
+    req = ajax()
+    req.on_complete = on_complete
+    req.set_timeout(timeout,err_msg)
+    req.open('GET','cgi-bin/test.py',True)
+    req.send()
+
+</script>
+</body>
+</html>
