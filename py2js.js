@@ -734,3 +734,16 @@ function $run(js){
     Document = $Document()
     eval(js)
 }
+
+function brython(debug){
+    var elts = document.getElementsByTagName("script")
+    for($i=0;$i<elts.length;$i++){
+        elt = elts[$i]
+        if(elt.type=="text/brython"){
+            var src = (elt.innerHTML || elt.textContent)
+            js = py2js(src)
+            if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
+            $run(js)
+        }
+    }
+}
