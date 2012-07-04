@@ -18,7 +18,7 @@ a.sort_link{margin-left:10px;text-decoration:none}
 orders = {}
 
 def sort_by_col(cell,numeric=False):
-    th_elt = cell.parent()
+    th_elt = cell.parent
     th_id = th_elt['id']
     if th_id not in orders:
         if numeric:
@@ -31,9 +31,9 @@ def sort_by_col(cell,numeric=False):
         orders[th_id]='up'
     ascending = orders[th_id]
 
-    tr_elt = th_elt.parent()
+    tr_elt = th_elt.parent
     rank = -1
-    for child in tr_elt.children():
+    for child in tr_elt.children:
         if isinstance(child,TH):
             rank += 1
         if child == th_elt:
@@ -41,25 +41,25 @@ def sort_by_col(cell,numeric=False):
             break
 
     nb_val = 0
-    tb_elt = tr_elt.parent()
+    tb_elt = tr_elt.parent
     lines = []
     line_nums = []
     col_values = []
 
-    for i,row in enumerate(tb_elt.children()):
+    for i,row in enumerate(tb_elt.children):
         line = []
         flag = False
         if isinstance(row,TR) and row != tr_elt:
             rank = -1
-            for cell in row.children():
+            for cell in row.children:
                 if isinstance(cell,TD):
                     flag = True
                     rank += 1
                     if rank==num:
                         nb_val += 1
-                        val = cell.text()
+                        val = cell.text
                         col_values.append(val)
-                    line.append(cell.html())
+                    line.append(cell.html)
             if flag: # only if row has TD cells : skip table header (TH)
                 lines.append(line) # list of values
                 line_nums.append(i) # rank in table children
@@ -94,12 +94,12 @@ def sort_by_col(cell,numeric=False):
     # replace by new lines
     rank = 0
     for line_num in line_nums:
-        row = tb_elt.children()[line_num]
+        row = tb_elt.children[line_num]
         if isinstance(row,TR) and row != tr_elt:
             k = 0
-            for cell in row.children():
+            for cell in row.children:
                 if isinstance(cell,TD):
-                    cell.set_html(new_lines[rank][k])
+                    cell.html = new_lines[rank][k]
                     k += 1
             rank += 1
 

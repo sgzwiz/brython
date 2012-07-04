@@ -320,7 +320,20 @@ function float(value){
 function getattr(obj,attr,_default){
     if(!$isinstance(attr,str)){$Exception("TypeError",
         "getattr(): attribute name must be string")}
-    if(attr.value in obj){return obj[attr.value]}
+    if(attr.value in obj){
+        var res = obj[attr.value]
+        if(typeof res==="function"){
+            // this trick is necessary to set "this" to the instance inside functions
+            // found at http://yehudakatz.com/2011/08/11/understanding-javascript-function-invocation-and-this/
+            var bind = function(func, thisValue) {
+                return function() {
+                    return func.apply(thisValue, arguments);
+                  }
+            }
+            res = bind(res, obj)
+        }
+        return res
+    }
     else if(_default !==undefined){return _default}
     else{$Exception('AttributeError',
         "'"+$str(obj.__class__)+"' object has no attribute '"+attr.value+"'")}
@@ -465,10 +478,13 @@ function len(obj){
 }
 
 function $ListClass(items){
+
     var x = null,i = null;
     this.iter = null
     this.__class__ = list
     this.items = items // JavaScript array
+
+    this.__getattr__ = function(attr){return getattr(this,attr)}
 
     this.__len__ = function(){return int(items.length)}
     
@@ -581,6 +597,14 @@ function $ListClass(items){
     }
 
     this.append = function(item){items.push(item)}
+
+    this.count = function(elt){
+        var res = 0
+        for(i=0;i<items.length;i++){
+            if($bool(items[i].__eq__(elt))){res++}
+        }
+        return int(res)
+    }
 
     this.index = function(elt){
         for(i=0;i<items.length;i++){
@@ -904,6 +928,12 @@ function set(){
     }
 }
 
+function setattr(obj,attr,value){
+    if(!$isinstance(attr,str)){$Exception("TypeError",
+        "setattr(): attribute name must be string")}
+    obj[attr.value]=value
+}
+
 function $StringClass(value){
 
     var i = null
@@ -912,29 +942,6 @@ function $StringClass(value){
     this.value = value
     this.iter = null
     
-    this.__len__ = function(){return int(value.length)}
-    this.__str__ = function(){return this}
-
-    this.__repr__ = function(){
-        res = "'"
-        res += value.replace('\n','\\\n')
-        res += "'"
-        return str(res)
-    }
-
-    this.__int__ = function(){
-        var $int = parseInt(value)
-        if($int==NaN){$Exception("ValueError",
-            "invalid literal for int() with base 10: '"+value+"'")}
-        else{return int($int)}
-    }
-    this.__float__ = function(){
-        var $float = parseFloat(value)
-        if($float==NaN){$Exception("ValueError",
-            "could not convert string to float(): '"+value+"'")}
-        else{return float($float)}
-    }
-    // operators
     this.__add__ = function(other){
         if(!$isinstance(other,str)){
             try{return other.__radd__(this)}
@@ -942,19 +949,65 @@ function $StringClass(value){
                 "Can't convert "+other.__class__+" to str implicitely")}
         }else{return str(value+other.value)}
     }
+
+    this.__contains__ = function(item){
+        if(!$isinstance(item,str)){$Exception("TypeError",
+         "'in <string>' requires string as left operand, not "+item.__class__)}
+        var nbcar = item.value.length
+        for(i=0;i<value.length;i++){
+            if(value.substr(i,nbcar)==item.value){return True}
+        }
+        return False
+    }
+
+    this.__float__ = function(){
+        var $float = parseFloat(value)
+        if($float==NaN){$Exception("ValueError",
+            "could not convert string to float(): '"+value+"'")}
+        else{return float($float)}
+    }
+
+    this.__getattr__ = function(attr){return getattr(this,attr)}
+
+    this.__getitem__ = function(arg){
+        if($isinstance(arg,int)){
+            var pos = arg.value
+            if(arg.value<0){pos=value.length+pos}
+            if(pos>=0 && pos<value.length){return str(value.charAt(pos))}
+            else{$Exception('IndexError','string index out of range')}
+        } else if($isinstance(arg,slice)) {
+            start = arg.start || int(0)
+            stop = arg.stop || this.__len__()
+            step = arg.step || int(1)
+            if(start.value<0){start=int(this.__len__()+start.value)}
+            if(stop.value<0){stop=int(this.__len__()+stop.value)}
+            var res = ''
+            if(step.value>0){
+                if(stop.value<=start.value){return str('')}
+                else {
+                    for(i=start.value;i<stop.value;i+=step.value){
+                        res += value.charAt(i)
+                    }
+                }
+            } else {
+                if(stop.value>=start.value){return str('')}
+                else {
+                    for(i=start.value;i>stop.value;i+=step.value){
+                        res += value.charAt(i)
+                    }
+                }
+            }            
+            return str(res)
+        }
+    }
+
     this.__iadd__ = function(other){
         $AssertEqual($isinstance(other,str),true,
             'TypeError',"Can't convert "+$str(other.__class__)+" to str implicitely")
         value += other.value
         this.value = value
     }
-    this.__mul__ = function(other){
-        $AssertEqual($isinstance(other,int),true,
-            'TypeError',"Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")
-        $res = ''
-        for(var i=0;i<other.value;i++){$res+=value}
-        return str($res)
-    }
+
     this.__imul__ = function(other){
         $AssertEqual($isinstance(other,int),true,
             'TypeError',"Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")
@@ -963,6 +1016,17 @@ function $StringClass(value){
         value = $res
         this.value = $res
     }
+
+    this.__in__ = function(item){return item.__contains__(this)}
+
+    this.__int__ = function(){
+        var $int = parseInt(value)
+        if($int==NaN){$Exception("ValueError",
+            "invalid literal for int() with base 10: '"+value+"'")}
+        else{return int($int)}
+    }
+
+    this.__len__ = function(){return int(value.length)}
 
     this.__mod__ = function(args){
         // string formatting (old style with %)
@@ -1020,6 +1084,41 @@ function $StringClass(value){
         return str(res)
     }
     
+    this.__mul__ = function(other){
+        $AssertEqual($isinstance(other,int),true,
+            'TypeError',"Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")
+        $res = ''
+        for(var i=0;i<other.value;i++){$res+=value}
+        return str($res)
+    }
+    
+    this.__next__ = function(){
+        if(this.iter==null){this.iter==0}
+        if(this.iter<value.length){
+            this.iter++
+            return str(value.charAt(this.iter-1))
+        } else {
+            this.iter = null
+            throw new $StopIteration()
+        }
+    }
+
+    this.__not_in__ = function(item){return not(item.__contains__(this))}
+
+    this.__or__ = function(other){
+        if(value.length==0){return other}
+        else{return this}
+    }
+
+    this.__repr__ = function(){
+        res = "'"
+        res += value.replace('\n','\\\n')
+        res += "'"
+        return str(res)
+    }
+
+    this.__str__ = function(){return this}
+
     // generate comparison methods
     var $comp_func = function(other){
         if(!$isinstance(other,str)){$Exception('TypeError',
@@ -1032,11 +1131,6 @@ function $StringClass(value){
         eval("this.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
     }
 
-    this.__or__ = function(other){
-        if(value.length==0){return other}
-        else{return this}
-    }
-    
     // unsupported operations
     var $notimplemented = function(other){
         $Exception('TypeError',
@@ -1049,62 +1143,58 @@ function $StringClass(value){
             eval('this.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
         }
     }
-
-    this.__getitem__ = function(arg){
-        if($isinstance(arg,int)){
-            var pos = arg.value
-            if(arg.value<0){pos=value.length+pos}
-            if(pos>=0 && pos<value.length){return str(value.charAt(pos))}
-            else{$Exception('IndexError','string index out of range')}
-        } else if($isinstance(arg,slice)) {
-            start = arg.start || int(0)
-            stop = arg.stop || this.__len__()
-            step = arg.step || int(1)
-            if(start.value<0){start=int(this.__len__()+start.value)}
-            if(stop.value<0){stop=int(this.__len__()+stop.value)}
-            var res = ''
-            if(step.value>0){
-                if(stop.value<=start.value){return str('')}
-                else {
-                    for(i=start.value;i<stop.value;i+=step.value){
-                        res += value.charAt(i)
-                    }
-                }
-            } else {
-                if(stop.value>=start.value){return str('')}
-                else {
-                    for(i=start.value;i>stop.value;i+=step.value){
-                        res += value.charAt(i)
-                    }
-                }
-            }            
+    
+    this.capitalize = function(){
+        if(value.length==0){return str('')}
+        return str(value.charAt(0).toUpperCase()+value.substr(1).toLowerCase())
+    }
+    
+    this.center = function(width,fillchar){
+        if(fillchar===undefined){fillchar=' '}else{fillchar=fillchar.value}
+        width=width.value
+        if(width<=value.length){return this}
+        else{
+            var pad = parseInt((width-value.length)/2)
+            res = ''
+            for(var i=0;i<pad;i++){res+=fillchar}
+            res += value
+            for(var i=0;i<pad;i++){res+=fillchar}
+            if(res.length<width){res += fillchar}
             return str(res)
         }
-    }
+   }
 
-    this.__next__ = function(){
-        if(this.iter==null){this.iter==0}
-        if(this.iter<value.length){
-            this.iter++
-            return str(value.charAt(this.iter-1))
-        } else {
-            this.iter = null
-            throw new $StopIteration()
+    this.count = function(elt){
+        if(!$isinstance(elt,str)){$Exception("Typeerror",
+            "Can't convert '"+$str(elt.__class__)+"' object to str implicitly")}
+        var res = 0
+        for(i=0;i<value.length-elt.value.length+1;i++){
+            if(value.substr(i,elt.value.length)===elt.value){res++}
         }
+        return int(res)
     }
 
-    this.__in__ = function(item){return item.__contains__(this)}
-    this.__not_in__ = function(item){return not(item.__contains__(this))}
-
-    this.__contains__ = function(item){
-        if(!$isinstance(item,str)){$Exception("TypeError",
-         "'in <string>' requires string as left operand, not "+item.__class__)}
-        var nbcar = item.value.length
-        for(i=0;i<value.length;i++){
-            if(value.substr(i,nbcar)==item.value){return True}
+    this.endswith = function(){
+        // Return True if the string ends with the specified suffix, otherwise 
+        // return False. suffix can also be a tuple of suffixes to look for. 
+        // With optional start, test beginning at that position. With optional 
+        // end, stop comparing at that position.
+        $ns[0]={}
+        $MakeArgs(0,arguments,['suffix'],{'start':null,'end':null},null,null)
+        var suffixes = $ns[0]['suffix']
+        if(!$isinstance(suffixes,tuple)){suffixes=$list(suffixes)}
+        var start = $ns[0]['start'] || int(0)
+        var end = $ns[0]['end'] || int(value.length-1)
+        var s = value.substr(start.value,end.value+1)
+        for(var i=0;i<suffixes.items.length;i++){
+            suffix = suffixes.items[i]
+            if(suffix.value.length<=s.length &&
+                s.substr(s.length-suffix.value.length)==suffix.value){return True}
         }
         return False
     }
+
+    this.find = function(elt){return int(value.search(elt.value))}
 
     this.index = function(elt){
         if(!$isinstance(elt,str)){$Exception("Typeerror",
@@ -1113,6 +1203,64 @@ function $StringClass(value){
             if(value.substr(i,elt.value.length)===elt.value){return int(i)}
         }
         $Exception("ValueError","substring not found")
+    }
+
+    this.join = function(iterable){
+        if(!'__next__' in iterable){$Exception("TypeError",
+             "'"+$str(iterable.__class__)+"' object is not iterable")}
+        var res = '',count=0
+        while(true){
+            try{
+                obj = next(iterable)
+                if(!$isinstance(obj,str)){$Exception('TypeError',
+                    "sequence item "+count+": expected str instance, "+$str(obj.__class__)+"found")}
+                res += obj.value+value
+                count++
+            }catch(err){
+                if(err.name=='StopIteration'){break}
+                throw err
+            }
+        }
+        if(count==0){return str('')}
+        res = res.substr(0,res.length-value.length)
+        return str(res)
+    }
+
+    this.lower = function(){return str(value.toLowerCase())}
+
+    this.lstrip = function(x){
+        if(x==undefined){pattern="\\s*"}
+        else{pattern = "["+x.value+"]*"}
+        sp = new RegExp("^"+pattern)
+        return str(value.replace(sp,""))
+    }
+
+    this.rstrip = function(x){
+        if(x==undefined){pattern="\\s*"}
+        else{pattern = "["+x.value+"]*"}
+        sp = new RegExp(pattern+'$')
+        return str(value.replace(sp,""))
+    }
+
+    this.startswith = function(){
+        // Return True if string starts with the prefix, otherwise return False. 
+        // prefix can also be a tuple of prefixes to look for. With optional 
+        // start, test string beginning at that position. With optional end, 
+        // stop comparing string at that position.
+
+        $ns[0]={}
+        $MakeArgs(0,arguments,['prefix'],{'start':null,'end':null},null,null)
+        var prefixes = $ns[0]['prefix']
+        if(!$isinstance(prefixes,tuple)){prefixes=$list(prefixes)}
+        var start = $ns[0]['start'] || int(0)
+        var end = $ns[0]['end'] || int(value.length-1)
+        var s = value.substr(start.value,end.value+1)
+        for(var i=0;i<prefixes.items.length;i++){
+            prefix = prefixes.items[i]
+            if(prefix.value.length<=s.length &&
+                s.substr(0,prefix.value.length)==prefix.value){return True}
+        }
+        return False
     }
 
     this.strip = function(x){
