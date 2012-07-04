@@ -11,9 +11,10 @@ function $resolve(name,scope){
 function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     var i=null
     var $PyVars = {}
-    for(k in $defaults){$ns[$fname][k]=$defaults[k]}
+    var $def_names = []
+    for(k in $defaults){$def_names.push(k);$ns[$fname][k]=$defaults[k]}
     if($other_args != null){$ns[$fname][$other_args]=list()}
-    if($other_kw != null){$keys=$List();$values=list()}
+    if($other_kw != null){$keys=list();$values=list()}
     for(i=0;i<$args.length;i++){
         $arg=$args[i]
         $PyVar=$JS2Py($arg)
@@ -21,6 +22,8 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
             if(i<$required.length){
                 eval($required[i]+"=$PyVar")
                 $ns[$fname][$required[i]]=$PyVar
+            } else if(i<$required.length+$def_names.length) {
+                $ns[$fname][$def_names[i-$required.length]]=$PyVar
             } else if($other_args!=null){
                 eval('$ns[$fname]["'+$other_args+'"].append($PyVar)')
             } else {
@@ -698,7 +701,7 @@ function py2js(src){
                     new_args.push(["delimiter",",",src_pos])
                 }
             })
-            new_args.push(['bracket',')',stack.list[end][2]]) // close $Slice
+            new_args.push(['bracket',')',stack.list[end][2]]) // close slice
         }
         // if end is followed by = it's an assignment to a slicing
         if(end<stack.list.length-1 && stack.list[end+1][0]=="assign"){
@@ -725,6 +728,32 @@ function py2js(src){
         }
         pos = br_pos-1
     }
+
+    // replace qualifiers by __getattr__ or __setattr___
+    pos = stack.list.length-1
+    while(true){
+        q_pos = stack.find_previous(pos,'qualifier')
+        if(q_pos==null){break}
+        src_pos = stack.list[q_pos][2]
+        if(q_pos<stack.list.length-1 && stack.list[q_pos+1][0]=="assign"){
+            // assign to qualifier = set attribute
+            var ro = stack.atom_at(q_pos+2)
+            var q_name = stack.list[q_pos][1]
+            if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
+            tail = stack.list.slice(ro.end+1,stack.list.length)
+            var seq = [['code','__setattr__'],['bracket','('],
+                ['literal',"'"+q_name+"'"],['delimiter',',']]
+            seq = seq.concat(ro.list()).concat([['bracket',')']])
+            stack.list = stack.list.slice(0,q_pos).concat(seq).concat(tail)
+        }else{ // get attribute
+            var q_name = stack.list[q_pos][1]
+            if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
+            stack.list.splice(q_pos,1,['code','__getattr__'],['bracket','('],
+                ['literal',"'"+q_name+"'"],['bracket',')'])
+        }
+        pos = q_pos-1
+    }
+
 
     // return resulting JavaScript code
     return stack.to_js()

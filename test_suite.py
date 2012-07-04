@@ -19,3 +19,8 @@ v = ''
 for u in reversed(x):
  v += u
 alert(v)
+
+'azertu'.endswith(('a','tu'))
+'azertu'.startswith(('a','sazer'))
+'15'.isdigit()
+',,'.join(['a','bc'])
