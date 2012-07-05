@@ -42,6 +42,20 @@ function $mouseCoords(ev){
     return{x:posx,y:posy}
 }
 
+function $StyleClass(parent){
+
+    this.__getattr__ = function(attr){return $JS2Py(eval('parent.elt.style.'+attr.value))}
+
+    this.__getitem__ = function(attr){return $JS2Py(parent.elt.style[attr.value])}
+
+    this.__setattr__ = function(attr,value){eval('parent.elt.style.'+attr.value+'= $str(value)')}
+
+    this.__setitem__ = function(attr,value){parent.elt.style[attr.value]= $str(value)}
+    
+}
+
+function print(data){try{console.log($str(data))}catch(err){void(0)}}
+
 function $Document(){
 
     this.elt = document
@@ -182,15 +196,6 @@ function $TagClass(_class,args){
         this.elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
     }
 
-    this.__le__ = function(other){
-        if($isinstance(other,$AbstractTag)){
-            var $i=0
-            for($i=0;$i<other.children.length;$i++){
-                this.elt.appendChild(other.children[$i])
-            }
-        } else {this.elt.appendChild(other.elt)}
-    }
-    
     this.__add__ = function(other){
         var res = $AbstractTag() // abstract tag
         res.children = [this.elt]
@@ -203,13 +208,21 @@ function $TagClass(_class,args){
         return res
     }
 
-    this.__radd__ = function(other){ // add to a string
-        var res = $AbstractTag() // abstract tag
-        var txt = document.createTextNode(other.value)
-        res.children = [txt,this.elt]
-        return res        
+    this.__eq__ = function(other){
+        if(!('getAttribute' in other.elt)){return False}
+        return $bool_conv(this.elt.getAttribute('id')==other.elt.getAttribute('id'))
     }
 
+    this.__getattr__ = function(attr){
+        if('get_'+attr.value in this){return this['get_'+attr.value]()}
+        else if(attr.value in this.elt){return $JS2Py(this.elt[attr.value])}
+        return getattr(this,attr)
+    }
+
+    this.__getitem__ = function(key){
+        return $JS2Py(this.elt[key.value])
+    }
+    
     this.__iadd__ = function(other){
         this.__class__ = $AbstractTag // change to abstract tag
         this.children = [this.elt]
@@ -220,28 +233,32 @@ function $TagClass(_class,args){
         } else {this.children.push(other.elt)}
     }
 
-    this.__eq__ = function(other){
-        if(!('getAttribute' in other.elt)){return False}
-        return $bool_conv(this.elt.getAttribute('id')==other.elt.getAttribute('id'))
+    this.__le__ = function(other){
+        if($isinstance(other,$AbstractTag)){
+            var $i=0
+            for($i=0;$i<other.children.length;$i++){
+                this.elt.appendChild(other.children[$i])
+            }
+        } else {this.elt.appendChild(other.elt)}
     }
-
+    
     this.__ne__ = function(other){return not(this.__eq__(other))}
 
-    this.__getitem__ = function(key){
-        return $JS2Py(this.elt[$str(key)])
+    this.__radd__ = function(other){ // add to a string
+        var res = $AbstractTag() // abstract tag
+        var txt = document.createTextNode(other.value)
+        res.children = [txt,this.elt]
+        return res        
+    }
+
+    this.__setattr__ = function(attr,value){
+        if('set_'+attr.value in this){return this['set_'+attr.value](value)}
+        else if(attr.value in this.elt){this.elt[attr.value]=value.value}
+        else{setattr(this,attr,value)}
     }
     
     this.__setitem__ = function(key,value){
         this.elt.setAttribute($str(key),$str(value))
-    }
-    
-    this.__getattr__ = function(attr){
-        if('get_'+attr.value in this){return this['get_'+attr.value]()}
-        return getattr(this,attr)
-    }
-    this.__setattr__ = function(attr,value){
-        if('set_'+attr.value in this){return this['set_'+attr.value](value)}
-        return setattr(this,attr,value)
     }
     
     this.clone = function(){
@@ -263,13 +280,23 @@ function $TagClass(_class,args){
         return res
     }
 
+    this.get_style = function(){
+        return new $StyleClass(this)
+    }
+    
+    this.set_style = function(style){ // style is a dict
+        for(var i=0;i<style.$keys.length;i++){
+            this.elt.style[$str(style.$keys[i])] = $str(style.$values[i])
+        }
+    }
+
     this.get_text = function(){
         return str($obj.elt.innerText || $obj.elt.textContent)
     }
     
     this.get_html = function(){return str($obj.elt.innerHTML)}
 
-    this.make_draggable = function(target){
+    this.make_draggable_old = function(target){
         // make item draggable ; can be dropped into target
         // target must define a method to handle dropping
         if(target===undefined){$Exception("TypeError",
@@ -286,17 +313,21 @@ function $TagClass(_class,args){
         this.elt.onmouseup = function(ev){
             this.onmousemove = null
             if(target.$visited && 'on_drop' in target){ // drop in target
-                target.on_drop(obj)
+                target.on_drop(target,obj)
             }else{ // put back in initial position
                 var pos = document.$initial_pos
                 this.style.position = pos.position
                 this.style.left = pos.left
                 this.style.top = pos.top
-                delete document.$initial_pos
+                this.style.zIndex = document.$initial_z
+                document.$initial_pos = null
             }
-            delete document.$drag_object
+            document.$drag_object = null
         }
-        this.elt.onmouseover = function(ev){this.style.cursor = "move"}
+        this.elt.onmouseover = function(ev){
+            document.onselectstart=null
+            this.style.cursor = "move"
+        }
         this.elt.onmouseout = function(ev){
             this.style.cursor="default"
             this.onmousemove=null
@@ -307,7 +338,7 @@ function $TagClass(_class,args){
             document.$initial_pos = {'left':this.style.left,'top':this.style.top,
                 'position':this.style.position}
             var mouseWhenDown = $mouseCoords(ev)
-            if(!container_is_doc){alert('container');var containerDims = $getPosition(container)}
+            if(!container_is_doc){var containerDims = $getPosition(container)}
             var topWhenDown = this.style.top || '0px'
             var topWhenDown = parseInt(topWhenDown.substr(0,topWhenDown.length-1))
             var leftWhenDown = this.style.left || '0px'
@@ -317,18 +348,22 @@ function $TagClass(_class,args){
                 var tgDims = $getPosition(target.elt)
                 var tg_left = tgDims.x,tg_right=tgDims.x+tgDims.width
                 var tg_top = tgDims.y,tg_down=tgDims.y+tgDims.height
+                //console.log('target '+tg_left+' '+tg_top+' '+tg_down+' '+tg_right)
                 function inside(pos,elt){
+                    //console.log('mouse '+pos.x+' '+pos.y)
                     if(pos.x>=tg_left && pos.x<=tg_right &&
                         pos.y>=tg_top && pos.y<=tg_down){return true}
                     return false
                 }
             }
             target.$visited = false
+            document.$initial_z = this.style.zIndex
 
             this.onmousemove = function(ev){
                 // here "this" is the DOM element
                 var mousePos = $mouseCoords(ev);
                 this.style.position = 'absolute';
+                this.style.zIndex = 999
                 var dx = mousePos.x - mouseWhenDown.x
                 var dy = mousePos.y - mouseWhenDown.y
                 var new_top = topWhenDown+dy
@@ -349,14 +384,29 @@ function $TagClass(_class,args){
                 }
                 var is_inside = inside(mousePos,target.elt)
                 if(is_inside){
-                    if(!target.$visited && 'on_enter' in target){target.on_enter(obj)}
+                    if(!target.$visited && 'on_enter' in target){target.on_enter(target,obj)}
                     target.$visited = true
                 }else if(target.$visited){
-                    if('on_leave' in target){target.on_leave(obj)}
+                    if('on_leave' in target){target.on_leave(target,obj)}
                     target.$visited = false
                 }
                 return false;
             }
+        }
+    }
+
+    this.make_draggable = function(target){
+        // make element draggable and droppable into target
+        this.elt.draggable = true
+        this.elt.onmouseover = function(ev){this.style.cursor="move"}
+        this.elt.ondragstart = function(ev){
+            ev.dataTransfer.setData("Text",ev.target.id)
+        }
+        target.elt.ondragover = function(ev){ev.preventDefault()}
+        target.elt.ondrop = function(ev){
+            ev.preventDefault();
+            var data=ev.dataTransfer.getData("Text");
+            ev.target.appendChild(document.getElementById(data));
         }
     }
 

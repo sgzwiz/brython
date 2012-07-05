@@ -745,42 +745,6 @@ function $extreme(args,op){ // used by min() and max()
     }
 }
 
-function $max(){
-    if(arguments.length==0){$Exception("TypeError","max expected 1 argument, got 0")}
-    var last_arg = arguments[arguments.length-1]
-    var last_i = arguments.length-1
-    var has_key = false
-    if($isinstance(last_arg,$Kw)){
-        if(last_arg.name === 'key'){
-            var func = last_arg.value
-            has_key = true
-            last_i--
-        }else{$Exception("TypeError","max() got an unexpected keyword argument")}
-    }else{var func = function(x){return x}}
-    if((has_key && arguments.length==2)||(!has_key && arguments.length==1)){
-        var arg = arguments[0]
-        if(!('__next__' in arg)){$Exception("TypeError",
-            "'"+$str(arg)+"' object is not iterable")}
-        var res = null
-        while(true){
-            try{
-                var x = func(next(arg))
-                if(res===null || $bool(getattr(x,op)(func(res)))){res = x}
-            }catch(err){
-                if(err.name=="StopIteration"){return res}
-                throw err
-            }
-        }
-    } else {
-        var res = null
-        for(var i=0;i<=last_i;i++){
-            var x = arguments[i]
-            if(res===null || $bool(func(x).__gt__(func(res)))){res = x}
-        }
-        return res
-    }
-}
-
 function max(){
     var args = []
     for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
@@ -1194,15 +1158,31 @@ function $StringClass(value){
         return False
     }
 
-    this.find = function(elt){return int(value.search(elt.value))}
+    this.find = function(){
+        // Return the lowest index in the string where substring sub is found, 
+        // such that sub is contained in the slice s[start:end]. Optional 
+        // arguments start and end are interpreted as in slice notation. 
+        // Return -1 if sub is not found.
+        $ns[0]={}
+        $MakeArgs(0,arguments,['sub'],{'start':int(0),'end':int(value.length)},null,null)
+        var sub = $ns[0]['sub'],start=$ns[0]['start'],end=$ns[0]['end']
+        if(!$isinstance(sub,str)){$Exception("TypeError",
+            "Can't convert '"+$str(sub.__class__)+"' object to str implicitly")}
+        if(!$isinstance(start,int)||!$isinstance(end,int)){$Exception("TypeError",
+            "slice indices must be integers or None or have an __index__ method")}
+        var s = value.substring(start.value,end.value)
+        var res = s.search(sub.value)
+        if(res==-1){return int(-1)}
+        else{return int(start.value+res)}
+    }
 
-    this.index = function(elt){
-        if(!$isinstance(elt,str)){$Exception("Typeerror",
-            "Can't convert '"+$str(elt.__class__)+"' object to str implicitly")}
-        for(i=0;i<value.length-elt.value.length+1;i++){
-            if(value.substr(i,elt.value.length)===elt.value){return int(i)}
-        }
-        $Exception("ValueError","substring not found")
+    this.index = function(){
+        // Like find(), but raise ValueError when the substring is not found.
+        var args = []
+        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+        var res = this.find.apply(this,args)
+        if(res.value==-1){$Exception("ValueError","substring not found")}
+        else{return res}
     }
 
     this.join = function(iterable){
@@ -1235,11 +1215,77 @@ function $StringClass(value){
         return str(value.replace(sp,""))
     }
 
+    this.replace = function(old,_new,count){
+        if(count!==undefined){
+            if(!$isinstance(count,list(int,float))){$Exception("TypeError",
+                "'"+$str(count.__class__)+"' object cannot be interpreted as an integer")}
+            count=count.value
+            var re = new RegExp(old.value)
+            var res = value
+            while(count>0){
+                if(value.search(re)==-1){return str(res)}
+                res = res.replace(re,_new.value)
+                count--
+            }
+            return str(res)
+        }else{
+            var re = new RegExp(old.value,"g")
+            return str(value.replace(re,_new.value))
+        }
+    }
+
+    this.rfind = function(){
+        // Return the highest index in the string where substring sub is found, 
+        // such that sub is contained within s[start:end]. Optional arguments 
+        // start and end are interpreted as in slice notation. Return -1 on failure.
+        $ns[0]={}
+        $MakeArgs(0,arguments,['sub'],{'start':int(0),'end':int(value.length)},null,null)
+        var sub = $ns[0]['sub'],start=$ns[0]['start'],end=$ns[0]['end']
+        if(!$isinstance(sub,str)){$Exception("TypeError",
+            "Can't convert '"+$str(sub.__class__)+"' object to str implicitly")}
+        if(!$isinstance(start,int)||!$isinstance(end,int)){$Exception("TypeError",
+            "slice indices must be integers or None or have an __index__ method")}
+        var s = value.substring(start.value,end.value)
+        var reversed = ''
+        for(var i=s.length-1;i>=0;i--){reversed += s.charAt(i)}
+        var res = reversed.search(sub.value)
+        if(res==-1){return int(-1)}
+        else{return int(start.value+s.length-1-res)}
+    }
+    
+    this.rindex = function(){
+        // Like rfind() but raises ValueError when the substring sub is not found
+        var args = []
+        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+        var res = this.rfind.apply(this,args)
+        if(res.value==-1){$Exception("ValueError","substring not found")}
+        else{return res}
+    }
+
     this.rstrip = function(x){
         if(x==undefined){pattern="\\s*"}
         else{pattern = "["+x.value+"]*"}
         sp = new RegExp(pattern+'$')
         return str(value.replace(sp,""))
+    }
+
+    this.split = function(){
+        $ns[0]={}
+        $MakeArgs(0,arguments,[],{'sep':None,'maxsplit':int(-1)},null,null)
+        var sep=$ns[0]['sep'],maxsplit=$ns[0]['maxsplit'].value
+        var res = [],pos=0,spos=0
+        if($isinstance(sep,str)){
+            var sep = sep.value
+            while(true){
+                spos = value.substr(pos).search(sep)
+                if(spos==-1){break}
+                res.push(str(value.substring(pos,spos)))
+                if(maxsplit != -1 && res.length==maxsplit){break}
+                pos = spos+sep.length
+            }
+            res.push(str(value.substr(pos)))
+            return $list(res)
+        }
     }
 
     this.startswith = function(){

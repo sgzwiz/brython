@@ -29,6 +29,7 @@ function $tokenize(src){
         "break","except","raise")
     var unsupported = $List2Dict("class","is","from","nonlocal","with",
         "as","yield","assert","import")
+    var forbidden = $List2Dict("item") // causes errors for some browsers
 
     var punctuation = {',':0,':':0,';':0}
     var int_pattern = new RegExp("^\\d+")
@@ -129,6 +130,9 @@ function $tokenize(src){
                         $Exception("SyntaxError","Unsupported Python keyword '"+name+"'")                    
                     }
                     stack.push(["keyword",name,pos-name.length])
+                } else if(name in forbidden) {
+                    document.line_num = pos2line[pos]
+                    $Exception("SyntaxError","Forbidden name '"+name+"'")                    
                 } else if(name in $operators) { // and, or
                     stack.push(["operator",name,pos-name.length])
                 } else if(stack.length>1 && $last(stack)[0]=="point"

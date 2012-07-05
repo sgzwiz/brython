@@ -1,3 +1,4 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
 <script src="../py_tokenizer.js"></script>
@@ -11,27 +12,52 @@
 <script type="text/brython">
 items = ['uno','due','tre']
 
-right = DIV()    
-right['style'] = "position:absolute;left:300;top:50;width:100;height:200;background-color:yellow;"
+left = DIV()
+left.style= {'position':'absolute',
+    'left':100,'top':50,'width':100,'height':200,
+    'backgroundColor':'yellow'}
+right = DIV()
+right.style = {'position':'absolute','left':300,'top':50,'width':100,'height':200,
+    'backgroundColor':'yellow'}
 
-for i,item in enumerate(items):
-    x = DIV(item)
-    x['style'] = "position:absolute;left:50;top:%s;width:30;height:25;z-index:10" %(50+30*i)
-    x.make_draggable(right)
-    doc <= x
+right2 = DIV()
+right2.style = {'position':'absolute','left':500,'top':50,'width':100,'height':200,
+    'backgroundColor':'green'}
 
 doc <= right
+doc <= right2
 
-def enter(elt):
-    right['style'] = "position:absolute;left:300;top:50;width:100;height:200;background-color:red;"
-def leave(elt):
-    right['style'] = "position:absolute;left:300;top:50;width:100;height:200;background-color:yellow;"
-def drop(elt):
-    alert('drop %s' %elt.text)
+for i,_item in enumerate(items):
+    x = SPAN(_item)
+    x.style = {'position':'absolute','left':10,'top':10+30*i,'width':30,'height':25}
+    x.make_draggable(right)
+    if i>1:
+        x.make_draggable(right2)
+    left <= x
+
+doc <= left+right
+
+def enter(target,elt):
+    target.style.backgroundColor = "red"
+    
+def leave(target,elt):
+    target.style.backgroundColor = "yellow"
+    
+def drop(target,elt):
+    target.style.backgroundColor = "yellow"
+    target <= elt
+    elt.style.left = 10
+    if target==right:
+        elt.make_draggable(left)
+    else:
+        elt.make_draggable(right)
 
 right.on_enter = enter
 right.on_leave = leave
-right.on_drop = drop 
+right.on_drop = drop
+left.on_enter = enter
+left.on_leave = leave
+left.on_drop = drop
 </script>
 </body>
 </html>

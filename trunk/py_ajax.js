@@ -28,6 +28,10 @@ function $AjaxClass(){
         }
     }
 
+    this.__getattr__ = function(attr){return getattr(this,attr)}
+    
+    this.__setattr__ = function(attr,value){setattr(this,attr,value)}
+
     this.open = function(method,url,async){
         $xmlhttp.open(method.value,url.value,$bool(async));
     }
