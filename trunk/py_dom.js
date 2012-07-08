@@ -51,10 +51,9 @@ function $StyleClass(parent){
     this.__setattr__ = function(attr,value){eval('parent.elt.style.'+attr.value+'= $str(value)')}
 
     this.__setitem__ = function(attr,value){parent.elt.style[attr.value]= $str(value)}
-    
 }
 
-function print(data){try{console.log($str(data))}catch(err){void(0)}}
+function Console(data){try{console.log($str(data))}catch(err){void(0)}}
 
 function $Document(){
 
@@ -66,6 +65,9 @@ function $Document(){
             for($i=0;$i<other.children.length;$i++){
                 document.body.appendChild(other.children[$i])
             }
+        }else if($isinstance(other,list(str,int,float,list,dict,set,tuple))){
+            txt = document.createTextNode($str(other))
+            document.body.appendChild(txt)
         } else {document.body.appendChild(other.elt)}
     }
     
@@ -296,127 +298,39 @@ function $TagClass(_class,args){
     
     this.get_html = function(){return str($obj.elt.innerHTML)}
 
-    this.make_draggable_old = function(target){
-        // make item draggable ; can be dropped into target
-        // target must define a method to handle dropping
-        if(target===undefined){$Exception("TypeError",
-            "make_draggable() takes 1 argument, none given")}
-        var obj = this
-        var container = this.elt
-        while(container){
-            if(container===target.elt){break}
-            container = container.parentElement
-        }
-        if(!container){container=document.body}
-        var container_is_doc = container===document.body
-        
-        this.elt.onmouseup = function(ev){
-            this.onmousemove = null
-            if(target.$visited && 'on_drop' in target){ // drop in target
-                target.on_drop(target,obj)
-            }else{ // put back in initial position
-                var pos = document.$initial_pos
-                this.style.position = pos.position
-                this.style.left = pos.left
-                this.style.top = pos.top
-                this.style.zIndex = document.$initial_z
-                document.$initial_pos = null
-            }
-            document.$drag_object = null
-        }
-        this.elt.onmouseover = function(ev){
-            document.onselectstart=null
-            this.style.cursor = "move"
-        }
-        this.elt.onmouseout = function(ev){
-            this.style.cursor="default"
-            this.onmousemove=null
-        }
-        this.elt.onmousedown = function(ev){
-            document.$drag_object = this.elt // global variable for drop management
-            var dd = $getPosition(this);
-            document.$initial_pos = {'left':this.style.left,'top':this.style.top,
-                'position':this.style.position}
-            var mouseWhenDown = $mouseCoords(ev)
-            if(!container_is_doc){var containerDims = $getPosition(container)}
-            var topWhenDown = this.style.top || '0px'
-            var topWhenDown = parseInt(topWhenDown.substr(0,topWhenDown.length-1))
-            var leftWhenDown = this.style.left || '0px'
-            var leftWhenDown = parseInt(leftWhenDown.substr(0,leftWhenDown.length-1))
-            if(target===doc){function inside(pos,elt){return true}}
-            else{
-                var tgDims = $getPosition(target.elt)
-                var tg_left = tgDims.x,tg_right=tgDims.x+tgDims.width
-                var tg_top = tgDims.y,tg_down=tgDims.y+tgDims.height
-                //console.log('target '+tg_left+' '+tg_top+' '+tg_down+' '+tg_right)
-                function inside(pos,elt){
-                    //console.log('mouse '+pos.x+' '+pos.y)
-                    if(pos.x>=tg_left && pos.x<=tg_right &&
-                        pos.y>=tg_top && pos.y<=tg_down){return true}
-                    return false
-                }
-            }
-            target.$visited = false
-            document.$initial_z = this.style.zIndex
-
-            this.onmousemove = function(ev){
-                // here "this" is the DOM element
-                var mousePos = $mouseCoords(ev);
-                this.style.position = 'absolute';
-                this.style.zIndex = 999
-                var dx = mousePos.x - mouseWhenDown.x
-                var dy = mousePos.y - mouseWhenDown.y
-                var new_top = topWhenDown+dy
-                if(container_is_doc ||(new_top>=0 && new_top+dd.height<containerDims.height)){ 
-                    this.style.top = new_top
-                } else {
-                    this.onmousemove=null
-                    document.$drag_object = null
-                    return
-                }
-                var new_left = leftWhenDown+dx
-                if(container_is_doc ||(new_left>=0 && new_left+dd.width<containerDims.width)){
-                    this.style.left = new_left;
-                } else {
-                    this.onmousemove=null
-                    document.$drag_object = null
-                    return
-                }
-                var is_inside = inside(mousePos,target.elt)
-                if(is_inside){
-                    if(!target.$visited && 'on_enter' in target){target.on_enter(target,obj)}
-                    target.$visited = true
-                }else if(target.$visited){
-                    if('on_leave' in target){target.on_leave(target,obj)}
-                    target.$visited = false
-                }
-                return false;
-            }
-        }
-    }
+    this.get_value = function(value){return str(this.elt.value)}
 
     this.make_draggable = function(target){
         // make element draggable and droppable into target
+        // use HTML5 drag and drop features
         this.elt.draggable = true
         this.elt.onmouseover = function(ev){this.style.cursor="move"}
         this.elt.ondragstart = function(ev){
             ev.dataTransfer.setData("Text",ev.target.id)
+            // some browsers disable access to data store in dragover
+            // so we have to put dragged id in a global variable
+            document.$drag_id = ev.target.id 
         }
-        target.elt.ondragover = function(ev){ev.preventDefault()}
+        if(!('$accepted' in target.elt)){target.elt.$accepted={}}
+        target.elt.$accepted[this.elt.id]=0
+        target.elt.ondragover = function(ev){
+            ev.preventDefault()
+            if(!(document.$drag_id in this.$accepted)){
+                ev.dataTransfer.dropEffect='none'
+            }
+        }
         target.elt.ondrop = function(ev){
             ev.preventDefault();
-            var data=ev.dataTransfer.getData("Text");
-            ev.target.appendChild(document.getElementById(data));
+            var elt_id=ev.dataTransfer.getData("Text");
+            if(elt_id in this.$accepted){
+                ev.target.appendChild(document.getElementById(elt_id));
+            }
         }
     }
 
     this.set_html = function(value){$obj.elt.innerHTML=$str(value)}
 
-    this.value = function(){
-        if(value in $obj.elt){return str($obj.elt.value)}
-        else{$Exception("AttributeError",
-            "'"+$str(this.name)+"' object has no attribute 'value'")}
-    }
+    this.set_value = function(value){this.elt.value = $str(value)}
 }
 
 function A(){

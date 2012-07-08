@@ -1,3 +1,20 @@
+// transform native JS types into Brython types
+function $JS2Py(src){
+    htmlelt_pattern = new RegExp(/\[object HTML(.*)Element\]/)
+    if(typeof src=="string"){
+        return str(src)
+    } else if(typeof src=="number") {
+        if(src.toString().search(/\./)==-1){
+            return int(src)
+        } else {
+            return float(src)
+        }
+    } else if(typeof src=="object" && src.constructor===Array){return new $ListClass(src)}
+    else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
+    else {return src}
+}
+
+
 function forEachArray(obj){
     var i=0;
     var res = null;
@@ -342,49 +359,45 @@ function Stack(stack_list){
     }
 
     this.find_block = function(pos){
-        var kw = $List2Dict('def','if','else','elif','class','for')
         var item = this.list[pos]
-        if(item[0]=="keyword" && item[1] in kw) {
-            var closing_pos = null
-            for(i=pos+1;i<this.list.length;i++){
-                if(this.list[i][0]=="delimiter" && this.list[i][1]==":"){
-                    closing_pos = i
-                    break
-                }
+        var closing_pos = null
+        for(i=pos+1;i<this.list.length;i++){
+            if(this.list[i][0]=="delimiter" && this.list[i][1]==":"){
+                closing_pos = i
+                break
             }
-            if(closing_pos!=null){
-                // find block end : the newline before the first indentation equal
-                // to the indentation of the line beginning with the keyword
-                var kw_indent = 0
-                var line_start = this.find_previous(pos,"newline")
-                if(line_start==null){kw_indent=0}
-                else if(this.list[line_start+1][0]=="indent"){
-                    kw_indent = this.list[line_start+1][1]
-                }
-                var stop = closing_pos
-                while(true){
-                    nl = this.find_next(stop,"newline")
-                    if(nl==null){stop = this.list.length-1;break}
-                    if(nl<this.list.length-1){
-                        if(this.list[nl+1][0]=="indent"){
-                            if(this.list[nl+1][1]<=kw_indent){
-                                stop = nl
-                                break
-                            }
-                        } else { // no indent
+        }
+        if(closing_pos!=null){
+            // find block end : the newline before the first indentation equal
+            // to the indentation of the line beginning with the keyword
+            var kw_indent = 0
+            var line_start = this.find_previous(pos,"newline")
+            if(line_start==null){kw_indent=0}
+            else if(this.list[line_start+1][0]=="indent"){
+                kw_indent = this.list[line_start+1][1]
+            }
+            var stop = closing_pos
+            while(true){
+                nl = this.find_next(stop,"newline")
+                if(nl==null){stop = this.list.length-1;break}
+                if(nl<this.list.length-1){
+                    if(this.list[nl+1][0]=="indent"){
+                        if(this.list[nl+1][1]<=kw_indent){
                             stop = nl
                             break
                         }
-                    } else {
-                        stop = this.list.length-1
+                    } else { // no indent
+                        stop = nl
                         break
                     }
-                    stop = nl+1
+                } else {
+                    stop = this.list.length-1
+                    break
                 }
-                return [closing_pos,stop,kw_indent]
+                stop = nl+1
             }
+            return [closing_pos,stop,kw_indent]
         }
-        return null
     }
 
     this.to_js = function(){

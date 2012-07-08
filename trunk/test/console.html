@@ -10,8 +10,8 @@ var js=null
 function to_js(){
     var src_elt = document.getElementById("src")
     var src = src_elt.value
-    js = py2js(src)
-    document.getElementById("src2js").value = js
+    stack = py2js(src)
+    document.getElementById("src2js").value = stack.to_js()
 }
 function run(){
     js = document.getElementById("src2js").value

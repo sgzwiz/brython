@@ -5,24 +5,88 @@ function $StopIteration(message) {
 }
 $StopIteration.prototype = new Error()
 
+function AttributeError(msg) {  
+    this.name = "AttributeError";  
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    this.message = msg;  
+}
+AttributeError.prototype = new Error()
+
+function ImportError(msg) {  
+    this.name = "ImportError";  
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    this.message = msg;  
+}
+ImportError.prototype = new Error()
+
+function IndexError(msg) {  
+    this.name = "IndexError";  
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    this.message = msg;  
+}
+IndexError.prototype = new Error()
+
+function KeyError(msg) {  
+    this.name = "KeyError";  
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    this.message = msg;  
+}
+KeyError.prototype = new Error()
+
+function NameError(msg) {  
+    this.name = "NameError";  
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    this.message = msg;  
+}
+NameError.prototype = new Error()
+
+function SyntaxError(msg) {  
+    this.name = "SyntaxError";  
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    this.message = msg;  
+}
+SyntaxError.prototype = new Error()
+
+function TypeError(msg) {  
+    this.name = "TypeError";  
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    this.message = msg;  
+}
+TypeError.prototype = new Error()
+
+function ValueError(msg) {  
+    this.name = "ValueError";  
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    this.message = msg;  
+}
+ValueError.prototype = new Error()
+
+
 function $Exception(type,msg){
+    this.name = type
     msg = type+':'+msg+'\n'
-    var lines = document.py_src.split('\n')
+    var lines = document.$py_src[document.$context].split('\n')
     msg += 'Line '+document.line_num+'\n'+lines[document.line_num-1]
     throw new Error(msg)
 }
+
 function $UnsupportedOpType(op,class1,class2){
-    $Exception("TypeError",
-        "unsupported operand type(s) for "+op+": '"+$str(class1)+"' and '"+$str(class2)+"'")
+    throw new TypeError("unsupported operand type(s) for "+op+": '"+$str(class1)+"' and '"+$str(class2)+"'")
 }
-function $AssertEqual(v1,v2,type,msg){if(v1!==v2){$Exception(type,msg)}}
-function $AssertNotEqual(v1,v2,type,msg){if(v1===v2){$Exception(type,msg)}}
 
 // built-in functions
 function abs(obj){
     if($isinstance(obj,int)){return int(Math.abs(obj.value))}
     else if($isinstance(obj,float)){return float(Math.abs(obj.value))}
-    else{$Exception('TypeError',"Bad operand type for abs(): '"+$str(obj.__class__)+"'")}
+    else{throw new TypeError("Bad operand type for abs(): '"+$str(obj.__class__)+"'")}
 }
 
 function all(iterable){
@@ -124,7 +188,7 @@ function $DictClass($keys,$values){
         for(i=0;i<$keys.length;i++){
             if($bool(arg.__eq__(this.$keys[i]))){return $values[i]}
         }
-        $Exception('KeyError',str(arg))
+        throw new KeyError(str(arg))
     }
 
     this.__setitem__ = function(key,value){
@@ -226,11 +290,11 @@ function $FilterClass(func,iterable){
 }
                 
 function filter(){
-    if(arguments.length!=2){$Exception("TypeError",
-        "filter expected 2 arguments, got "+arguments.length)}
+    if(arguments.length!=2){throw new TypeError(
+            "filter expected 2 arguments, got "+arguments.length)}
     var func = arguments[0]
     var iterable = arguments[1]
-    if(!'__next__' in iterable){$Exception("TypeError",
+    if(!'__next__' in iterable){throw new TypeError(
          "'"+$str(iterable.__class__)+"' object is not iterable")}
     return new $FilterClass(func,iterable)
 }
@@ -245,8 +309,8 @@ function $FloatClass(value){
     var $op_func = function(other){
         if($isinstance(other,int)){return float(value-other.value)}
         else if($isinstance(other,float)){return float(value-other.value)}
-        else{$Exception("TypeError",
-                "unsupported operand type(s) for -: 'int' and '"+$str(other.__class__)+"'")
+        else{throw new TypeError(
+            "unsupported operand type(s) for -: 'int' and '"+$str(other.__class__)+"'")
         }
     }
     $op_func += '' // source code
@@ -258,8 +322,8 @@ function $FloatClass(value){
     var $augm_op_func = function(other){
         if($isinstance(other,int)){value -= other.value;this.value=value}
         else if($isinstance(other,float)){value -= other.value;this.value=value}
-        else{$Exception("TypeError",
-                "unsupported operand type(s) for -=: 'int' and '"+$str(other.__class__)+"'")
+        else{throw new TypeError(
+            "unsupported operand type(s) for -=: 'int' and '"+$str(other.__class__)+"'")
         }
     }
     $augm_op_func += '' // source code
@@ -271,8 +335,8 @@ function $FloatClass(value){
     this.__floordiv__ = function(other){
         if($isinstance(other,int)){return int(Math.floor(value/other.value))}
         else if($isinstance(other,float)){return int(Math.floor(value/other.value))}
-        else{$Exception("TypeError",
-                "unsupported operand type(s) for //: 'int' and '"+$str(other.__class__)+"'")
+        else{throw new TypeError(
+            "unsupported operand type(s) for //: 'int' and '"+$str(other.__class__)+"'")
         }
     }
 
@@ -283,8 +347,8 @@ function $FloatClass(value){
     var $comp_func = function(other){
         if($isinstance(other,int)){return $bool_conv(this.value > other.value)}
         else if($isinstance(other,float)){return $bool_conv(this.value > other.value)}
-        else{$Exception("TypeError",
-                "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
+        else{throw new TypeError(
+            "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
         }
     }
     $comp_func += '' // source code
@@ -295,7 +359,7 @@ function $FloatClass(value){
 
     // unsupported operations
     var $notimplemented = function(other){
-        $Exception('TypeError',
+        throw new TypeError(
             "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
     }
     $notimplemented += '' // coerce to string
@@ -314,12 +378,11 @@ function float(value){
     else if($isinstance(value,float)){return value}
     else if($isinstance(value,str) && !isNaN(parseFloat(value.value))){
         return new $FloatClass(parseFloat(value.value))
-    } else {$Exception('ValueError',"Could not convert to float(): '"+$str(value)+"'")}
+    } else {throw new ValueError("Could not convert to float(): '"+$str(value)+"'")}
 }
 
 function getattr(obj,attr,_default){
-    if(!$isinstance(attr,str)){$Exception("TypeError",
-        "getattr(): attribute name must be string")}
+    if(!$isinstance(attr,str)){throw new TypeError("getattr(): attribute name must be string")}
     if(attr.value in obj){
         var res = obj[attr.value]
         if(typeof res==="function"){
@@ -335,13 +398,69 @@ function getattr(obj,attr,_default){
         return res
     }
     else if(_default !==undefined){return _default}
-    else{$Exception('AttributeError',
+    else{throw new AttributeError(
         "'"+$str(obj.__class__)+"' object has no attribute '"+attr.value+"'")}
 }
 
 function hasattr(obj,attr){
     try{getattr(obj,attr);return True}
     catch(err){return False}
+}
+
+function $ModuleClass(module){
+    // module namespace is in $ns[module]
+    this.__getattr__ = function(attr){
+        return $ns[module][attr.value]
+    }
+}
+function Import(){
+    var calling={'line':document.line_num,'context':document.$context}
+    var flag = true
+    for(var i=0;i<arguments.length;i++){
+        module = arguments[i]
+        if(!isinstance(module,str)){throw new SyntaxError("invalid syntax")}
+        var res = ''
+        module = module.value // JS string
+        if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
+            var $xmlhttp=new XMLHttpRequest();
+        }else{// code for IE6, IE5
+            var $xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+        }
+        $xmlhttp.onreadystatechange = function(){
+            if($xmlhttp.readyState==4){
+                window.clearTimeout(timer)
+                if($xmlhttp.status==200){res = $xmlhttp.responseText}
+                else{
+                    document.$context = calling.context
+                    document.line_num = calling.line
+                    throw new ImportError("No module named '"+module+"'")
+                }
+            }
+        }
+        // open in synchronous mode !
+        $xmlhttp.open('GET',module+'.py',false)
+        var timer = setTimeout( function() {
+            $xmlhttp.abort()
+            document.$context = calling.context
+            document.line_num = calling.line
+            throw new ImportError("No module named '"+module+"'")}, 5000)
+        $xmlhttp.send()
+        if(!flag){break}
+        // if module was found, res is set to the Python source code
+        // wrap it inside a def for name resolutions
+        lines = res.split('\n')
+        // random name for module
+        var fake_name = '_'+Math.random().toString(36).substr(2, 8)
+        new_lines = ['def '+fake_name+'():']
+        for(var j=0;j<lines.length;j++){new_lines.push(' '+lines[j])}
+        res = ''
+        for(var j=0;j<new_lines.length;j++){res += new_lines[j]+'\n'}
+        var stack = py2js(res,module)
+        eval(stack.to_js())
+        eval(fake_name+'()') // running the function will create the namespace
+        eval(module+'=new $ModuleClass("'+fake_name+'")')
+        for(attr in $ns['_']){eval(module+'.'+attr+"=$ns[fake_name][attr]")}
+    }
 }
 
 function $IntegerClass(value){
@@ -414,7 +533,7 @@ function $IntegerClass(value){
         if($isinstance(other,list(int,float))){
             return $bool_conv(value > other.value)
         }
-        else{$Exception("TypeError",
+        else{throw new TypeError(
                 "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
         }
     }
@@ -426,7 +545,7 @@ function $IntegerClass(value){
 
     // unsupported operations
     var $notimplemented = function(other){
-        $Exception('TypeError',
+        throw new $TypeError(
             "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
     }
     $notimplemented += '' // coerce to string
@@ -445,8 +564,8 @@ function int(value){
     else if($isinstance(value,float)){return new $IntegerClass(parseInt(value))}
     else if($isinstance(value,str) && parseInt(value.value)!=NaN){
         return new $IntegerClass(parseInt(value.value))
-    } else { $Exception('ValueError',
-                "Invalid literal for int() with base 10: '"+$str(value)+"'")
+    } else { throw new ValueError(
+        "Invalid literal for int() with base 10: '"+$str(value)+"'")
     }   
 }
 
@@ -469,12 +588,12 @@ function iter(obj){
         obj.iter=null // reset iteration counter
         return obj
     }
-    $Exception('TypeError',"'"+$str(obj.__class__)+"' object is not iterable")
+    throw new TypeError("'"+$str(obj.__class__)+"' object is not iterable")
 }
 
 function len(obj){
     if('__len__' in obj){return obj.__len__()} 
-    else {$Exception('TypeError',"object of type "+$str(obj.__class__)+" has no len()")}
+    else {throw new TypeError("object of type "+$str(obj.__class__)+" has no len()")}
 }
 
 function $ListClass(items){
@@ -520,7 +639,7 @@ function $ListClass(items){
             var pos = arg.value
             if(arg.value<0){pos=items.length+pos}
             if(pos>=0 && pos<items.length){return items[pos]}
-            else{$Exception('IndexError','list index out of range')}
+            else{throw new IndexError('list index out of range')}
         } else if($isinstance(arg,slice)) {
             start = arg.start || int(0)
             stop = arg.stop || this.__len__()
@@ -546,8 +665,7 @@ function $ListClass(items){
                 }
             } 
         } else {
-            $Exception('TypeError',
-                'list indices must be integer, not '+$str(arg.__class__))
+            throw new TypeError('list indices must be integer, not '+$str(arg.__class__))
         }
     }
 
@@ -556,7 +674,7 @@ function $ListClass(items){
             var pos = arg.value
             if(arg.value<0){pos=items.length+pos}
             if(pos>=0 && pos<items.length){items[pos]=value}
-            else{$Exception('IndexError','list index out of range')}
+            else{throw new IndexError('list index out of range')}
         } else if($isinstance(arg,slice)) {
             start = arg.start || $Integer(0)
             stop = arg.stop || this.__len__()
@@ -569,8 +687,7 @@ function $ListClass(items){
             }
             return res
         }else {
-            $Exception('TypeError',
-                'list indices must be integer, not '+$str(arg.__class__))
+            throw new TypeError('list indices must be integer, not '+$str(arg.__class__))
         }
     }
 
@@ -610,7 +727,7 @@ function $ListClass(items){
         for(i=0;i<items.length;i++){
             if($bool(items[i].__eq__(elt))){return int(i)}
         }
-        $Exception("ValueError",$str(elt)+" is not in list")
+        throw new ValueError($str(elt)+" is not in list")
     }
 
     this.reverse = function(){
@@ -669,7 +786,7 @@ function list(){
         }else if(typeof args[0]=="object" && args[0].constructor===Array){
             return new $ListClass(args[0])
         } else{
-            $Exception('TypeError',"'"+$str(args[0].__class__)+"' object is not iterable")
+            throw new TypeError("'"+$str(args[0].__class__)+"' object is not iterable")
         }
     } else {
         return new $ListClass(args)
@@ -698,7 +815,7 @@ function map(){
     var iterables = []
     for(var i=1;i<arguments.length;i++){
         var iterable = arguments[i]
-        if(!'__next__' in iterable){$Exception("TypeError",
+        if(!'__next__' in iterable){throw new TypeError(
              "'"+$str(iterable.__class__)+"' object is not iterable")}
         iterables.push(iterable)
     }
@@ -708,7 +825,7 @@ function map(){
 function $extreme(args,op){ // used by min() and max()
     if(op==='__gt__'){var $op_name = "max"}
     else{var $op_name = "min"}
-    if(args.length==0){$Exception("TypeError",$op_name+" expected 1 argument, got 0")}
+    if(args.length==0){throw new TypeError($op_name+" expected 1 argument, got 0")}
     var last_arg = args[args.length-1]
     var last_i = args.length-1
     var has_key = false
@@ -717,13 +834,12 @@ function $extreme(args,op){ // used by min() and max()
             var func = last_arg.value
             has_key = true
             last_i--
-        }else{$Exception("TypeError",$op_name+"() got an unexpected keyword argument")}
+        }else{throw new TypeError($op_name+"() got an unexpected keyword argument")}
     }else{var func = function(x){return x}}
     if((has_key && args.length==2)||(!has_key && args.length==1)){
         alert('cas 1')
         var arg = args[0]
-        if(!('__next__' in arg)){$Exception("TypeError",
-            "'"+$str(arg)+"' object is not iterable")}
+        if(!('__next__' in arg)){throw new TypeError("'"+$str(arg)+"' object is not iterable")}
         var res = null
         while(true){
             try{
@@ -759,7 +875,7 @@ function min(){
 
 function next(obj){
     if('__next__' in obj){return obj.__next__()}
-    $Exception('TypeError',"'"+$str(obj.__class__)+"' object is not iterable")
+    throw new TypeError("'"+$str(obj.__class__)+"' object is not iterable")
 }
 
 function not(obj){
@@ -778,18 +894,17 @@ function $ReversedClass(seq){
 function reversed(seq){
     // returns an iterator with elements in the reverse order from seq
     // only implemented for strings and lists
-    if(!$isinstance(seq,list(str,list))){$Exception("TypeError",
+    if(!$isinstance(seq,list(str,list))){throw new TypeError(
         "argument to reversed() must be a sequence")}
     return new $ReversedClass(seq)
 }
 
 function round(arg,n){
     if(!$isinstance(arg,(int,float))){
-        $Exception('TypeError',
-            "type "+$str(arg.__class__)+" doesn't define __round__ method")
+        throw new TypeError("type "+$str(arg.__class__)+" doesn't define __round__ method")
     }
     if(n===undefined){n=int(0)}
-    if(!$isinstance(n,int)){$Exception("TypeError",
+    if(!$isinstance(n,int)){throw new TypeError(
         "'"+n.__class__+"' object cannot be interpreted as an integer")}
     var mult = Math.pow(10,n.value)
     return int(Math.round(arg.value*mult)).__truediv__(int(mult))
@@ -885,16 +1000,15 @@ function set(){
             }
             return obj
         } else{
-            $Exception('TypeError',"'"+$str(args[0].__class__)+"' object is not iterable")
+            throw new TypeError("'"+$str(args[0].__class__)+"' object is not iterable")
         }
     } else {
-        $Exception("TypeError","set expected at most 1 argument, got "+arguments.length)
+        throw new TypeError("set expected at most 1 argument, got "+arguments.length)
     }
 }
 
 function setattr(obj,attr,value){
-    if(!$isinstance(attr,str)){$Exception("TypeError",
-        "setattr(): attribute name must be string")}
+    if(!$isinstance(attr,str)){throw new TypeError("setattr(): attribute name must be string")}
     obj[attr.value]=value
 }
 
@@ -909,13 +1023,13 @@ function $StringClass(value){
     this.__add__ = function(other){
         if(!$isinstance(other,str)){
             try{return other.__radd__(this)}
-            catch(err){$Exception('TypeError',
+            catch(err){throw new TypeError(
                 "Can't convert "+other.__class__+" to str implicitely")}
         }else{return str(value+other.value)}
     }
 
     this.__contains__ = function(item){
-        if(!$isinstance(item,str)){$Exception("TypeError",
+        if(!$isinstance(item,str)){throw new TypeError(
          "'in <string>' requires string as left operand, not "+item.__class__)}
         var nbcar = item.value.length
         for(i=0;i<value.length;i++){
@@ -926,7 +1040,7 @@ function $StringClass(value){
 
     this.__float__ = function(){
         var $float = parseFloat(value)
-        if($float==NaN){$Exception("ValueError",
+        if($float==NaN){throw new ValueError(
             "could not convert string to float(): '"+value+"'")}
         else{return float($float)}
     }
@@ -938,7 +1052,7 @@ function $StringClass(value){
             var pos = arg.value
             if(arg.value<0){pos=value.length+pos}
             if(pos>=0 && pos<value.length){return str(value.charAt(pos))}
-            else{$Exception('IndexError','string index out of range')}
+            else{throw new IndexError('string index out of range')}
         } else if($isinstance(arg,slice)) {
             start = arg.start || int(0)
             stop = arg.stop || this.__len__()
@@ -966,15 +1080,15 @@ function $StringClass(value){
     }
 
     this.__iadd__ = function(other){
-        $AssertEqual($isinstance(other,str),true,
-            'TypeError',"Can't convert "+$str(other.__class__)+" to str implicitely")
+        if(!isinstance(other,str)){throw new TypeError(
+            "Can't convert "+$str(other.__class__)+" to str implicitely")}
         value += other.value
         this.value = value
     }
 
     this.__imul__ = function(other){
-        $AssertEqual($isinstance(other,int),true,
-            'TypeError',"Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")
+        if(!$isinstance(other,int)){throw new TypeError(
+            "Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")}
         $res = ''
         for(var i=0;i<other.value;i++){$res+=value}
         value = $res
@@ -985,7 +1099,7 @@ function $StringClass(value){
 
     this.__int__ = function(){
         var $int = parseInt(value)
-        if($int==NaN){$Exception("ValueError",
+        if($int==NaN){throw new ValueError(
             "invalid literal for int() with base 10: '"+value+"'")}
         else{return int($int)}
     }
@@ -1034,14 +1148,14 @@ function $StringClass(value){
         }
         elts.push(value.substr(start))
         if(!$isinstance(args,tuple)){
-            if(nb_repl>1){$Exception('TypeError','not enough arguments for format string')}
+            if(nb_repl>1){throw new TypeError('not enough arguments for format string')}
             else{elts[1]=$str(args)}
         }else{
             if(nb_repl==args.items.length){
                 for(i=0;i<args.items.length;i++){elts[1+2*i]=$str(args.items[i])}
-            }else if(nb_repl<args.items.length){$Exception('TypeError',
+            }else if(nb_repl<args.items.length){throw new TypeError(
                 "not all arguments converted during string formatting")
-            }else{$Exception('TypeError','not enough arguments for format string')}
+            }else{throw new TypeError('not enough arguments for format string')}
         }
         var res = ''
         for(i=0;i<elts.length;i++){res+=elts[i]}
@@ -1049,8 +1163,8 @@ function $StringClass(value){
     }
     
     this.__mul__ = function(other){
-        $AssertEqual($isinstance(other,int),true,
-            'TypeError',"Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")
+        if(!$isinstance(other,int)){throw new TypeError(
+            "Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")}
         $res = ''
         for(var i=0;i<other.value;i++){$res+=value}
         return str($res)
@@ -1085,7 +1199,7 @@ function $StringClass(value){
 
     // generate comparison methods
     var $comp_func = function(other){
-        if(!$isinstance(other,str)){$Exception('TypeError',
+        if(!$isinstance(other,str)){throw new TypeError(
             "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")}
         return $bool_conv(value > other.value)
     }
@@ -1097,7 +1211,7 @@ function $StringClass(value){
 
     // unsupported operations
     var $notimplemented = function(other){
-        $Exception('TypeError',
+        throw new TypeError(
             "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
     }
     $notimplemented += '' // coerce to string
@@ -1129,7 +1243,7 @@ function $StringClass(value){
    }
 
     this.count = function(elt){
-        if(!$isinstance(elt,str)){$Exception("Typeerror",
+        if(!$isinstance(elt,str)){throw new TypeError(
             "Can't convert '"+$str(elt.__class__)+"' object to str implicitly")}
         var res = 0
         for(i=0;i<value.length-elt.value.length+1;i++){
@@ -1166,9 +1280,9 @@ function $StringClass(value){
         $ns[0]={}
         $MakeArgs(0,arguments,['sub'],{'start':int(0),'end':int(value.length)},null,null)
         var sub = $ns[0]['sub'],start=$ns[0]['start'],end=$ns[0]['end']
-        if(!$isinstance(sub,str)){$Exception("TypeError",
+        if(!$isinstance(sub,str)){throw new TypeError(
             "Can't convert '"+$str(sub.__class__)+"' object to str implicitly")}
-        if(!$isinstance(start,int)||!$isinstance(end,int)){$Exception("TypeError",
+        if(!$isinstance(start,int)||!$isinstance(end,int)){throw new TypeError(
             "slice indices must be integers or None or have an __index__ method")}
         var s = value.substring(start.value,end.value)
         var res = s.search(sub.value)
@@ -1181,18 +1295,18 @@ function $StringClass(value){
         var args = []
         for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
         var res = this.find.apply(this,args)
-        if(res.value==-1){$Exception("ValueError","substring not found")}
+        if(res.value==-1){throw new ValueError("substring not found")}
         else{return res}
     }
 
     this.join = function(iterable){
-        if(!'__next__' in iterable){$Exception("TypeError",
+        if(!'__next__' in iterable){throw new TypeError(
              "'"+$str(iterable.__class__)+"' object is not iterable")}
         var res = '',count=0
         while(true){
             try{
                 obj = next(iterable)
-                if(!$isinstance(obj,str)){$Exception('TypeError',
+                if(!$isinstance(obj,str)){throw new TypeError(
                     "sequence item "+count+": expected str instance, "+$str(obj.__class__)+"found")}
                 res += obj.value+value
                 count++
@@ -1217,7 +1331,7 @@ function $StringClass(value){
 
     this.replace = function(old,_new,count){
         if(count!==undefined){
-            if(!$isinstance(count,list(int,float))){$Exception("TypeError",
+            if(!$isinstance(count,list(int,float))){throw new TypeError(
                 "'"+$str(count.__class__)+"' object cannot be interpreted as an integer")}
             count=count.value
             var re = new RegExp(old.value)
@@ -1241,9 +1355,9 @@ function $StringClass(value){
         $ns[0]={}
         $MakeArgs(0,arguments,['sub'],{'start':int(0),'end':int(value.length)},null,null)
         var sub = $ns[0]['sub'],start=$ns[0]['start'],end=$ns[0]['end']
-        if(!$isinstance(sub,str)){$Exception("TypeError",
+        if(!$isinstance(sub,str)){throw new TypeError(
             "Can't convert '"+$str(sub.__class__)+"' object to str implicitly")}
-        if(!$isinstance(start,int)||!$isinstance(end,int)){$Exception("TypeError",
+        if(!$isinstance(start,int)||!$isinstance(end,int)){throw new TypeError(
             "slice indices must be integers or None or have an __index__ method")}
         var s = value.substring(start.value,end.value)
         var reversed = ''
@@ -1258,7 +1372,7 @@ function $StringClass(value){
         var args = []
         for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
         var res = this.rfind.apply(this,args)
-        if(res.value==-1){$Exception("ValueError","substring not found")}
+        if(res.value==-1){throw new ValueError("substring not found")}
         else{return res}
     }
 
@@ -1293,7 +1407,6 @@ function $StringClass(value){
         // prefix can also be a tuple of prefixes to look for. With optional 
         // start, test string beginning at that position. With optional end, 
         // stop comparing string at that position.
-
         $ns[0]={}
         $MakeArgs(0,arguments,['prefix'],{'start':null,'end':null},null,null)
         var prefixes = $ns[0]['prefix']
@@ -1328,7 +1441,7 @@ function $str(obj){ // JS string for obj
 
 function str(arg){
     // compute value = JS string
-    if(arg===undefined){return str('--undefined--');$Exception('ValuerError','calling str on undefined')}
+    if(arg===undefined){return str('--undefined--')}
     try{
         // value is a Python type
         value = arg.__str__().value
@@ -1407,22 +1520,6 @@ function $NoneClass(){
 }
 None = new $NoneClass()
 
-// transform native JS types into Brython types
-function $JS2Py(src){
-    htmlelt_pattern = new RegExp(/\[object HTML(.*)Element\]/)
-    if(typeof src=="string"){
-        return str(src)
-    } else if(typeof src=="number") {
-        if(src.toString().search(/\./)==-1){
-            return int(src)
-        } else {
-            return float(src)
-        }
-    } else if(typeof src=="object" && src.constructor==Array){return new $ListClass(src)}
-    else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
-    else {return src}
-}
-
 // alert
 function $Alert(src){alert(str(src).value)}
 
@@ -1440,11 +1537,11 @@ function slice(){
     var indices = [start,stop,step]
     for(var i=0;i<indices.length;i++){
         if(indices[i]===null){continue}
-        $AssertEqual($isinstance(indices[i],int),true,'TypeError',
-        "slice indices must be integers or None or have an __index__ method")
+        if(!$isinstance(indices[i],int)){throw new TypeError(
+            "slice indices must be integers or None or have an __index__ method")}
     }
     if(step!==null){
-        $AssertNotEqual(step.value,0,'ValueError','slice step cannot be zero')
+        if(step.value===0){throw new ValueError('slice step cannot be zero')}
     }
     return new $SliceClass(start,stop,step)
 }

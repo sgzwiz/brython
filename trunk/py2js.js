@@ -3,7 +3,7 @@ function $resolve(name,scope){
     if($ns[scope][name]!==undefined){return $ns[scope][name]}
     else{
         obj=eval(name)
-        if(obj===undefined){$Exception('NameError',"name '"+name+"'is not defined")}
+        if(obj===undefined){throw new NameError("name '"+name+"'is not defined")}
         else{return obj}
     }
 }
@@ -66,9 +66,9 @@ function $Assign(targets,right_expr,assign_pos){
     var rs_items = rs.split(',')
     if(rs_items.length>1){
         if(rs_items.length>targets.length){
-            $Exception("ValueError","Too many values to unpack (expected "+rs_items.length+")")
+            throw new ValueError("Too many values to unpack (expected "+rs_items.length+")")
         } else if(rs_items.length<targets.length){
-            $Exception("ValueError","Need more than "+rs_items.length+" values to unpack")
+            throw new ValueError("Need more than "+rs_items.length+" values to unpack")
         } else {
             var seq=[]
             for(i=0;i<targets.length;i++){
@@ -102,14 +102,17 @@ $ForEach(lines).Do(function(line){PyConvArgs += line+'\n'})
 
 $OpeningBrackets = $List2Dict('(','[','{')
 
-function py2js(src){
+function py2js(src,context){
+    // context is "main" for the main script, the module name if import
     var i = 0
     src = src.replace(/\r\n/gm,'\n')
     while (src.length>0 && (src.charAt(0)=="\n" || src.charAt(0)=="\r" || src.charAt(0)==" ")){
         src = src.substr(1)
     }
     if(src.charAt(src.length-1)!="\n"){src+='\n'}
-    document.py_src = src
+    if(context===undefined){context='__main__';document.$py_src={'__main__':src}}
+    else{document.$py_src[context] = src}
+    document.$context = context
     
     // map position to line number
     var pos2line = {}
@@ -280,7 +283,7 @@ function py2js(src){
             // insert code after end of function definition (next delimiter ':')
             var end_def = stack.find_next_at_same_level(def_pos,"delimiter",":")
             if(end_def==null){
-                throw SyntaxError("Unable to find definition end "+end_def)
+                throw new SyntaxError("Unable to find definition end "+end_def)
             }
             var arg_code = '"'+func_token[1]+'",$args,'
             
@@ -389,16 +392,40 @@ function py2js(src){
         }
         pos=sign+1
     }
+    
+    // replace import module_list by Import(module_list)
+    pos = 0
+    while(pos<stack.list.length){
+        var imp_pos = stack.find_next(pos,"keyword","import")
+        if(imp_pos==null){break}
+        var imported = stack.atom_at(imp_pos+1,true)
+        if(imported.type != 'id' && imported.type != 'tuple'){
+            document.line_num = pos2line[stack.list[imp_pos][2]]
+            throw new SyntaxError("invalid syntax")
+        }
+        for(var i=0;i<imported.list().length;i++){
+            if(stack.list[imported.start+i][0]=="id"){
+                stack.list[imported.start+i][0]='literal'
+                stack.list[imported.start+i][1]='"'+stack.list[imported.start+i][1]+'"'
+            }
+        }
+        var src_pos = stack.list[imp_pos][2]
+        stack.list.splice(imported.end+1,0,['bracket',')'])
+        stack.list.splice(imp_pos,1,
+            ['code','Import',src_pos],['bracket','(',src_pos])
+        pos = imp_pos+1
+    }
 
     // replace if,def,class,for by equivalents
     var kws = {'if':'if','else':'else','elif':'else if',
-        'def':'function','class':'function','for':'for'}
+        'def':'function','class':'function','for':'for',
+        'try':'try','except':'catch($exc)','finally':'finally'}
     var has_parenth = $List2Dict('if','elif','for')
     var $funcs = []
     var module_level_functions = []
     var loop_id = 0
     for(kw in kws){
-        pos = 0 //stack.list.length-1
+        pos = 0
         while(pos<stack.list.length){
             var kw_pos = stack.find_next(pos,"keyword",kw)
             if(kw_pos==null){break}
@@ -426,7 +453,7 @@ function py2js(src){
                     var _in_list = stack.list.slice(_in.start,_in.end+1)
                     if(_in_list.length != 1 || 
                         _in_list[0][0]!="operator" || _in_list[0][1]!="in"){
-                        throw $Exception("SyntaxError","missing 'in' after 'for'",src,src_pos)
+                        throw new SyntaxError("missing 'in' after 'for'",src,src_pos)
                     }
                     var iterable = stack.atom_at(_in.end+1,true)
                     seq = []
@@ -511,6 +538,25 @@ function py2js(src){
                     code += '$ns["'+parent+'"]["'+fname+'"]='+fname+';'
                 }
                 tail.splice(0,0,['code',code])
+            }else if(kw=="except"){
+                var exc = new Stack(stack.list.slice(kw_pos+1,block[0]))
+                if(exc.list.length>0){
+                    var excs = stack.atom_at(kw_pos+1,true)
+                    if(excs.type=="function_call"){
+                        document.line_num = pos2line[stack.list[kw_pos][2]]
+                        throw new SyntaxError("can only handle a single exception")
+                    }
+                    else if(excs.type=="id"){
+                        var exc_name = stack.list[kw_pos+1][1]
+                        var _block = stack.list.slice(block[0]+1,block[1])
+                        stack.list = stack.list.slice(0,block[0]+1)
+                        stack.list.splice(kw_pos+1,1)
+                        stack.list.push(['code',
+                            'if($exc.name!="'+exc_name+'"){throw $exc};',
+                            stack.list[block[0][2]]])
+                        stack.list = stack.list.concat(_block)
+                    }
+                }
             } else {
                 stack.list = stack.list.slice(0,block[1])
             }
@@ -553,8 +599,8 @@ function py2js(src){
             // left operand
             var lo = stack.atom_before(op,false)
             if(!lo.type in $List2Dict('id','literal','tuple')){
-                document.line_num = pos2lc[stack.list[op][2]]
-                $Exception("SyntaxError","Bad left operand type "+lo.type+" for "+op_sign)
+                document.line_num = pos2line[stack.list[op][2]]
+                throw new SyntaxError("Bad left operand type "+lo.type+" for "+op_sign)
             }
             var par_before_lo = false
             if(lo.type!="tuple"){
@@ -566,7 +612,7 @@ function py2js(src){
                 }
             }
             if(op==stack.list.length-1){
-                throw $Exception("SyntaxError","Bad right operand ",src,stack.list[op][2])
+                throw new SyntaxError("Bad right operand ",src,stack.list[op][2])
             }
             var ro = stack.atom_at(op+1,false)
             var los = new Stack(lo), ros = new Stack(lo)
@@ -661,7 +707,7 @@ function py2js(src){
         } else if(left.type=='literal'){
             pos = left.list()[0][2]
             document.line_num = pos2line[pos]
-            $Exception('SyntaxError',"can't assign to literal")
+            throw new SyntaxError("can't assign to literal")
         } else if(left.type=='qualified_id' || left.type=='slicing' || left.type=="function_call"){
             pos = assign-1
         } else {            
@@ -748,19 +794,17 @@ function py2js(src){
         }else{ // get attribute
             var q_name = stack.list[q_pos][1]
             if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
-            stack.list.splice(q_pos,1,['code','__getattr__'],['bracket','('],
+            stack.list.splice(q_pos,1,['id','__getattr__'],['bracket','('],
                 ['literal',"'"+q_name+"'"],['bracket',')'])
         }
         pos = q_pos-1
     }
 
-
-    // return resulting JavaScript code
-    return stack.to_js()
+    // return stack
+    return stack
 }
 
 function $run(js){
-    Document = $Document()
     eval(js)
 }
 
@@ -770,7 +814,7 @@ function brython(debug){
         elt = elts[$i]
         if(elt.type=="text/brython"){
             var src = (elt.innerHTML || elt.textContent)
-            js = py2js(src)
+            js = py2js(src).to_js()
             if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
             $run(js)
         }

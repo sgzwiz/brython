@@ -28,8 +28,10 @@ function $tokenize(src){
         "as","elif","if","yield","assert","else","import","pass",
         "break","except","raise")
     var unsupported = $List2Dict("class","is","from","nonlocal","with",
-        "as","yield","assert","import")
-    var forbidden = $List2Dict("item") // causes errors for some browsers
+        "as","yield","assert")
+    // causes errors for some browsers
+    // complete list at http://www.javascripter.net/faq/reserved.htm
+    var forbidden = $List2Dict("item","name") 
 
     var punctuation = {',':0,':':0,';':0}
     var int_pattern = new RegExp("^\\d+")
@@ -109,7 +111,7 @@ function $tokenize(src){
                 }
             }
             if(!found){
-                throw $Exception("SyntaxError","String end not found ",src,pos)
+                throw new SyntaxError("String end not found ",src,pos)
             }
             continue
         }
@@ -127,12 +129,12 @@ function $tokenize(src){
                 if(name in kwdict){
                     if(name in unsupported){
                         document.line_num = pos2line[pos]
-                        $Exception("SyntaxError","Unsupported Python keyword '"+name+"'")                    
+                        throw new SyntaxError("Unsupported Python keyword '"+name+"'")                    
                     }
                     stack.push(["keyword",name,pos-name.length])
                 } else if(name in forbidden) {
                     document.line_num = pos2line[pos]
-                    $Exception("SyntaxError","Forbidden name '"+name+"'")                    
+                    throw new SyntaxError("Forbidden name '"+name+"' : might conflict with Javascript variables")                    
                 } else if(name in $operators) { // and, or
                     stack.push(["operator",name,pos-name.length])
                 } else if(stack.length>1 && $last(stack)[0]=="point"
@@ -185,10 +187,10 @@ function $tokenize(src){
         if(car in br_close){
             if(br_stack==""){
                 document.line_num = pos2line[pos]
-                $Exception("SyntaxError","Unexpected closing bracket")
+                throw new SyntaxError("Unexpected closing bracket")
             } else if(br_close[car]!=$last(br_stack)){
                 document.line_num = pos2line[pos]
-                $Exception("SyntaxError","Unbalanced bracket ")
+                throw new SyntaxError("Unbalanced bracket ")
             } else {
                 br_stack = br_stack.substr(0,br_stack.length-1)
                 stack.push(["bracket",car,pos])
@@ -250,7 +252,7 @@ function $tokenize(src){
     if(br_stack.length!=0){
         pos = br_pos.pop()
         document.line_num = pos2line[pos]
-        $Exception("SyntaxError","Unbalanced bracket "+br_stack.charAt(br_stack.length-1))
+        throw new SyntaxError("Unbalanced bracket "+br_stack.charAt(br_stack.length-1))
     } 
     
     return stack

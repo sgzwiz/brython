@@ -1,4 +1,18 @@
 // ajax
+
+function $XmlHttpClass(obj){
+    this.__class__ = 'XMLHttpRequest'
+    this.__getattr__ = function(attr){
+        if('get_'+attr.value in this){return this['get_'+attr.value]()}
+        else if(attr.value in obj){return $JS2Py(obj[attr.value])}
+        return getattr(obj,attr)
+    }
+    
+    this.get_text = function(){return str(obj.responseText)}
+    
+    this.get_xml = function(){alert(obj.responseXML);return $DomElement(obj.responseXML)}
+}
+
 function $AjaxClass(){
 
     if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
@@ -24,7 +38,8 @@ function $AjaxClass(){
             req.on_interactive(str($xmlhttp.status),str($xmlhttp.responseText))
         }else if(state===4 && 'on_complete' in req){
             if(timer !== null){window.clearTimeout(timer)}
-            req.on_complete(str($xmlhttp.status),str($xmlhttp.responseText))
+            obj = new $XmlHttpClass($xmlhttp)
+            req.on_complete(int($xmlhttp.status),str($xmlhttp.responseText))
         }
     }
 
