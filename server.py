@@ -1,4 +1,6 @@
 import http.server
 server_address = ('', 8000)
-httpd = http.server.HTTPServer(server_address, http.server.CGIHTTPRequestHandler)
+handler = http.server.CGIHTTPRequestHandler
+handler.cgi_directories = ['/test/cgi-bin']
+httpd = http.server.HTTPServer(server_address, handler)
 httpd.serve_forever()

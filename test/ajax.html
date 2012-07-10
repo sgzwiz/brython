@@ -15,28 +15,42 @@ a.sort_link{margin-left:10px;text-decoration:none}
 </head>
 <body onLoad="brython()">
 
-<button onClick="go()">ajax !</button>
 <div id="result">(empty)</div>
+<button onClick="go('ajax_data.txt')">get text file</button>
+<button onClick="go('i_dont_exist.txt')">file not found</button>
+<button onClick="go('cgi-bin/get_test.py')">GET request</button>
+<button onClick="post('cgi-bin/post_test.py')">POST request</button>
+<button onClick="go('cgi-bin/timeout.py')">timeout</button>
 
 <script id="ascript" type="text/brython">
 def on_complete(status,text):
-    if status==0:
-        doc["result"].html = "server doesn't reply"
-    elif status==200:
+    if status==200:
         doc["result"].html = text
+    else:
+        doc["result"].html = "error "+text
 
 def err_msg():
     doc["result"].html = "server didn't reply after %s seconds" %timeout
 
 timeout = 4
 
-def go():
+def go(url):
     req = ajax()
     req.on_complete = on_complete
     req.set_timeout(timeout,err_msg)
-    req.open('GET','ajax_data.txt',True)
+    req.open('GET',url,True)
     req.send()
 
+def post(url):
+    req = ajax()
+    req.on_complete = on_complete
+    req.set_timeout(timeout,err_msg)
+    req.open('POST',url,True)
+    req.set_header('content-type','application/x-www-form-urlencoded')
+    req.send({'foo':34})
+
+
 </script>
+
 </body>
 </html>

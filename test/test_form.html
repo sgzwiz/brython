@@ -1,0 +1,48 @@
+<html>
+<head>
+<style>
+body,td,th{font-family:sans-serif}
+a.sort_link{margin-left:10px;text-decoration:none}
+</style>
+
+<script src="../py_tokenizer.js"></script>
+<script src="../py_utils.js"></script>
+<script src="../py_classes.js"></script>
+<script src="../py_dom.js"></script>
+<script src="../py2js.js"></script>
+<script src="../py_ajax.js"></script>
+
+</head>
+<body onLoad="brython()">
+
+<script id="ascript" type="text/brython">
+
+def do_form():
+    form.submit()
+    
+def do_reset():
+    form.reset()
+    return False
+
+form = FORM(action="cgi-bin/post_test.py",method="POST",enctype='application/x-www-form-urlencoded')
+form <= INPUT(Name="foo")
+b = BUTTON("ok",style="background-color:yellow;")
+b.onclick = form.submit
+form <= b
+
+b2 = BUTTON("reset",style="background-color:yellow;")
+b2.onclick = form.reset
+form <= b2
+doc <= form
+
+</script>
+
+<script>
+form = document.createElement('FORM')
+form.setAttribute('method','POST')
+form.setAttribute('action','cgi-bin/post_test.py')
+form.setAttribute('enctype','application/x-www-form-urlencoded')
+f = document.createElement('INPUT')
+
+</body>
+</html>

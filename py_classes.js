@@ -69,15 +69,6 @@ function ValueError(msg) {
 }
 ValueError.prototype = new Error()
 
-
-function $Exception(type,msg){
-    this.name = type
-    msg = type+':'+msg+'\n'
-    var lines = document.$py_src[document.$context].split('\n')
-    msg += 'Line '+document.line_num+'\n'+lines[document.line_num-1]
-    throw new Error(msg)
-}
-
 function $UnsupportedOpType(op,class1,class2){
     throw new TypeError("unsupported operand type(s) for "+op+": '"+$str(class1)+"' and '"+$str(class2)+"'")
 }
@@ -758,7 +749,6 @@ function $ListClass(items){
         }
         this.items = items
     }
-
 }
 
 function $list(){

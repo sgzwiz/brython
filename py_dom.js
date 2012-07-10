@@ -51,9 +51,47 @@ function $StyleClass(parent){
     this.__setattr__ = function(attr,value){eval('parent.elt.style.'+attr.value+'= $str(value)')}
 
     this.__setitem__ = function(attr,value){parent.elt.style[attr.value]= $str(value)}
+
 }
 
-function Console(data){try{console.log($str(data))}catch(err){void(0)}}
+function $OptionsClass(parent){ // parent is a SELECT tag
+
+    this.__getattr__ = function(attr){
+        if('get_'+attr.value in this){return eval('this.get_'+attr.value)}
+        return $JS2Py(eval('parent.elt.options.'+attr.value))}
+
+    this.__getitem__ = function(attr){
+        return $DomElement(parent.elt.options[attr.value])
+    }
+
+    this.__len__ = function() {return int(parent.elt.options.length)}
+
+    this.__setattr__ = function(attr,value){
+        eval('parent.elt.options.'+attr.value+'= $str(value)')
+    }
+
+    this.__setitem__ = function(attr,value){
+        parent.elt.options[attr.value]= $JS2Py(value)
+    }
+
+    this.get_add = function(element,index){
+        if(index===undefined){parent.elt.options.add(element.elt)}
+        else{parent.elt.options.add(element.elt,index.value)}
+    }
+
+    this.get_item = function(index){
+        return $DomElement(parent.elt.options.item(index.value))
+    }
+    
+    this.get_namedItem = function(name){
+        return $DomElement(parent.elt.options.namedItem(name.value))
+    }
+    
+    this.get_remove = function(arg){parent.elt.options.remove(arg.value)}
+    
+}
+
+function log(data){try{console.log($str(data))}catch(err){void(0)}}
 
 function $Document(){
 
@@ -177,7 +215,7 @@ function $TagClass(_class,args){
                 }
             } else {
                 try{this.elt.appendChild($first.elt)}
-                catch(err){$Exception('ValueError','wrong element '+$first.elt)}
+                catch(err){throw new ValueError('wrong element '+$first.elt)}
             }
         }
         // attributes
@@ -188,7 +226,7 @@ function $TagClass(_class,args){
                 if($arg.name.toLowerCase() in $events){
                     eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
                 } else {
-                    this.elt.setAttribute($arg.name,$arg.value.value)
+                    this.elt.setAttribute($arg.name.toLowerCase(),$arg.value.value)
                 }
             }
         }
@@ -254,7 +292,8 @@ function $TagClass(_class,args){
     }
 
     this.__setattr__ = function(attr,value){
-        if('set_'+attr.value in this){return this['set_'+attr.value](value)}
+        if(attr.value in $events){eval('this.elt.'+attr.value.toLowerCase()+'=value')}
+        else if('set_'+attr.value in this){return this['set_'+attr.value](value)}
         else if(attr.value in this.elt){this.elt[attr.value]=value.value}
         else{setattr(this,attr,value)}
     }
@@ -274,12 +313,21 @@ function $TagClass(_class,args){
         else{return None}
     }
 
+    this.get_options = function(){ // for SELECT tag
+        return new $OptionsClass(this)
+    }
+
     this.get_children = function(){
         var res = list()
-        for(i=0;i<$obj.elt.childNodes.length;i++){
+        for(var i=0;i<$obj.elt.childNodes.length;i++){
             res.append($DomElement($obj.elt.childNodes[i]))
         }
         return res
+    }
+
+    this.get_reset = function(){ // for FORM
+        var $obj = this.elt
+        return function(){$obj.reset()}
     }
 
     this.get_style = function(){
@@ -290,6 +338,11 @@ function $TagClass(_class,args){
         for(var i=0;i<style.$keys.length;i++){
             this.elt.style[$str(style.$keys[i])] = $str(style.$values[i])
         }
+    }
+
+    this.get_submit = function(){ // for FORM
+        var $obj = this.elt
+        return function(){$obj.submit()}
     }
 
     this.get_text = function(){
@@ -360,8 +413,10 @@ $tags = ['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
             'META', 'PARAM']
 
 $tags = $tags.concat(['CIRCLE','ELLIPSE','SVG','TEXT','RECT'])
-            
+
+// create classes
 for($i=0;$i<$tags.length;$i++){
     $code = $src.replace(/A/gm,$tags[$i])
     eval($code)
 }
+
