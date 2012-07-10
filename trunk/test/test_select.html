@@ -1,0 +1,71 @@
+<html>
+<head>
+<style>
+body,td,th{font-family:sans-serif}
+a.sort_link{margin-left:10px;text-decoration:none}
+</style>
+
+<script src="../py_tokenizer.js"></script>
+<script src="../py_utils.js"></script>
+<script src="../py_classes.js"></script>
+<script src="../py_dom.js"></script>
+<script src="../py2js.js"></script>
+<script src="../py_ajax.js"></script>
+
+</head>
+<body onLoad="brython()">
+
+<script type="text/brython">
+items = ['unan','daou','tri','pevar','pemp']
+
+def swap(src,dest):
+    selected = src.selectedIndex
+    if selected == -1:
+        return
+    option = src.options[selected]
+    src.options.remove(selected)
+    dest.options.add(option)
+    option.selected = False
+
+def up(src):
+    selected = src.selectedIndex
+    if selected == -1 or selected == 0:
+        return
+    option = src.options[selected]
+    src.options.remove(selected)
+    src.options.add(option,selected-1)
+
+def down(src):
+    selected = src.selectedIndex
+    if selected == -1 or selected == len(src.options)-1:
+        return
+    option = src.options[selected]
+    src.options.remove(selected)
+    src.options.add(option,selected+1)
+
+t = TABLE()
+tb = TBODY()
+
+up_down_left = BUTTON('\u2191',onClick="up(left)")
+up_down_left += BR()+BUTTON('\u2193',onClick="down(left)")
+
+left = SELECT(size=10,style="width:200px")
+for i,_item in enumerate(items):
+    left <= OPTION(_item,value=i,width=40)
+
+buttons = BUTTON('>',onClick="swap(left,right)")
+buttons += BR()+BUTTON('<',onClick="swap(right,left)")
+
+right = SELECT(size=10,style="width:200px")
+
+up_down_right = BUTTON('\u2191',onClick="up(right)")
+up_down_right += BR()+BUTTON('\u2193',onClick="down(right)")
+
+tb <= TR(TD(up_down_left)+TD(left)+TD(buttons)+TD(right)+TD(up_down_right))
+t <= tb
+doc <= t
+
+</script>
+
+</body>
+</html>
