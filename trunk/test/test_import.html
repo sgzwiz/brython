@@ -13,8 +13,11 @@
 
 <script type="text/brython">
 import import_test
-alert(import_test.valude)
-alert(import_test.func('azerty'))
+doc <= import_test.valude
+doc <= BR()
+doc <= import_test.func('azerty')
+import time
+doc <= BR()+time.time()
 </script>
 </body>
 </html>

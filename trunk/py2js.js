@@ -212,6 +212,15 @@ function py2js(src,context){
                         })
                         sequence.pop() // remove last comma
                     }
+                }else if(pyType=='tuple'){
+                    var args = new Stack(stack.list.slice(br_elt+1,end))
+                    var kvs = args.split(',') // array of Stack instances
+                    if(kvs.length==1){sequence[0][1]='$tuple'} // single value, not tuple
+                    if(kvs[kvs.length-1].list.length==0){ // tuple ends with ,)
+                        if(kvs.length==2){sequence[0][1]='$tuple'} // single value, not tuple
+                        stack.list[end-1]=['code',''] // remove last comma
+                    }
+                    sequence = sequence.concat(stack.list.slice(br_elt+1,end))
                 } else {
                     sequence = sequence.concat(stack.list.slice(br_elt+1,end))
                 }

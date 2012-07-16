@@ -16,13 +16,19 @@ for fname in sources:
                 line = src[:pos].count('\n')
                 raise SyntaxError('string not closed in %s line %s : %s' %(fname,line,src[pos:pos+20]))
             res += src[pos:end+1]
-            #print('string '+src[pos:end+1])
-            #input()
             pos = end+1
-        elif src[pos] in [' ','\n']:
-            space = src[pos]
+        elif src[pos]=='\r':
+            pos += 1
+        elif src[pos]==' ':
+            if res and res[-1] in '({=[)}];\n':
+                pos += 1
+                continue
+            res += ' '
+            while pos<len(src) and src[pos]==' ':
+                pos+=1
+        elif src[pos] in '\r\n':
             res += src[pos]
-            while pos<len(src) and src[pos]==space:
+            while pos<len(src) and src[pos] in '\r\n ':
                 pos+=1
         elif src[pos:pos+2]=='//':
             end = src.find('\n',pos)
@@ -34,6 +40,11 @@ for fname in sources:
             if end==-1:
                 break
             pos = end
+        elif src[pos] in '={[(' and res and res[-1]==' ':
+            res = res[:-1]+src[pos]
+            pos += 1
+        elif src[pos]==';' and pos<len(src)-1 and src[pos+1] in ' \r\n':
+            pos +=1
         else:
             res += src[pos]
             pos += 1
