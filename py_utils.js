@@ -412,8 +412,11 @@ function Stack(stack_list){
             } else if(x[0] in t2) {
                 if(x[0]=='literal'){
                     if(typeof x[1]=='string'){
-                        js += '$JS2Py('+x[1].replace(/\n/gm,'\\\n')+')'
-                    } else {
+                        js += 'str('+x[1].replace(/\n/gm,'\\\n')+')'
+                    }else if(typeof x[1]=='number'){
+                        if(x[1].toString().search(/\./)>-1){js += 'float('+x[1]+')'}
+                        else{js += 'int('+x[1]+')'}
+                    }else{
                         js += '$JS2Py('+x[1]+')'
                     }
                 } else if(x[0]=="id"){

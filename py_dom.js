@@ -236,154 +236,158 @@ function $TagClass(_class,args){
         this.elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
     }
 
-    this.__add__ = function(other){
-        var res = $AbstractTag() // abstract tag
-        res.children = [this.elt]
-        if($isinstance(other,$AbstractTag)){
-            var $i=0
-            for($i=0;$i<other.children.length;$i++){
-                res.children.push(other.children[$i])
-            }
-        } else {res.children.push(other.elt)}
-        return res
-    }
-
-    this.__eq__ = function(other){
-        if(!('getAttribute' in other.elt)){return False}
-        return $bool_conv(this.elt.getAttribute('id')==other.elt.getAttribute('id'))
-    }
-
-    this.__getattr__ = function(attr){
-        if('get_'+attr.value in this){return this['get_'+attr.value]()}
-        else if(attr.value in this.elt){return $JS2Py(this.elt[attr.value])}
-        return getattr(this,attr)
-    }
-
-    this.__getitem__ = function(key){
-        return $JS2Py(this.elt[key.value])
-    }
-    
-    this.__iadd__ = function(other){
-        this.__class__ = $AbstractTag // change to abstract tag
-        this.children = [this.elt]
-        if($isinstance(other,$AbstractTag)){
-            for($i=0;$i<other.children.length;$i++){
-                this.children.push(other.children[$i])
-            }
-        } else {this.children.push(other.elt)}
-    }
-
-    this.__le__ = function(other){
-        if($isinstance(other,$AbstractTag)){
-            var $i=0
-            for($i=0;$i<other.children.length;$i++){
-                this.elt.appendChild(other.children[$i])
-            }
-        } else {this.elt.appendChild(other.elt)}
-    }
-    
-    this.__ne__ = function(other){return not(this.__eq__(other))}
-
-    this.__radd__ = function(other){ // add to a string
-        var res = $AbstractTag() // abstract tag
-        var txt = document.createTextNode(other.value)
-        res.children = [txt,this.elt]
-        return res        
-    }
-
-    this.__setattr__ = function(attr,value){
-        if(attr.value in $events){eval('this.elt.'+attr.value.toLowerCase()+'=value')}
-        else if('set_'+attr.value in this){return this['set_'+attr.value](value)}
-        else if(attr.value in this.elt){this.elt[attr.value]=value.value}
-        else{setattr(this,attr,value)}
-    }
-    
-    this.__setitem__ = function(key,value){
-        this.elt.setAttribute($str(key),$str(value))
-    }
-    
-    this.clone = function(){
-        res = new TagClass(this.name)
-        res.elt = this.elt.cloneNode(true)
-        return res
-    }
-
-    this.get_parent = function(){
-        if($obj.elt.parentElement){return $DomElement($obj.elt.parentElement)}
-        else{return None}
-    }
-
-    this.get_options = function(){ // for SELECT tag
-        return new $OptionsClass(this)
-    }
-
-    this.get_children = function(){
-        var res = list()
-        for(var i=0;i<$obj.elt.childNodes.length;i++){
-            res.append($DomElement($obj.elt.childNodes[i]))
+}
+$TagClass.prototype.__add__ = function(other){
+    var res = $AbstractTag() // abstract tag
+    res.children = [this.elt]
+    if($isinstance(other,$AbstractTag)){
+        var $i=0
+        for($i=0;$i<other.children.length;$i++){
+            res.children.push(other.children[$i])
         }
-        return res
-    }
+    } else if($isinstance(other,list(str,int,float,list,dict,set,tuple))){
+        res.children.push(document.createTextNode($str(other)))
+    }else{res.children.push(other.elt)}
+    return res
+}
 
-    this.get_reset = function(){ // for FORM
-        var $obj = this.elt
-        return function(){$obj.reset()}
-    }
+$TagClass.prototype.__eq__ = function(other){
+    if(!('getAttribute' in other.elt)){return False}
+    return $bool_conv(this.elt.getAttribute('id')==other.elt.getAttribute('id'))
+}
 
-    this.get_style = function(){
-        return new $StyleClass(this)
-    }
+$TagClass.prototype.__getattr__ = function(attr){
+    if('get_'+attr.value in this){return this['get_'+attr.value]()}
+    else if(attr.value in this.elt){return $JS2Py(this.elt[attr.value])}
+    return getattr(this,attr)
+}
+
+$TagClass.prototype.__getitem__ = function(key){
+    return $JS2Py(this.elt[key.value])
+}
     
-    this.set_style = function(style){ // style is a dict
-        for(var i=0;i<style.$keys.length;i++){
-            this.elt.style[$str(style.$keys[i])] = $str(style.$values[i])
-        }
-    }
+$TagClass.prototype.__iadd__ = function(other){
 
-    this.get_submit = function(){ // for FORM
-        var $obj = this.elt
-        return function(){$obj.submit()}
-    }
-
-    this.get_text = function(){
-        return str($obj.elt.innerText || $obj.elt.textContent)
-    }
+    this.__class__ = $AbstractTag // change to abstract tag
     
-    this.get_html = function(){return str($obj.elt.innerHTML)}
-
-    this.get_value = function(value){return str(this.elt.value)}
-
-    this.make_draggable = function(target){
-        // make element draggable and droppable into target
-        // use HTML5 drag and drop features
-        this.elt.draggable = true
-        this.elt.onmouseover = function(ev){this.style.cursor="move"}
-        this.elt.ondragstart = function(ev){
-            ev.dataTransfer.setData("Text",ev.target.id)
-            // some browsers disable access to data store in dragover
-            // so we have to put dragged id in a global variable
-            document.$drag_id = ev.target.id 
+    this.children = [this.elt]
+    if($isinstance(other,$AbstractTag)){
+        for($i=0;$i<other.children.length;$i++){
+        this.children.push(other.children[$i])
         }
-        if(!('$accepted' in target.elt)){target.elt.$accepted={}}
-        target.elt.$accepted[this.elt.id]=0
-        target.elt.ondragover = function(ev){
-            ev.preventDefault()
-            if(!(document.$drag_id in this.$accepted)){
-                ev.dataTransfer.dropEffect='none'
-            }
-        }
-        target.elt.ondrop = function(ev){
-            ev.preventDefault();
-            var elt_id=ev.dataTransfer.getData("Text");
-            if(elt_id in this.$accepted){
-                ev.target.appendChild(document.getElementById(elt_id));
-            }
+    } else {this.children.push(other.elt)}
+}
+
+$TagClass.prototype.__ne__ = function(other){return not(this.__eq__(other))}
+
+$TagClass.prototype.__radd__ = function(other){ // add to a string
+    var res = $AbstractTag() // abstract tag
+    var txt = document.createTextNode(other.value)
+    res.children = [txt,this.elt]
+    return res        
+}
+
+$TagClass.prototype.__setattr__ = function(attr,value){
+    if(attr.value in $events){eval('this.elt.'+attr.value.toLowerCase()+'=value')}
+    else if('set_'+attr.value in this){return this['set_'+attr.value](value)}
+    else if(attr.value in this.elt){this.elt[attr.value]=value.value}
+    else{setattr(this,attr,value)}
+}
+    
+$TagClass.prototype.__setitem__ = function(key,value){
+    this.elt.setAttribute($str(key),$str(value))
+}
+    
+$TagClass.prototype.clone = function(){
+    res = new TagClass(this.name)
+    res.elt = this.elt.cloneNode(true)
+    return res
+}
+
+$TagClass.prototype.get_parent = function(){
+    if(this.elt.parentElement){return $DomElement(this.elt.parentElement)}
+    else{return None}
+}
+
+$TagClass.prototype.get_options = function(){ // for SELECT tag
+    return new $OptionsClass(this)
+}
+
+$TagClass.prototype.get_children = function(){
+    var res = list()
+    for(var i=0;i<this.elt.childNodes.length;i++){
+        res.append($DomElement(this.elt.childNodes[i]))
+    }
+    return res
+}
+
+$TagClass.prototype.get_reset = function(){ // for FORM
+    var $obj = this.elt
+    return function(){$obj.reset()}
+}
+
+$TagClass.prototype.get_style = function(){
+    return new $StyleClass(this)
+}
+    
+$TagClass.prototype.set_style = function(style){ // style is a dict
+    for(var i=0;i<style.$keys.length;i++){
+    this.elt.style[$str(style.$keys[i])] = $str(style.$values[i])
+    }
+}
+
+$TagClass.prototype.get_submit = function(){ // for FORM
+    var $obj = this.elt
+    return function(){$obj.submit()}
+}
+
+$TagClass.prototype.get_text = function(){
+    return str(this.elt.innerText || this.elt.textContent)
+}
+    
+$TagClass.prototype.get_html = function(){return str(this.elt.innerHTML)}
+
+$TagClass.prototype.get_value = function(value){return str(this.elt.value)}
+
+$TagClass.prototype.make_draggable = function(target){
+    // make element draggable and droppable into target
+    // use HTML5 drag and drop features
+    this.elt.draggable = true
+    this.elt.onmouseover = function(ev){this.style.cursor="move"}
+    this.elt.ondragstart = function(ev){
+        ev.dataTransfer.setData("Text",ev.target.id)
+        // some browsers disable access to data store in dragover
+        // so we have to put dragged id in a global variable
+        document.$drag_id = ev.target.id 
+    }
+    if(!('$accepted' in target.elt)){target.elt.$accepted={}}
+    target.elt.$accepted[this.elt.id]=0
+    target.elt.ondragover = function(ev){
+        ev.preventDefault()
+        if(!(document.$drag_id in this.$accepted)){
+            ev.dataTransfer.dropEffect='none'
         }
     }
+    target.elt.ondrop = function(ev){
+        ev.preventDefault();
+        var elt_id=ev.dataTransfer.getData("Text");
+        if(elt_id in this.$accepted){
+            ev.target.appendChild(document.getElementById(elt_id));
+        }
+    }
+}
 
-    this.set_html = function(value){$obj.elt.innerHTML=$str(value)}
+$TagClass.prototype.set_html = function(value){this.elt.innerHTML=$str(value)}
 
-    this.set_value = function(value){this.elt.value = $str(value)}
+$TagClass.prototype.set_value = function(value){this.elt.value = $str(value)}
+
+$TagClass.prototype.__le__ = function(other){
+    if($isinstance(other,$AbstractTag)){
+        var $i=0
+        for($i=0;$i<other.children.length;$i++){
+            this.elt.appendChild(other.children[$i])
+        }
+    } else {this.elt.appendChild(other.elt)}
 }
 
 function A(){
