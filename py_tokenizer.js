@@ -99,7 +99,7 @@ function $tokenize(src){
                             // implicit string concatenation
                             $last(stack)[1]+=zone
                         } else {
-                            stack.push(["literal",zone+car,pos])
+                            stack.push(["str",zone+car,pos])
                         }
                         pos = end+1
                         if(_type=="triple_string"){pos = end+3}
@@ -156,10 +156,11 @@ function $tokenize(src){
         if(car.search(/\d/)>-1){
             // digit
             var res = float_pattern.exec(src.substr(pos))
-            if(!res){
+            if(res){stack.push(["float",eval(res[0]),pos])}
+            else{
                 res = int_pattern.exec(src.substr(pos))
+                stack.push(["int",eval(res[0]),pos])
             }
-            stack.push(["literal",eval(res[0]),pos])
             pos += res[0].length
             continue
         }
