@@ -1,47 +1,5 @@
 // DOM classes
 
-// utility functions
-function $getMouseOffset(target, ev){
-    ev = ev || window.event;
-    var docPos    = $getPosition(target);
-    var mousePos  = $mouseCoords(ev);
-    return {x:mousePos.x - docPos.x, y:mousePos.y - docPos.y};
-}
-
-function $getPosition(e){
-    var left = 0;
-    var top  = 0;
-    var width = e.offsetWidth;
-    var height = e.offsetHeight;
-
-    while (e.offsetParent){
-        left += e.offsetLeft;
-        top  += e.offsetTop;
-        e     = e.offsetParent;
-    }
-
-    left += e.offsetLeft;
-    top  += e.offsetTop;
-
-    return {x:left, y:top, width:width, height:height};
-}
-
-function $mouseCoords(ev){
-    var posx = 0;
-    var posy = 0;
-    if (!ev) var ev = window.event;
-    if (ev.pageX || ev.pageY){
-        posx = ev.pageX;
-        posy = ev.pageY;
-    } else if (ev.clientX || ev.clientY){
-        posx = ev.clientX + document.body.scrollLeft
-            + document.documentElement.scrollLeft;
-        posy = ev.clientY + document.body.scrollTop
-            + document.documentElement.scrollTop;
-    }
-    return{x:posx,y:posy}
-}
-
 function $StyleClass(parent){
 
     this.__getattr__ = function(attr){return $JS2Py(eval('parent.elt.style.'+attr.value))}
@@ -141,31 +99,32 @@ function $AbstractTagClass(){
     // for abstract tags
     this.__class__ = $AbstractTag
     this.children = []
-    this.appendChild = function(child){    
-        this.children.push(child)
-    }
-
-    this.__add__ = function(other){
-        if($isinstance(other,$AbstractTag)){
-            this.children = this.children.concat(other.children)
-        } else {this.children.push(other.elt)}
-        return this
-    }        
-
-   this.__iadd__ = function(other){
-        if($isinstance(other,$AbstractTag)){
-            this.children = this.children.concat(other.children)
-        } else {this.children.push(other.elt)}
-    }        
-
-    this.clone = function(){
-        var res = $AbstractTag(), $i=0
-        for($i=0;$i<this.children.length;$i++){
-            res.children.push(this.children[$i].cloneNode(true))
-        }
-        return res
-    }
 }
+$AbstractTag.prototype.appendChild = function(child){    
+    this.children.push(child)
+}
+
+$AbstractTag.prototype.__add__ = function(other){
+    if($isinstance(other,$AbstractTag)){
+        this.children = this.children.concat(other.children)
+    } else {this.children.push(other.elt)}
+    return this
+}        
+
+$AbstractTag.prototype.__iadd__ = function(other){
+    if($isinstance(other,$AbstractTag)){
+        this.children = this.children.concat(other.children)
+    } else {this.children.push(other.elt)}
+}        
+
+$AbstractTag.prototype.clone = function(){
+    var res = $AbstractTag(), $i=0
+    for($i=0;$i<this.children.length;$i++){
+        res.children.push(this.children[$i].cloneNode(true))
+    }
+    return res
+}
+
 
 function $AbstractTag(){
     return new $AbstractTagClass()
@@ -241,10 +200,7 @@ $TagClass.prototype.__add__ = function(other){
     var res = $AbstractTag() // abstract tag
     res.children = [this.elt]
     if($isinstance(other,$AbstractTag)){
-        var $i=0
-        for($i=0;$i<other.children.length;$i++){
-            res.children.push(other.children[$i])
-        }
+        for(var $i=0;$i<other.children.length;$i++){res.children.push(other.children[$i])}
     } else if($isinstance(other,list(str,int,float,list,dict,set,tuple))){
         res.children.push(document.createTextNode($str(other)))
     }else{res.children.push(other.elt)}
@@ -267,9 +223,7 @@ $TagClass.prototype.__getitem__ = function(key){
 }
     
 $TagClass.prototype.__iadd__ = function(other){
-
     this.__class__ = $AbstractTag // change to abstract tag
-    
     this.children = [this.elt]
     if($isinstance(other,$AbstractTag)){
         for($i=0;$i<other.children.length;$i++){

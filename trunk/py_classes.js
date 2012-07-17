@@ -747,7 +747,7 @@ function $partition(arg,array,begin,end,pivot)
     array.swap(pivot, end-1);
     var store=begin;
     var ix;
-    for(ix=begin; ix<end-1; ++ix) {
+    for(ix=begin;ix<end-1;++ix) {
         if($bool(arg(array[ix]).__le__(arg(piv)))) {
             array.swap(store, ix);
             ++store;

@@ -135,6 +135,7 @@ lines = ['Allemagne','Berlin',357026,81.8,
 'Suède','Stockholm',441369,9.41]
 
 t1 = time.time()
+doc <= P('init %s' %(t1-t0)/1000)
 
 doc <= H2("Pays d'Europe")
 
@@ -145,6 +146,7 @@ link = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
 title <= TH('Pays')+TH('Capitale'+link)+TH('Superficie')+TH('Population')
 t <= title
 t2 = time.time()
+times = []
 for i in range(len(lines)/4):
     row = TR()
     for j in range(4):
@@ -154,6 +156,8 @@ for i in range(len(lines)/4):
 table <= t
 
 #alert((t1-t0)/1000)
+doc <= P('construction table %s' %(time.time()-t1)/1000)
+
 #alert((t2-t1)/1000)
 doc <= table
 
@@ -161,7 +165,7 @@ foot = P()+I('Ecrit en '+A('Brython',href="http://www.brython.info"))
 
 doc <= foot
 
-doc <= P((time.time()-t0)/1000)
+doc <= P('temps total %s' %(time.time()-t0)/1000)
 
 </script>
 </body>

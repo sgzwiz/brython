@@ -121,8 +121,8 @@ function Atom(stack){
 
 function Stack(stack_list){
     this.list = stack_list
-    
-    this.find_next = function(){
+}    
+Stack.prototype.find_next = function(){
         // arguments are position to search from, researched type and
         // optional researched values
         // return position of next matching stack item or null
@@ -145,7 +145,7 @@ function Stack(stack_list){
         return null
     }
 
-    this.find_next_at_same_level = function(){
+Stack.prototype.find_next_at_same_level = function(){
         // same as find_next but skips enclosures to find the token
         // at the same level as the one where search starts
         var pos = arguments[0]
@@ -169,7 +169,7 @@ function Stack(stack_list){
         }
     }
     
-    this.find_previous = function(){
+Stack.prototype.find_previous = function(){
         // same as find_next but search backwards from pos
         var pos = arguments[0]
         var _type = arguments[1]
@@ -190,7 +190,7 @@ function Stack(stack_list){
         return null
     }
 
-    this.find_next_matching = function(pos){
+Stack.prototype.find_next_matching = function(pos){
         // find position of stack item closing the bracket 
         // at specified position in the tokens stack
         
@@ -213,7 +213,7 @@ function Stack(stack_list){
         return null
     }
 
-    this.find_previous_matching = function(pos){
+Stack.prototype.find_previous_matching = function(pos){
         // find position of stack item closing the bracket 
         // at specified position in the tokens stack
         
@@ -238,7 +238,7 @@ function Stack(stack_list){
     }
     
     
-    this.get_atoms = function(){
+Stack.prototype.get_atoms = function(){
         var pos = 0
         var nb = 0
         var atoms = []
@@ -250,7 +250,7 @@ function Stack(stack_list){
         return atoms
     }
 
-    this.atom_at = function(pos,implicit_tuple){
+Stack.prototype.atom_at = function(pos,implicit_tuple){
         // return the atom starting at specified position
         // an atom is an identifier
         // with optional qualifiers :  x.foo
@@ -258,14 +258,15 @@ function Stack(stack_list){
         // if implicit_tuple is set, consume all atoms joined by ,
         atom = new Atom(this)
         atom.start = pos
-        if(this.list[pos][0] in $List2Dict('id','assign_id','literal')){
+        var dict1 = $List2Dict('id','assign_id','str','int','float')
+        if(this.list[pos][0] in dict1){
             atom.type = this.list[pos][0]
             end = pos
             while(end<this.list.length-1){
                 var item = this.list[end+1]
-                if(item[0] in $List2Dict("id","assign_id","literal")){
+                if(item[0] in dict1){
                     end += 1
-                } else if(item[0] in $List2Dict("point","qualifier")){
+                } else if(item[0]=="point"||item[0]=="qualifier"){
                     atom.type = "qualified_id"
                     end += 1
                 } else if(item[0]=="bracket" && item[1]=='('){
@@ -276,7 +277,7 @@ function Stack(stack_list){
                     end = this.find_next_matching(end+1)
                 } else if(implicit_tuple && item[0]=="delimiter" && item[1]==','){
                     // implicit tuple
-                    if(atom.type=="id" || atom.type=="literal"){
+                    if(atom.type=="id" || atom.type=="str" || atom.type=='int' || atom.type=='float'){
                         atom.type = "tuple"
                     }
                     end += 1
@@ -300,14 +301,14 @@ function Stack(stack_list){
         }
     }
 
-    this.atom_before = function(pos,implicit_tuple){
+Stack.prototype.atom_before = function(pos,implicit_tuple){
         // return the atom before specified position
         atom = new Atom(this)
         if(pos==0){return null}
         atom.end = pos-1
         atom.start = pos-1
         // find position before atom
-        var atom_parts=$List2Dict("id","assign_id","literal","point","qualifier")
+        var atom_parts=$List2Dict("id","assign_id","str",'int','float',"point","qualifier")
         var closing = $List2Dict(')',']')
         while(true){
             if(atom.start==-1){break}
@@ -325,7 +326,7 @@ function Stack(stack_list){
         return this.atom_at(atom.start,implicit_tuple)
     }
     
-    this.indent = function(pos){
+Stack.prototype.indent = function(pos){
         // return indentation of the line of the item at specified position
         var nl = this.find_previous(pos,"newline")
         if(nl==null){nl=0}
@@ -334,7 +335,7 @@ function Stack(stack_list){
         } else{return 0}
     }
     
-    this.split = function(delimiter){
+Stack.prototype.split = function(delimiter){
         // split stack with specified delimiter
         var items = new Array()
         var count = 0
@@ -358,7 +359,7 @@ function Stack(stack_list){
         return items
     }
 
-    this.find_block = function(pos){
+Stack.prototype.find_block = function(pos){
         var item = this.list[pos]
         var closing_pos = null
         for(i=pos+1;i<this.list.length;i++){
@@ -400,26 +401,21 @@ function Stack(stack_list){
         }
     }
 
-    this.to_js = function(){
+Stack.prototype.to_js = function(){
         // build Javascript code
         var i=0,j=0,x=null
         var js = "",scope_stack=[]
+        var t2 = $List2Dict('id','assign_id','str','int','float','keyword','code')
+
         for(i=0;i<this.list.length;i++){
             x = this.list[i]
-            t2 = $List2Dict("id","assign_id","literal","keyword","code")
             if(x[0]=="indent") {
                 for(j=0;j<x[1];j++){js += " "}
             } else if(x[0] in t2) {
-                if(x[0]=='literal'){
-                    if(typeof x[1]=='string'){
-                        js += 'str('+x[1].replace(/\n/gm,'\\\n')+')'
-                    }else if(typeof x[1]=='number'){
-                        if(x[1].toString().search(/\./)>-1){js += 'float('+x[1]+')'}
-                        else{js += 'int('+x[1]+')'}
-                    }else{
-                        js += '$JS2Py('+x[1]+')'
-                    }
-                } else if(x[0]=="id"){
+                if(x[0]=='str'){js += 'str('+x[1].replace(/\n/gm,'\\\n')+')'}
+                else if(x[0]=='int'){js += 'int('+x[1]+')'}
+                else if(x[0]=='float'){js += 'float('+x[1]+')'}
+                else if(x[0]=="id"){
                     // resolve id name with scope
                     if(x[3]==undefined){js += x[1]}
                     else{js += '$resolve("'+x[1]+'","'+x[3]+'")'}
@@ -441,13 +437,13 @@ function Stack(stack_list){
         return js
     }
 
-    this.dump = function(){
+Stack.prototype.dump = function(){
         ch = ''
         $ForEach(this.list).Do(function(item){
             ch += item[0]+' '+item[1]+'\n'
         })
         alert(ch)
     }
-}
+
 
 

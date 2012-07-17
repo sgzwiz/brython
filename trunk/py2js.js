@@ -121,12 +121,16 @@ function py2js(src,context){
         pos2line[i]=lnum
         if(src.charAt(i)=='\n'){lnum+=1}
     }
-    
+    var dobj = new Date()
+    t0 = dobj.getTime()
+    var times = {}
     tokens = $tokenize(src)
+
     stack = new Stack(tokens)
         
     // add a line number at the end of each line in source code
     // used for traceback
+    
     stack.list.splice(0,0,['code','document.line_num=1',0],['newline','\n',0])
     var pos = 2
     while(true){
@@ -135,6 +139,9 @@ function py2js(src,context){
         stack.list.splice(nl,0,['code',';document.line_num='+stack.list[nl][1],stack.list[nl][2]])
         pos = nl+2
     }
+    
+    var dobj = new Date()
+    times['add line nums'] = dobj.getTime()-t0
     
     // replace "not in" and "is not" by operator
     var repl = [['not','in'],['is','not']]
@@ -159,7 +166,7 @@ function py2js(src,context){
     // for each opening bracket, define after which token_types[,token values] 
     // they are *not* the start of a display
     var not_a_display = { 
-        '[':[["id"],["assign_id"],['literal'],["qualifier"],["bracket",$List2Dict("]",")")]], // slicing
+        '[':[["id"],["assign_id"],['str'],['int'],['float'],["qualifier"],["bracket",$List2Dict("]",")")]], // slicing
         '(':[["id"],["assign_id"],["qualifier"],["bracket",$List2Dict("]",")")]], // call
         '{':[[]] // always a display
         }
@@ -234,6 +241,9 @@ function py2js(src,context){
         }    
     })
     
+    var dobj = new Date()
+    times['displays'] = dobj.getTime()-t0
+
     // conversion of arguments in function definitions
     var pos = stack.list.length-1
     while(true){
@@ -319,6 +329,9 @@ function py2js(src,context){
         pos = def_pos-1
     }
 
+    var dobj = new Date()
+    times['function defs'] = dobj.getTime()-t0
+
     // calls
     pos = stack.list.length-1
     while(true){
@@ -350,6 +363,8 @@ function py2js(src,context){
         }
         pos = br_pos-1
     }
+    var dobj = new Date()
+    times['function calls'] = dobj.getTime()-t0
 
     // consecutive + and - signs
     pos = 0
@@ -384,7 +399,7 @@ function py2js(src,context){
                 (stack.list[sign-1][0]=="bracket" && stack.list[sign-1][1]=="("))){
             if(sign<stack.list.length-1){
                 var next = stack.list[sign+1]
-                if(next[0]=="literal" && typeof next[1]=="number") { // literal
+                if(next[0]=="int" || next[0]=="float") { // literal
                     var value = next[1]
                     if(op[1]=='-'){
                         stack.list[sign+1][1]=-1*stack.list[sign+1][1]
@@ -394,7 +409,7 @@ function py2js(src,context){
                 } else if(next[0]=="id") { // insert 1 * or -1 *
                     var mult = 1
                     if(op[1]=="-"){mult=-1}
-                    stack.list.splice(sign,1,["literal",mult,op[2]],
+                    stack.list.splice(sign,1,["int",mult,op[2]],
                         ['operator','*',op[2]])
                 }
             }
@@ -414,7 +429,7 @@ function py2js(src,context){
         }
         for(var i=0;i<imported.list().length;i++){
             if(stack.list[imported.start+i][0]=="id"){
-                stack.list[imported.start+i][0]='literal'
+                stack.list[imported.start+i][0]='str'
                 stack.list[imported.start+i][1]='"'+stack.list[imported.start+i][1]+'"'
             }
         }
@@ -424,6 +439,9 @@ function py2js(src,context){
             ['code','Import',src_pos],['bracket','(',src_pos])
         pos = imp_pos+1
     }
+
+    var dobj = new Date()
+    times['misc'] = dobj.getTime()-t0
 
     // replace if,def,class,for by equivalents
     var kws = {'if':'if','else':'else','elif':'else if',
@@ -578,6 +596,9 @@ function py2js(src,context){
             pos = kw_pos+1
         }
     }
+
+    var dobj = new Date()
+    times['if def class for'] = dobj.getTime()-t0
     
     // operators with authorized left operand types
     var ops_order = ["**","*","/","//","%","+","-",
@@ -588,16 +609,17 @@ function py2js(src,context){
     var ops = [], op = null
     var lo1 = $List2Dict(["id","bracket"])
     var lo2 = $List2Dict(["id","bracket","delimiter","operator"])
-    $ForEach(ops_order).Do(function(op){
+    for(var i=0;i<ops_order.length;i++){
+        op = ops_order[i]
         if(op=="+" || op=="-"){
             ops.push([op,lo2])
         } else {
             ops.push([op,lo1])
         }
-    })
-
-    $ForEach(ops).Do(
-    function(operator){
+    }
+    var $lo_ok = $List2Dict('id','str','int','float','tuple')
+    for(var i=0;i<ops.length;i++){
+        operator = ops[i]
         var op_sign = operator[0]
         var auth_lo_types = operator[1]
         var py_op = '__'+$operators[op_sign]+'__'
@@ -607,7 +629,7 @@ function py2js(src,context){
             if(op==null){break}
             // left operand
             var lo = stack.atom_before(op,false)
-            if(!lo.type in $List2Dict('id','literal','tuple')){
+            if(!lo.type in $lo_ok){
                 document.line_num = pos2line[stack.list[op][2]]
                 throw new SyntaxError("Bad left operand type "+lo.type+" for "+op_sign)
             }
@@ -624,7 +646,6 @@ function py2js(src,context){
                 throw new SyntaxError("Bad right operand ",src,stack.list[op][2])
             }
             var ro = stack.atom_at(op+1,false)
-            var los = new Stack(lo), ros = new Stack(lo)
             var ro_startswith_par = false
             if(ro!=null && ro.type=="tuple"){ro_startswith_par=true}
             
@@ -654,7 +675,10 @@ function py2js(src,context){
             // set position for next search
             pos = op-1
         }
-    })
+    }
+
+    var dobj = new Date()
+    times['operators'] = dobj.getTime()-t0
 
     // replace not expr by not(expr)
     pos = stack.list.length-1
@@ -713,7 +737,7 @@ function py2js(src,context){
             tail = stack.list.slice(right.end+1,stack.list.length)
             stack.list = stack.list.slice(0,left.start).concat(seq).concat(tail)
             pos = left.start+seq.length-1
-        } else if(left.type=='literal'){
+        } else if(left.type=='str' || left.type=='int' || left.type=='float'){
             pos = left.list()[0][2]
             document.line_num = pos2line[pos]
             throw new SyntaxError("can't assign to literal")
@@ -725,6 +749,9 @@ function py2js(src,context){
             pos = assign-1
         }
     }
+
+    var dobj = new Date()
+    times['assignments'] = dobj.getTime()-t0
     
 
     // remaining [ indicate subscription or slicing
@@ -746,7 +773,8 @@ function py2js(src,context){
         } else { // slicing
             new_args = [['id','slice',src_pos]]
             new_args.push(['bracket','(',src_pos])
-            $ForEach(items).Enumerate(function(i,item){
+            for(var i=0;i<items.length;i++){
+                var item = items[i]
                 if(item.list.length==0){
                     new_args.push(['keyword','null',src_pos])
                 } else {
@@ -755,7 +783,7 @@ function py2js(src,context){
                 if(i<items.length-1){
                     new_args.push(["delimiter",",",src_pos])
                 }
-            })
+            }
             new_args.push(['bracket',')',stack.list[end][2]]) // close slice
         }
         // if end is followed by = it's an assignment to a slicing
@@ -784,6 +812,9 @@ function py2js(src,context){
         pos = br_pos-1
     }
 
+    var dobj = new Date()
+    times['slincings'] = dobj.getTime()-t0
+
     // replace qualifiers by __getattr__ or __setattr___
     pos = stack.list.length-1
     while(true){
@@ -797,18 +828,23 @@ function py2js(src,context){
             if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
             tail = stack.list.slice(ro.end+1,stack.list.length)
             var seq = [['code','__setattr__'],['bracket','('],
-                ['literal',"'"+q_name+"'"],['delimiter',',']]
+                ['str',"'"+q_name+"'"],['delimiter',',']]
             seq = seq.concat(ro.list()).concat([['bracket',')']])
             stack.list = stack.list.slice(0,q_pos).concat(seq).concat(tail)
         }else{ // get attribute
             var q_name = stack.list[q_pos][1]
             if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
             stack.list.splice(q_pos,1,['id','__getattr__'],['bracket','('],
-                ['literal',"'"+q_name+"'"],['bracket',')'])
+                ['str',"'"+q_name+"'"],['bracket',')'])
         }
         pos = q_pos-1
     }
 
+    var dobj = new Date()
+    times['total'] = dobj.getTime()-t0
+    var ch = '',attr=''
+    for(attr in times){ch+=attr+':'+times[attr]+'\n'}
+    //alert(ch)
     // return stack
     return stack
 }
