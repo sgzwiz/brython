@@ -1,15 +1,94 @@
+// cross-browser utility functions
+function $getMouseOffset(target, ev){
+    ev = ev || window.event;
+    var docPos    = $getPosition(target);
+    var mousePos  = $mouseCoords(ev);
+    return {x:mousePos.x - docPos.x, y:mousePos.y - docPos.y};
+}
+
+function $getPosition(e){
+    var left = 0;
+    var top  = 0;
+    var width = e.offsetWidth;
+    var height = e.offsetHeight;
+
+    while (e.offsetParent){
+        left += e.offsetLeft;
+        top  += e.offsetTop;
+        e     = e.offsetParent;
+    }
+
+    left += e.offsetLeft;
+    top  += e.offsetTop;
+
+    return {x:left, y:top, width:width, height:height};
+}
+
+function $mouseCoords(ev){
+    var posx = 0;
+    var posy = 0;
+    if (!ev) var ev = window.event;
+    if (ev.pageX || ev.pageY){
+        posx = ev.pageX;
+        posy = ev.pageY;
+    } else if (ev.clientX || ev.clientY){
+        posx = ev.clientX + document.body.scrollLeft
+            + document.documentElement.scrollLeft;
+        posy = ev.clientY + document.body.scrollTop
+            + document.documentElement.scrollTop;
+    }
+    var res = object()
+    res.x = int(posx)
+    res.y = int(posy)
+    return res
+}
+
 // DOM classes
 
 function $StyleClass(parent){
 
-    this.__getattr__ = function(attr){return $JS2Py(eval('parent.elt.style.'+attr.value))}
+    this.__getattr__ = function(attr){
+        var value = eval('parent.elt.style.'+attr.value)
+        if(value===undefined){throw new AttributeError("object has no attribute "+attr.value)}
+        return $JS2Py(value)
+    }
 
-    this.__getitem__ = function(attr){return $JS2Py(parent.elt.style[attr.value])}
+    this.__getitem__ = function(attr){
+        var value = parent.elt.style[attr.value]
+        if(value===undefined){throw new KeyError(attr.value)}
+        return $JS2Py(value)
+    }
 
-    this.__setattr__ = function(attr,value){eval('parent.elt.style.'+attr.value+'= $str(value)')}
+    this.__setattr__ = function(attr,value){eval('parent.elt.style.'+attr.value+'= value.value')}
 
-    this.__setitem__ = function(attr,value){parent.elt.style[attr.value]= $str(value)}
+    this.__setitem__ = function(attr,value){parent.elt.style[attr.value]=value.value}
 
+}
+
+function $MouseEvent(ev){
+    this.event = ev
+}
+$MouseEvent.prototype.__getattr__ = function(attr){
+    if(attr.value=="mouse"){return $mouseCoords(this.event)}
+    if(attr.value=="data"){return new $Clipboard(this.event.dataTransfer)}
+    return getattr(this.event,attr)
+}
+
+function $Clipboard(data){ // drag and drop dataTransfer
+    this.data = data
+}
+$Clipboard.prototype.__getitem__ = function(name){
+    return $JS2Py(this.data.getData(name.value))
+}
+$Clipboard.prototype.__setitem__ = function(name,value){
+    return $JS2Py(this.data.setData(name.value,value.value))
+}
+function $DomObject(obj){
+    this.obj=obj
+    this.type = obj.constructor.toString()
+}
+$DomObject.prototype.__getattr__ = function(attr){
+    return getattr(this.obj,attr)
 }
 
 function $OptionsClass(parent){ // parent is a SELECT tag
@@ -54,7 +133,14 @@ function log(data){try{console.log($str(data))}catch(err){void(0)}}
 function $Document(){
 
     this.elt = document
+    this.mouse = null
     
+    this.__getattr__ = function(attr){return getattr(this,attr)}
+
+    this.__getitem__ = function(id){
+        return $DomElement(document.getElementById(id.value))
+    }
+
     this.__le__ = function(other){
         if($isinstance(other,$AbstractTag)){
             var $i=0
@@ -71,9 +157,6 @@ function $Document(){
         document.insertBefore(other.elt,ref_elt.elt)
     }
 
-    this.__getitem__ = function(id){
-        return $DomElement(document.getElementById(id.value))
-    }
 }
 
 doc = new $Document()
@@ -155,6 +238,7 @@ function $TagClass(_class,args){
         this.name = str(_class).value
         eval("this.__class__ ="+_class)
         this.elt = document.createElement(this.name)
+        this.elt.$parent = this
     }
     if(args!=undefined && args.length>0){
         $start = 0
@@ -184,6 +268,8 @@ function $TagClass(_class,args){
             if($isinstance($arg,$Kw)){
                 if($arg.name.toLowerCase() in $events){
                     eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
+                }else if($arg.name.toLowerCase()=="style"){
+                    this.set_style($arg.value)
                 } else {
                     this.elt.setAttribute($arg.name.toLowerCase(),$arg.value.value)
                 }
@@ -286,7 +372,7 @@ $TagClass.prototype.get_style = function(){
     
 $TagClass.prototype.set_style = function(style){ // style is a dict
     for(var i=0;i<style.$keys.length;i++){
-    this.elt.style[$str(style.$keys[i])] = $str(style.$values[i])
+        this.elt.style[$str(style.$keys[i])] = style.$values[i].value
     }
 }
 
@@ -306,6 +392,10 @@ $TagClass.prototype.get_value = function(value){return str(this.elt.value)}
 $TagClass.prototype.make_draggable = function(target){
     // make element draggable and droppable into target
     // use HTML5 drag and drop features
+    if(target===undefined){
+        if(this.elt.parentElement){target=new $DomElement(this.elt.parentElement)}
+        else{target=doc}
+    }
     this.elt.draggable = true
     this.elt.onmouseover = function(ev){this.style.cursor="move"}
     this.elt.ondragstart = function(ev){
@@ -313,20 +403,40 @@ $TagClass.prototype.make_draggable = function(target){
         // some browsers disable access to data store in dragover
         // so we have to put dragged id in a global variable
         document.$drag_id = ev.target.id 
+        doc.mouse = $mouseCoords(ev)
+        if('ondragstart' in ev.target.$parent){
+            ev.target.$parent['ondragstart'](ev.target.$parent)
+        }
     }
+    // $accepted is a dictionnary mapping ids of accepted elements to 0
     if(!('$accepted' in target.elt)){target.elt.$accepted={}}
     target.elt.$accepted[this.elt.id]=0
     target.elt.ondragover = function(ev){
+        var elt_id=document.$drag_id
         ev.preventDefault()
-        if(!(document.$drag_id in this.$accepted)){
+        if(!(elt_id in this.$accepted)){
             ev.dataTransfer.dropEffect='none'
+        }else if('on_drag_over' in ev.target.$parent){
+            var dropped = document.getElementById(elt_id)
+            doc.mouse = $mouseCoords(ev)
+            ev.target.$parent['on_drag_over'](ev.target.$parent,dropped.$parent)
         }
     }
     target.elt.ondrop = function(ev){
         ev.preventDefault();
-        var elt_id=ev.dataTransfer.getData("Text");
-        if(elt_id in this.$accepted){
-            ev.target.appendChild(document.getElementById(elt_id));
+        var elt_id=document.$drag_id
+        if(elt_id in this.$accepted){ // dropping the item is accepted
+            log('drop !')
+            var dropped = document.getElementById(elt_id)
+            if(dropped !== ev.target && dropped.parentElement!==ev.target && dropped.parentElement!==ev.target.parentElement){
+                //ev.target.appendChild(dropped)
+            }
+            doc.mouse = $mouseCoords(ev)
+            log(ev.target.$parent.on_drop)
+            if('on_drop' in ev.target.$parent){
+                log('has drop')
+                ev.target.$parent['on_drop'](ev.target.$parent,dropped.$parent)
+            }
         }
     }
 }

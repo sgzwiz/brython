@@ -9,11 +9,18 @@ function $JS2Py(src){
         } else {
             return float(src)
         }
-    } else if(typeof src=="object" && src.constructor===Array){return new $ListClass(src)}
-    else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
-    else {return src}
+    } else if(typeof src=="object"){
+        if(src.constructor===Array){return new $ListClass(src)}
+        else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
+        else if(src.constructor===MouseEvent){return new $MouseEvent(src)}
+        else{
+            try{
+                if(src.constructor==DragEvent){return new $MouseEvent(src)}
+                else{return new $DomObject(src)}
+            }catch(err){return new $DomObject(src)}
+        }
+    }else{return src}
 }
-
 
 function forEachArray(obj){
     var i=0;

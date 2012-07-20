@@ -124,110 +124,108 @@ function $DictClass($keys,$values){
     this.__class__ = dict
     this.$keys = $keys // JS Array
     this.$values = $values // idem
-    
-    this.__len__ = function() {return int($keys.length)}
-    this.__str__ = function(){
-        if($keys.length==0){return str('{}')}
-        var res = "{",key=null,value=null
-        for(i=0;i<$keys.length;i++){
-            key = $keys[i]
-            value = $values[i]
-            if($isinstance(key,str)){
-                key=key.__repr__().value
-            } else {
-                key=key.__str__().value
-            }
-            if($isinstance(value,str)){
-                value = value.__repr__().value
-            } else {
-                value = value.__str__().value
-            }
-            res += key+':'+value+','
-        }
-        return str(res.substr(0,res.length-1)+'}')
-    }
-
-    this.__add__ = function(other){
-        var msg = "unsupported operand types for +:'dict' and "
-        throw TypeError(msg+"'"+($str(other.__class__) || typeof other)+"'")
-    }
-
-    this.__eq__ = function(other){
-        if(!$isinstance(other,dict)){return False}
-        if(!other.$keys.length==$keys.length){return False}
-        for(i=0;i<$keys.length;i++){
-            test = false
-            var key = $keys[i]
-            for(j=0;j<other.$keys.length;j++){
-                try{
-                    if(other.$keys[j].__eq__(key)){
-                        if($bool(other.$values[j].__eq__($values[i]))){
-                            test = true;break
-                        }
-                    }
-                }catch(err){void(0)}
-            }
-            if(!test){return False}
-        }
-        return True
-    }
-
-    this.__ne__ = function(other){return not(this.__eq__(other))}
-
-    this.__getitem__ = function(arg){
-        // search if arg is in the keys
-        for(i=0;i<$keys.length;i++){
-            if($bool(arg.__eq__(this.$keys[i]))){return $values[i]}
-        }
-        throw new KeyError(str(arg))
-    }
-
-    this.__setitem__ = function(key,value){
-        for(i=0;i<$keys.length;i++){
-            try{
-                if($bool(key.__eq__($keys[i]))){ // reset value
-                    $values[i]=value
-                    this.$values[i]=value
-                    return
-                }
-            }catch(err){ // if __eq__ throws an exception
-                void(0)
-            }
-        }
-        // create a new key/value
-        $keys.push(key);this.$keys=$keys
-        $values.push(value);this.$values=$values
-    }
-
-    this.__next__ = function(){
-        if(this.iter==null){this.iter==0}
-        if(this.iter<$keys.length){
-            this.iter++
-            return $keys[this.iter-1]
+}
+$DictClass.prototype.__len__ = function() {return int(this.$keys.length)}
+$DictClass.prototype.__str__ = function(){
+    if(this.$keys.length==0){return str('{}')}
+    var res = "{",key=null,value=null
+    for(i=0;i<this.$keys.length;i++){
+        key = this.$keys[i]
+        value = this.$values[i]
+        if($isinstance(key,str)){
+            key=key.__repr__().value
         } else {
-            this.iter = null
-            throw new $StopIteration()
+            key=key.__str__().value
+        }
+        if($isinstance(value,str)){
+            value = value.__repr__().value
+        } else {
+            value = value.__str__().value
+        }
+        res += key+':'+value+','
+    }
+    return str(res.substr(0,res.length-1)+'}')
+}
+
+$DictClass.prototype.__add__ = function(other){
+    var msg = "unsupported operand types for +:'dict' and "
+    throw TypeError(msg+"'"+($str(other.__class__) || typeof other)+"'")
+}
+
+$DictClass.prototype.__eq__ = function(other){
+    if(!$isinstance(other,dict)){return False}
+    if(!other.$keys.length==this.$keys.length){return False}
+    for(i=0;i<this.$keys.length;i++){
+        test = false
+        var key = this.$keys[i]
+        for(j=0;j<other.$keys.length;j++){
+            try{
+                if(other.$keys[j].__eq__(key)){
+                    if($bool(other.$values[j].__eq__($values[i]))){
+                        test = true;break
+                    }
+                }
+            }catch(err){void(0)}
+        }
+        if(!test){return False}
+    }
+    return True
+}
+
+$DictClass.prototype.__ne__ = function(other){return not(this.__eq__(other))}
+
+$DictClass.prototype.__getitem__ = function(arg){
+    // search if arg is in the keys
+    for(i=0;i<this.$keys.length;i++){
+        if($bool(arg.__eq__(this.$keys[i]))){return this.$values[i]}
+    }
+    throw new KeyError(str(arg))
+}
+
+$DictClass.prototype.__setitem__ = function(key,value){
+    for(i=0;i<this.$keys.length;i++){
+        try{
+            if($bool(key.__eq__(this.$keys[i]))){ // reset value
+                this.$values[i]=value
+                return
+            }
+        }catch(err){ // if __eq__ throws an exception
+            void(0)
         }
     }
+    // create a new key/value
+    this.$keys.push(key)
+    this.$values.push(value)
+}
 
-    this.__in__ = function(item){return item.__contains__(this)}
-    this.__not_in__ = function(item){return not(item.__contains__(this))}
+$DictClass.prototype.__next__ = function(){
+    if(this.iter==null){this.iter==0}
+    if(this.iter<this.$keys.length){
+        this.iter++
+        return this.$keys[this.iter-1]
+    } else {
+        this.iter = null
+        throw new $StopIteration()
+    }
+}
 
-    this.__contains__ = function(item){
-        return list($keys).__contains__(item)
-    }
+$DictClass.prototype.__in__ = function(item){return item.__contains__(this)}
+$DictClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
 
-    this.items = function(){return new $DictIterator($keys,$values)}
-    this.keys = function(){
-        var res = list()
-        for(i=0;i<$keys.length;i++){res.append($keys[i])}
-        return res
-    }
-    this.values = function() {
-        var res = list()
-        for(i=0;i<$values.length;i++){res.append($values[i])}
-        return res
-    }
+$DictClass.prototype.__contains__ = function(item){
+    return list(this.$keys).__contains__(item)
+}
+
+$DictClass.prototype.items = function(){return new $DictIterator(this.$keys,this.$values)}
+$DictClass.prototype.keys = function(){
+    var res = list()
+    for(i=0;i<this.$keys.length;i++){res.append(this.$keys[i])}
+    return res
+}
+$DictClass.prototype.values = function() {
+    var res = list()
+    for(i=0;i<this.$values.length;i++){res.append(this.$values[i])}
+    return res
 }
 
 function $DictIterator(keys,values){
@@ -293,74 +291,75 @@ function filter(){
 function $FloatClass(value){
     this.value = value
     this.__class__ = float
-    this.__str__ = function(){return str(value.toString())}
-    this.__int__ = function(){return int(parseInt(value))}
-    this.__float__ = function(){return this}
+}
+$FloatClass.prototype.__str__ = function(){return str(this.value)}
+$FloatClass.prototype.__int__ = function(){return int(parseInt(this.value))}
+$FloatClass.prototype.__float__ = function(){return this}
     
-    var $op_func = function(other){
-        if($isinstance(other,int)){return float(value-other.value)}
-        else if($isinstance(other,float)){return float(value-other.value)}
-        else{throw new TypeError(
-            "unsupported operand type(s) for -: 'int' and '"+$str(other.__class__)+"'")
-        }
-    }
-    $op_func += '' // source code
-    var $ops = {'+':'add','-':'sub','*':'mul','/':'truediv'}
-    for($op in $ops){
-        eval('this.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
-    }
-
-    var $augm_op_func = function(other){
-        if($isinstance(other,int)){value -= other.value;this.value=value}
-        else if($isinstance(other,float)){value -= other.value;this.value=value}
-        else{throw new TypeError(
-            "unsupported operand type(s) for -=: 'int' and '"+$str(other.__class__)+"'")
-        }
-    }
-    $augm_op_func += '' // source code
-    var $ops = {'+=':'iadd','*=':'imul','/=':'itruediv'}
-    for($op in $ops){
-        eval('this.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
-    }
-
-    this.__floordiv__ = function(other){
-        if($isinstance(other,int)){return int(Math.floor(value/other.value))}
-        else if($isinstance(other,float)){return int(Math.floor(value/other.value))}
-        else{throw new TypeError(
-            "unsupported operand type(s) for //: 'int' and '"+$str(other.__class__)+"'")
-        }
-    }
-
-    this.__in__ = function(item){return item.__contains__(this)}
-    this.__not_in__ = function(item){return not(item.__contains__(this))}
-
-    // comparison methods
-    var $comp_func = function(other){
-        if($isinstance(other,int)){return $bool_conv(this.value > other.value)}
-        else if($isinstance(other,float)){return $bool_conv(this.value > other.value)}
-        else{throw new TypeError(
-            "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
-        }
-    }
-    $comp_func += '' // source code
-    var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
-    for($op in $comps){
-        eval("this.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
-    }
-
-    // unsupported operations
-    var $notimplemented = function(other){
-        throw new TypeError(
-            "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
-    }
-    $notimplemented += '' // coerce to string
-    for($op in $operators){
-        var $opfunc = '__'+$operators[$op]+'__'
-        if(!($opfunc in this)){
-            eval('this.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
-        }
+var $op_func = function(other){
+    if($isinstance(other,int)){return float(this.value-other.value)}
+    else if($isinstance(other,float)){return float(this.value-other.value)}
+    else{throw new TypeError(
+        "unsupported operand type(s) for -: 'int' and '"+$str(other.__class__)+"'")
     }
 }
+$op_func += '' // source code
+var $ops = {'+':'add','-':'sub','*':'mul','/':'truediv'}
+for($op in $ops){
+    eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
+}
+
+var $augm_op_func = function(other){
+    if($isinstance(other,int)){this.value -= other.value}
+    else if($isinstance(other,float)){this.value -= other.value}
+    else{throw new TypeError(
+        "unsupported operand type(s) for -=: 'int' and '"+$str(other.__class__)+"'")
+    }
+}
+$augm_op_func += '' // source code
+var $ops = {'+=':'iadd','*=':'imul','/=':'itruediv'}
+for($op in $ops){
+    eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
+}
+
+$FloatClass.prototype.__floordiv__ = function(other){
+    if($isinstance(other,int)){return int(Math.floor(this.value/other.value))}
+    else if($isinstance(other,float)){return int(Math.floor(this.value/other.value))}
+    else{throw new TypeError(
+        "unsupported operand type(s) for //: 'int' and '"+$str(other.__class__)+"'")
+    }
+}
+
+$FloatClass.prototype.__in__ = function(item){return item.__contains__(this)}
+$FloatClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+
+// comparison methods
+var $comp_func = function(other){
+    if($isinstance(other,int)){return $bool_conv(this.value > other.value)}
+    else if($isinstance(other,float)){return $bool_conv(this.value > other.value)}
+    else{throw new TypeError(
+        "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
+    }
+}
+$comp_func += '' // source code
+var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
+for($op in $comps){
+    eval("$FloatClass.prototype.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
+}
+
+// unsupported operations
+var $notimplemented = function(other){
+    throw new TypeError(
+        "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
+}
+$notimplemented += '' // coerce to string
+for($op in $operators){
+    var $opfunc = '__'+$operators[$op]+'__'
+    if(!($opfunc in $FloatClass.prototype)){
+        eval('$FloatClass.prototype.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
+    }
+}
+
 
 function float(value){
     if(typeof value=="number"){return new $FloatClass(parseFloat(value))}
@@ -384,7 +383,7 @@ function getattr(obj,attr,_default){
             }
             res = bind(res, obj)
         }
-        return res
+        return $JS2Py(res)
     }
     else if(_default !==undefined){return _default}
     else{throw new AttributeError(
@@ -463,99 +462,96 @@ function Import(){
 }
 
 function $IntegerClass(value){
-        
     this.value = value
-
     this.__class__ = int
-
-    this.__str__ = function(){return str(value.toString())}
-    this.__int__ = function(){return int(parseInt(value))}
-    this.__float__ = function(){return this}
-
-    var $op_func = function(other){
-        if($isinstance(other,int)){return int(value-other.value)}
-        else if($isinstance(other,float)){return int(value-other.value)}
-        else{$UnsupportedOpType("-",int,other.__class__)}
-    }
-    $op_func += '' // source code
-    var $not_comps = {'+':'add','-':'sub'}
-    for($op in $not_comps){
-        eval('this.__'+$not_comps[$op]+'__ = '+$op_func.replace(/-/gm,$op))
-    }
-
-   this.__mul__ = function(other){
-        if($isinstance(other,int)){return int(value*other.value)}
-        else if($isinstance(other,float)) {return float(value*other.value)}
-        else if($isinstance(other,str)) {
-            var res = '',i=0
-            for(i=0;i<value;i++){res+=other.value}
-            return str(res)
-        }else{$UnsupportedOpType("*",int,other.__class__)}
-    }
-
-    this.__truediv__ = function(other){
-        if($isinstance(other,list(int,float))){return float(value/other.value)}
-        else{$UnsupportedOpType("/",int,other.__class__)}
-    }
-
-    this.__floordiv__ = function(other){
-        if($isinstance(other,list(int,float))){return int(Math.floor(value/other.value))}
-        else{$UnsupportedOpType("//",int,other.__class__)}
-    }
-
-    this.__pow__ = function(other){
-        if($isinstance(other,list(int,float))){return int(Math.floor(value/other.value))}
-        else{$UnsupportedOpType("//",int,other.__class__)}
-    }
-
-    var $augm_op_func = function(other){
-        if($isinstance(other,list(int,float))){value -= other.value;this.value=value}
-        else{$UnsupportedOpType("-=",int,other.__class__)}
-    }
-    $augm_op_func += '' // source code
-    var $ops = {'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv'}
-    for($op in $ops){
-        eval('this.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
-    }
-
-    this.__ifloordiv__ = function(other){
-        if($isinstance(other,int)){value = Math.floor(value/other.value);this.value=value}
-        else if($isinstance(other,float)){value = Math.floor(value/other.value);this.value=value}
-        else{$UnsupportedOpType("//=",int,other.__class__)}
-    }
-
-    this.__in__ = function(item){return item.__contains__(this)}
-    this.__not_in__ = function(item){return not(item.__contains__(this))}
-
-    // comparison methods
-    var $comp_func = function(other){
-        if($isinstance(other,list(int,float))){
-            return $bool_conv(value > other.value)
-        }
-        else{throw new TypeError(
-                "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
-        }
-    }
-    $comp_func += '' // source code
-    var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
-    for($op in $comps){
-        eval("this.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
-    }
-
-    // unsupported operations
-    var $notimplemented = function(other){
-        throw new $TypeError(
-            "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
-    }
-    $notimplemented += '' // coerce to string
-    for($op in $operators){
-        var $opfunc = '__'+$operators[$op]+'__'
-        if(!($opfunc in this)){
-            eval('this.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
-        }
-    }
-    
 }
+$IntegerClass.prototype.__str__ = function(){return str(this.value)}
+$IntegerClass.prototype.__int__ = function(){return this}
+$IntegerClass.prototype.__float__ = function(){return float(this.value)}
+
+var $op_func = function(other){
+    if($isinstance(other,int)){return int(this.value-other.value)}
+    else if($isinstance(other,float)){return int(this.value-other.value)}
+    else{$UnsupportedOpType("-",int,other.__class__)}
+}
+$op_func += '' // source code
+var $not_comps = {'+':'add','-':'sub'}
+for($op in $not_comps){
+    eval('$IntegerClass.prototype.__'+$not_comps[$op]+'__ = '+$op_func.replace(/-/gm,$op))
+}
+
+$IntegerClass.prototype.__mul__ = function(other){
+    if($isinstance(other,int)){return int(this.value*other.value)}
+    else if($isinstance(other,float)) {return float(this.value*other.value)}
+    else if($isinstance(other,str)) {
+        var res = '',i=0
+        for(i=0;i<this.value;i++){res+=other.value}
+        return str(res)
+    }else{$UnsupportedOpType("*",int,other.__class__)}
+}
+
+$IntegerClass.prototype.__truediv__ = function(other){
+    if($isinstance(other,list(int,float))){return float(this.value/other.value)}
+    else{$UnsupportedOpType("/",int,other.__class__)}
+}
+
+$IntegerClass.prototype.__floordiv__ = function(other){
+    if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
+    else{$UnsupportedOpType("//",int,other.__class__)}
+}
+
+$IntegerClass.prototype.__pow__ = function(other){
+    if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
+    else{$UnsupportedOpType("//",int,other.__class__)}
+}
+
+var $augm_op_func = function(other){
+    if($isinstance(other,list(int,float))){this.value -= other.value}
+    else{$UnsupportedOpType("-=",int,other.__class__)}
+}
+$augm_op_func += '' // source code
+var $ops = {'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv'}
+for($op in $ops){
+    eval('$IntegerClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
+}
+
+$IntegerClass.prototype.__ifloordiv__ = function(other){
+    if($isinstance(other,int)){this.value = Math.floor(this.value/other.value)}
+    else if($isinstance(other,float)){this.value = Math.floor(this.value/other.value)}
+    else{$UnsupportedOpType("//=",int,other.__class__)}
+}
+
+$IntegerClass.prototype.__in__ = function(item){return item.__contains__(this)}
+$IntegerClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+
+// comparison methods
+var $comp_func = function(other){
+    if($isinstance(other,list(int,float))){
+        return $bool_conv(this.value > other.value)
+    }
+    else{throw new TypeError(
+            "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
+    }
+}
+$comp_func += '' // source code
+var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
+for($op in $comps){
+    eval("$IntegerClass.prototype.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
+}
+
+// unsupported operations
+var $notimplemented = function(other){
+    throw new TypeError(
+        "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
+}
+$notimplemented += '' // coerce to string
+for($op in $operators){
+    var $opfunc = '__'+$operators[$op]+'__'
+    if(!($opfunc in $IntegerClass.prototype)){
+        eval('$IntegerClass.prototype.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
+    }
+}
+
 function int(value){
     if(typeof value=="number"){return new $IntegerClass(parseInt(value))}
     else if(typeof value=="string" && parseInt(value)!=NaN){return new $IntegerClass(parseInt(value))}
@@ -567,7 +563,6 @@ function int(value){
         "Invalid literal for int() with base 10: '"+$str(value)+"'")
     }   
 }
-
 
 function $isinstance(obj,arg){
     if(arg.__class__ === list || arg.__class__ === tuple){
@@ -675,7 +670,7 @@ $ListClass.prototype.__setitem__ = function(arg,value){
     if($isinstance(arg,int)){
         var pos = arg.value
         if(arg.value<0){pos=this.items.length+pos}
-        if(pos>=0 && pos<this.items.length){items[pos]=value}
+        if(pos>=0 && pos<this.items.length){this.items[pos]=value}
         else{throw new IndexError('list index out of range')}
     } else if($isinstance(arg,slice)) {
         start = arg.start || $Integer(0)
@@ -902,6 +897,13 @@ function not(obj){
     if($bool(obj)){return False}else{return True}
 }
 
+function $ObjectClass(){
+    this.__getattr__ = function(attr){return this[attr.value]}
+}
+
+function object(){
+    return new $ObjectClass()
+}
 function $ReversedClass(seq){
     this.iter = null
     this.__next__ = function(){
@@ -937,75 +939,75 @@ function $SetClass(){
     this.iter = null
     this.__class__ = set
     this.items = [] // JavaScript array
-
-    this.__len__ = function(){return int(this.items.length)}
-    
-    this.__str__ = function(){
-        var res = "["
-        for(i=0;i<this.items.length;i++){
-            x = this.items[i]
-            if($isinstance(x,str)){
-                res += x.__repr__().value
-            } else {
-                res += x.__str__().value
-            }
-            if(i<this.items.length-1){res += ','}
-        }
-        return str(res+']')
-    }
-        
-    this.__add__ = function(other){
-        return set(this.items.concat(other.items))
-    }
-
-    this.__eq__ = function(other){
-        if($isinstance(other,set)){
-            if(other.items.length==this.items.length){
-                for(i=0;i<this.items.length;i++){
-                    if(this.__contains__(other.items[i])===False){
-                        return False
-                    }
-                }
-                return True
-            }
-        }
-        return False
-    }
-
-    this.__ne__ = function(other){return not(this.__eq__(other))}
-    
-    this.__next__ = function(){
-        if(this.iter==null){this.iter==0}
-        if(this.iter<this.items.length){
-            this.iter++
-            return this.items[this.iter-1]
-        } else {
-            this.iter = null
-            throw new $StopIteration()
-        }
-    }
-
-    this.__in__ = function(item){return item.__contains__(this)}
-    this.__not_in__ = function(item){return not(item.__contains__(this))}
-
-    this.__contains__ = function(item){
-        for(i=0;i<this.items.length;i++){
-            try{if(this.items[i].__eq__(item)){return True}
-            }catch(err){void(0)}
-        }
-        return False
-    }
-
-    this.add = function(item){
-        var i=0
-        for(i=0;i<this.items.length;i++){
-            try{if(item.__eq__(this.items[i])){return}}
-            catch(err){void(0)} // if equality test throws exception
-        }
-        this.items.push(item)
-    }
-
 }
+$SetClass.prototype.__len__ = function(){return int(this.items.length)}
+    
+$SetClass.prototype.__str__ = function(){
+    var res = "["
+    for(i=0;i<this.items.length;i++){
+        x = this.items[i]
+        if($isinstance(x,str)){
+            res += x.__repr__().value
+        } else {
+            res += x.__str__().value
+        }
+        if(i<this.items.length-1){res += ','}
+    }
+    return str(res+']')
+}
+    
+$SetClass.prototype.__add__ = function(other){
+    return set(this.items.concat(other.items))
+}
+
+$SetClass.prototype.__eq__ = function(other){
+    if($isinstance(other,set)){
+        if(other.items.length==this.items.length){
+            for(i=0;i<this.items.length;i++){
+                if(this.__contains__(other.items[i])===False){
+                    return False
+                }
+            }
+            return True
+        }
+    }
+    return False
+}
+
+$SetClass.prototype.__ne__ = function(other){return not(this.__eq__(other))}
+
+$SetClass.prototype.__next__ = function(){
+    if(this.iter==null){this.iter==0}
+    if(this.iter<this.items.length){
+        this.iter++
+        return this.items[this.iter-1]
+    } else {
+        this.iter = null
+        throw new $StopIteration()
+    }
+}
+
+$SetClass.prototype.__in__ = function(item){return item.__contains__(this)}
+$SetClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+
+$SetClass.prototype.__contains__ = function(item){
+    for(i=0;i<this.items.length;i++){
+        try{if(this.items[i].__eq__(item)){return True}
+        }catch(err){void(0)}
+    }
+    return False
+}
+
+$SetClass.prototype.add = function(item){
+    var i=0
+    for(i=0;i<this.items.length;i++){
+        try{if(item.__eq__(this.items[i])){return}}
+        catch(err){void(0)} // if equality test throws exception
+    }
+    this.items.push(item)
+}
+
+
 
 function set(){
     var i=0
@@ -1540,6 +1542,7 @@ function zip(){
 
 // built-in constants : True, False, None
 function $TrueClass(){
+    this.value = true
     this.__str__ = function(){return str('True')}
     this.__bool__ = function(){return True}
     this.__and__ = function(other){return bool(other)}
@@ -1548,6 +1551,7 @@ function $TrueClass(){
 True = new $TrueClass()
 
 function $FalseClass(){
+    this.value = false
     this.__str__ = function(){return str('False')}
     this.__bool__ = function(){return False}
     this.__and__ = function(other){return False}
@@ -1625,7 +1629,3 @@ function $Kw(name,value){
     return new $KwClass(name,value)
 }
 
-// object
-function object(){
-    return new Object()
-}

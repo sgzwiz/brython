@@ -28,34 +28,45 @@ right2.style = {'position':'absolute','left':500,'top':50,'width':100,'height':2
 doc <= right
 doc <= right2
 
+def drag_start(elt):
+    log('start pos %i' %doc.mouse.x)
+    
 for i,_item in enumerate(items):
     x = SPAN(_item)
     x.style = {'position':'absolute','left':10,'top':10+30*i,'width':30,'height':25}
     x.make_draggable(right)
     if i>1:
         x.make_draggable(right2)
+    x.on_drag_start = drag_start
     left <= x
 
 doc <= left+right
 
 def enter(target,elt):
     target.style.backgroundColor = "red"
+
+def drag_over(target,elt):
+    log(doc.mouse.y)
     
 def leave(target,elt):
     target.style.backgroundColor = "yellow"
     
 def drop(target,elt):
-    target.style.backgroundColor = "yellow"
+    log(doc.mouse.x)
     target <= elt
     elt.style.left = 10
     if target==right:
         elt.make_draggable(left)
-    else:
+        elt.style.color = "black"
+    elif target==right2:
         elt.make_draggable(right)
+        elt.style.color = "white"
 
 right.on_enter = enter
+right.on_drag_over = drag_over
 right.on_leave = leave
 right.on_drop = drop
+right2.on_drop = drop
 left.on_enter = enter
 left.on_leave = leave
 left.on_drop = drop

@@ -111,7 +111,8 @@ function $tokenize(src){
                 }
             }
             if(!found){
-                throw new SyntaxError("String end not found ",src,pos)
+                document.line_num = pos2line[pos]
+                throw new SyntaxError("String end not found ")
             }
             continue
         }
