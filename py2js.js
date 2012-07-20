@@ -614,7 +614,7 @@ function py2js(src,context){
     var ops_order = ["**","*","/","//","%","+","-",
         "<","<=",">",">=","!=","==",
         "+=","-=","*=","/=","//=","%=","**=",
-        "and","or","in","not_in","is_not"]
+        "not_in","and","or","in","is_not"]
 
     var ops = [], op = null
     var lo1 = $List2Dict(["id","bracket"])
