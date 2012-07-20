@@ -81,7 +81,10 @@ $Clipboard.prototype.__getitem__ = function(name){
     return $JS2Py(this.data.getData(name.value))
 }
 $Clipboard.prototype.__setitem__ = function(name,value){
-    return $JS2Py(this.data.setData(name.value,value.value))
+    this.data.setData(name.value,value.value)
+}
+$Clipboard.prototype.__setattr__ = function(attr,value){
+    eval("this.data."+attr.value+"=value.value")
 }
 function $DomObject(obj){
     this.obj=obj
