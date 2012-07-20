@@ -1,5 +1,6 @@
 // transform native JS types into Brython types
 function $JS2Py(src){
+    if($isinstance(src,list(str,int,float,list,dict,set))){return src}
     htmlelt_pattern = new RegExp(/\[object HTML(.*)Element\]/)
     if(typeof src=="string"){
         return str(src)
@@ -12,75 +13,15 @@ function $JS2Py(src){
     } else if(typeof src=="object"){
         if(src.constructor===Array){return new $ListClass(src)}
         else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
-        else if(src.constructor===MouseEvent){return new $MouseEvent(src)}
+        //else if(src.constructor===MouseEvent){return new $MouseEvent(src)}
         else{
-            try{
-                if(src.constructor==DragEvent){return new $MouseEvent(src)}
-                else{return new $DomObject(src)}
-            }catch(err){return new $DomObject(src)}
+            try{if(src.constructor==DragEvent){return new $MouseEvent(src)}}
+            catch(err){void(0)}
+            try{if(src.constructor==MouseEvent){return new $MouseEvent(src)}}
+            catch(err){void(0)}
+            return new $DomObject(src)
         }
     }else{return src}
-}
-
-function forEachArray(obj){
-    var i=0;
-    var res = null;
-    this.Do = function(_func){
-        for(i=0;i<obj.length;i++){
-            if(obj[i]!=undefined){
-                _func(obj[i])
-            }
-        }
-    }
-    this.Enumerate = function(_func){
-        for(i=0;i<obj.length;i++){
-            if(obj[i]!=undefined){
-                _func(i,obj[i])
-            }
-        }
-    }
-    this.Map = function(func){
-        res = new Array()
-        for(i=0;i<obj.length;i++){
-            if(obj[i]!=undefined){
-                res.push(func(obj[i]))
-            }
-        }
-        return res
-    }
-}
-
-function forEachString(obj){
-    var i=0
-    this.Do = function(_func){
-        for(i=0;i<obj.length;i++){
-            _func(obj.charAt(i))
-        }
-    }
-    this.Enumerate = function(_func){
-        for(i=0;i<obj.length;i++){
-            if(obj[i]!=undefined){
-                _func(i,obj.charAt(i))
-            }
-        }
-    }
-    this.Map = function(func){
-        res = ""
-        for(i=0;i<obj.length;i++){
-            res += func(obj.charAt(i))
-        }
-        return res
-    }
-}
-
-function $ForEach(obj){
-    if(Object.prototype.toString.apply(obj)=="[object Array]"){
-        return new forEachArray(obj)
-    } else if(typeof obj=="string") {
-        return new forEachString(obj)
-    } else if(typeof obj=="number") {
-        return new forEachNumber(obj)
-    }
 }
 
 function $List2Dict(){
@@ -97,14 +38,6 @@ function $List2Dict(){
         }
     }
     return res
-}
-
-function forEachNumber(obj){
-    this.Do = function(_func){
-        for(i=0;i<obj;i++){
-            _func(i)
-        }
-    }
 }
 
 function $last(item){
@@ -440,9 +373,10 @@ Stack.prototype.to_js = function(){
 
 Stack.prototype.dump = function(){
         ch = ''
-        $ForEach(this.list).Do(function(item){
-            ch += item[0]+' '+item[1]+'\n'
-        })
+        for(var i=0;i<this.list.length;i++){
+            _item = this.list[i]
+            ch += _item[0]+' '+_item[1]+'\n'
+        }
         alert(ch)
     }
 

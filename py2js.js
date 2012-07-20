@@ -84,11 +84,12 @@ function $Assign(targets,right_expr,assign_pos){
         seq = seq.concat(right_expr.list())
         seq.push(['bracket',')',assign_pos])
         seq.push(['delimiter',';',assign_pos])
-        $ForEach(targets).Enumerate(function(i,target){
+        for(var i=0;i<targets.length;i++){
+            target = targets[i]
             seq = seq.concat(target.list)
             seq.push(['assign','=',assign_pos])
             seq.push(['code','next($var);',assign_pos])
-        })
+        }
     }
     return seq
 }
@@ -98,7 +99,7 @@ PyConvArgs += ''
 var lines = PyConvArgs.split('\n')
 lines = lines.slice(1,lines.length-1)
 PyConvArgs = ''
-$ForEach(lines).Do(function(line){PyConvArgs += line+'\n'})
+for(var i=0;i<lines.length;i++){PyConvArgs += lines[i]+'\n'}
 
 $OpeningBrackets = $List2Dict('(','[','{')
 
@@ -171,7 +172,9 @@ function py2js(src,context){
         '{':[[]] // always a display
         }
     var PyType = {'(':'tuple','[':'$list','{':'dict'}
-    $ForEach(['[','(','{']).Do(function(bracket){
+    var br_list = ['[','(','{']
+    for(ibr=0;ibr<br_list.length;ibr++){
+        bracket = br_list[ibr]
         pos = stack.list.length-1
         while(true){
             var br_elt = stack.find_previous(pos,"bracket",bracket)
@@ -179,13 +182,14 @@ function py2js(src,context){
             if(br_elt>0){
                 var previous = stack.list[br_elt-1]
                 var is_display = true
-                $ForEach(not_a_display[bracket]).Do(function(args){
+                for(var inad=0;inad<not_a_display[bracket].length;inad++){
+                    var args = not_a_display[bracket][inad]
                     if(args[0]==previous[0]){
                         if(args.length!=2 || (previous[1] in args[1])){
                             is_display = false
                         }
                     }
-                })
+                }
                 if(!is_display){pos = br_elt-1;continue}
                 // display : insert tuple, list or dict
                 var pyType = PyType[bracket]
@@ -198,7 +202,8 @@ function py2js(src,context){
                     if(args.list.length>0){
                         sequence = [['id','dict'],['bracket','(']]
                         var kvs = args.split(',') // array of Stack instances
-                        $ForEach(kvs).Do(function(kv){
+                        for(var ikv=0;ikv<kvs.length;ikv++){
+                            var kv = kvs[ikv]
                             // each kv has attributes start and end = position in args
                             var elts = kv.split(':')
                             if(elts.length!=2){
@@ -220,7 +225,7 @@ function py2js(src,context){
                             sequence = sequence.concat(args.list.slice(value_start,value_end+1))
                             sequence.push(['bracket',')'])
                             sequence.push(['delimiter',',',br_pos])
-                        })
+                        }
                         sequence.pop() // remove last comma
                     }
                 }else if(pyType=='tuple'){
@@ -243,7 +248,7 @@ function py2js(src,context){
             }
             pos = br_elt - 1
         }    
-    })
+    }
     
     var dobj = new Date()
     times['displays'] = dobj.getTime()-t0
@@ -317,7 +322,9 @@ function py2js(src,context){
             else{
                 arg_code += '['
                 required.reverse()
-                $ForEach(required).Do(function(req){arg_code+="'"+req+"',"})
+                for(ireq=0;ireq<required.length;ireq++){
+                    arg_code+="'"+required[ireq]+"',"
+                }
                 arg_code = arg_code.substr(0,arg_code.length-1)+"],"
             }
             req_code = '    $defaults={};\n'
@@ -504,31 +511,22 @@ function py2js(src,context){
                     if(iterable.type=="tuple"){seq.push(['bracket',')',src_pos])}
                     seq.push(['newline','\n',src_pos])
                     if(kw_indent){seq.push(['indent',kw_indent,src_pos])}
-                    seq.push(['code','while(true){',src_pos])
-                    seq.push(['newline','\n',src_pos])
-                    seq.push(['indent',kw_indent+4,src_pos])
-                    seq.push(['code','try{',src_pos])
-                    seq.push(['newline','\n',src_pos])
-                    seq.push(['indent',kw_indent+8,src_pos])
-                    seq.push(['code','var $Next=next($Iterable'+loop_id+')',src_pos])
-                    seq.push(['newline','\n',src_pos])
-                    seq.push(['indent',kw_indent+8,src_pos])
+                    seq= seq.concat([['code','while(true){',src_pos],
+                        ['newline','\n',src_pos],['indent',kw_indent+4,src_pos],
+                        ['code','try{',src_pos],['newline','\n',src_pos],
+                        ['indent',kw_indent+8,src_pos],['code','var $Next=next($Iterable'+loop_id+')',src_pos],
+                        ['newline','\n',src_pos],['indent',kw_indent+8,src_pos]])
                     seq = seq.concat(stack.list.slice(arg_list.start,arg_list.end+1))
                     seq.push(['assign','=',src_pos])
                     seq.push(['code','$Next',src_pos])
                     seq = seq.concat(stack.list.slice(block[0],block[1]))
                     // code to include at block end
-                    seq.push(['indent',kw_indent+4,src_pos])
-                    seq.push(['code','}catch(err){',src_pos])
-                    seq.push(['newline','\n',src_pos])
-                    seq.push(['indent',kw_indent+8,src_pos])
-                    seq.push(['code','if(err.name=="StopIteration"){break}',src_pos])
-                    seq.push(['newline','\n',src_pos])
-                    seq.push(['indent',kw_indent+8,src_pos])
-                    seq.push(['code','else{throw err}',src_pos])
-                    seq.push(['newline','\n',src_pos])
-                    seq.push(['indent',kw_indent+4,src_pos])
-                    seq.push(['code','}',src_pos])
+                    seq = seq.concat([['indent',kw_indent+4,src_pos],
+                        ['code','}catch(err){',src_pos],['newline','\n',src_pos],
+                        ['indent',kw_indent+8,src_pos],['code','if(err.name=="StopIteration"){break}',src_pos],
+                        ['newline','\n',src_pos],['indent',kw_indent+8,src_pos],
+                        ['code','else{throw err}',src_pos],['newline','\n',src_pos],
+                        ['indent',kw_indent+4,src_pos],['code','}',src_pos]])
                     stack.list = stack.list.slice(0,kw_pos)
                     stack.list = stack.list.concat(seq)
                 } else { // if and elif : use bool()
@@ -554,13 +552,28 @@ function py2js(src,context){
                 stack.list[kw_pos+1][0]="function_id"
                 seq = stack.list.slice(kw_pos+1,block[0]+1)
                 var fbody = stack.list.slice(block[0]+1,block[1])
+                // globals ?
+                var globals={}
+                var fstack = new Stack(fbody)
+                var global_pos = fstack.find_next(0,'keyword','global')
+                if(global_pos!==null){
+                    var globs = fstack.atom_at(global_pos+1,true)
+                    if(globs.type=="id" || globs.type=="tuple" ||
+                        globs.type=="function_call"){
+                            var glob_list = globs.list()
+                            for(var i=0;i<glob_list.length;i++){
+                                if(glob_list[i][0]=='id'){globals[glob_list[i][1]]=0}
+                            }
+                    }
+                    fbody.splice(global_pos,glob_list.length+1)
+                }
                 // create function namespace
                 fbody.splice(0,0,['code','$ns["'+func_name[1]+'"]={};',0])
                 seq = seq.concat(fbody)
-                // mark all ids with function name
+                // mark all non-global ids with function name
                 for(var i=0;i<seq.length;i++){
                     if(seq[i][0]=="id" || seq[i][0]=="assign_id"){
-                        seq[i].push(func_name[1])
+                        if(!(seq[i][1] in globals)){seq[i].push(func_name[1])}
                     }
                 }
                 stack.list = stack.list.slice(0,kw_pos+1)
