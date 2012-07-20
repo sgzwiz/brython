@@ -368,13 +368,7 @@ Stack.prototype.split = function(delimiter){
 
 Stack.prototype.find_block = function(pos){
         var item = this.list[pos]
-        var closing_pos = null
-        for(i=pos+1;i<this.list.length;i++){
-            if(this.list[i][0]=="delimiter" && this.list[i][1]==":"){
-                closing_pos = i
-                break
-            }
-        }
+        var closing_pos = this.find_next_at_same_level(pos+1,'delimiter',':')
         if(closing_pos!=null){
             // find block end : the newline before the first indentation equal
             // to the indentation of the line beginning with the keyword
