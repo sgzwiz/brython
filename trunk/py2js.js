@@ -201,6 +201,10 @@ function py2js(src,context){
                         $ForEach(kvs).Do(function(kv){
                             // each kv has attributes start and end = position in args
                             var elts = kv.split(':')
+                            if(elts.length!=2){
+                                document.line_num = pos2line[br_pos]
+                                throw new SyntaxError("invalid syntax")
+                            }
                             var key = elts[0] // key.start = position in kv
                             var value = elts[1]
                             // key and value are atoms with start and end relative to kv
@@ -251,6 +255,9 @@ function py2js(src,context){
         if(def_pos==null){break}
         var func_token = stack.list[def_pos+1]
         var arg_start = stack.list[def_pos+2]
+        document.line_num = pos2line[func_token[2]]
+        if(!func_token[0]=='id'){throw new SyntaxError("wrong type after def")}
+        if(arg_start[0]!='bracket' || arg_start[1]!='('){throw new SyntaxError("missing ( after function name")}
         if(func_token[0]=='id' && arg_start[0]=='bracket'
             && arg_start[1]=='(' && 
             !(stack.list[def_pos+3][0]=="bracket" && stack.list[def_pos+3][1]==")")){
@@ -486,12 +493,15 @@ function py2js(src,context){
                     seq = []
                     loop_id++
                     if(kw_indent){seq.push(['indent',kw_indent,src_pos])}
-                    seq.push(['id','$Iterable'+loop_id,src_pos])
-                    seq.push(['assign','=',src_pos])
-                    seq.push(['id','iter',src_pos])
+                    seq = seq.concat([['id','$Iterable'+loop_id,src_pos],
+                        ['assign','=',src_pos],['id','iter',src_pos]])
+                    if(iterable.type=="tuple"){ // implicit tuple
+                        seq = seq.concat([['bracket','(',src_pos],['id','tuple',src_pos]])
+                    }
                     seq.push(['bracket','(',src_pos])
                     seq = seq.concat(stack.list.slice(iterable.start,iterable.end+1))
                     seq.push(['bracket',')',src_pos])
+                    if(iterable.type=="tuple"){seq.push(['bracket',')',src_pos])}
                     seq.push(['newline','\n',src_pos])
                     if(kw_indent){seq.push(['indent',kw_indent,src_pos])}
                     seq.push(['code','while(true){',src_pos])
