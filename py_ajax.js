@@ -28,18 +28,14 @@ function $AjaxClass(){
         var state = this.readyState
         var req = this.$ajax
         var timer = this.$requestTimer
-        if(state===0 && 'on_uninitialized' in req){
-            req.on_uninitialized(str($xmlhttp.status),str($xmlhttp.responseText))
-        }else if(state===1 && 'on_loading' in req){
-            req.on_loading(str($xmlhttp.status),str($xmlhttp.responseText))
-        }else if(state===2 && 'on_loaded' in req){
-            req.on_loaded(str($xmlhttp.status),str($xmlhttp.responseText))
-        }else if(state===3 && 'on_interactive' in req){
-            req.on_interactive(str($xmlhttp.status),str($xmlhttp.responseText))
-        }else if(state===4 && 'on_complete' in req){
+        var obj = new $XmlHttpClass($xmlhttp)
+        if(state===0 && 'on_uninitialized' in req){req.on_uninitialized(obj)}
+        else if(state===1 && 'on_loading' in req){req.on_loading(obj)}
+        else if(state===2 && 'on_loaded' in req){req.on_loaded(obj)}
+        else if(state===3 && 'on_interactive' in req){req.on_interactive(obj)}
+        else if(state===4 && 'on_complete' in req){
             if(timer !== null){window.clearTimeout(timer)}
-            obj = new $XmlHttpClass($xmlhttp)
-            req.on_complete(int($xmlhttp.status),str($xmlhttp.responseText))
+            req.on_complete(obj)
         }
     }
 
@@ -79,48 +75,4 @@ function $AjaxClass(){
 
 function ajax(){
     return new $AjaxClass()
-}
-
-function unfold(periode,code_prog){
-
-    xmlhttp.onreadystatechange=function(){
-        $("progress").innerHTML = "sending, state "+xmlhttp.readyState
-        if(xmlhttp.readyState==4){
-            clearTimeout(requestTimer);
-            if(xmlhttp.status==200){
-                resp=xmlhttp.responseText;
-                document.getElementById("progress").innerHTML = 'ok'
-                elt = $('div'+code_prog)
-                elt.innerHTML = resp
-                toggler.innerHTML='-'
-            } else {
-                msg = '<b style="color:red;">Your changes could not been saved</b>'
-                msg += ' - Error status '+xmlhttp.status
-                document.getElementById("progress").innerHTML = msg
-                trace(xmlhttp.responseText)
-            }
-        } else {
-            document.getElementById("progress").style.visibility = "visible"
-        }
-    }
-    params = "periode="+periode
-    params += "&code_prog="+code_prog
-
-    // if no reply after requestTimeOut seconds, abort request
-    // found at http://ajaxpatterns.org/XMLHttpRequest_Call#Detecting_Errors
-    requestTimeout = 7
-    requestTimer = setTimeout(function() {
-           xmlhttp.abort();
-           msg = 'Server did not within '+requestTimeout+' seconds - abort request'
-           document.getElementById("progress").innerHTML = msg
-         }, requestTimeout*1000); 
-    
-    try{
-        xmlhttp.open("POST","liste_projets",false);
-        xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
-        xmlhttp.send(params);
-    } catch(err) {
-        document.getElementById("progress").innerHTML = "error "+err.description
-        document.getElementById("progress").style.visibility = "visible" 
-    }
 }

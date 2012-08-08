@@ -52,12 +52,6 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     if($other_kw!=null){$ns[$fname][$other_kw]=dict($keys,$values)}
 }
 
-function PyConvArgs(){
-    var $i=0,$args = []
-    for($i=0;$i<arguments.length;$i++){$args.push(arguments[$i])}
-    $MakeArgs($arguments)
-}
-
 function $Assign(targets,right_expr,assign_pos){
     var i=0,target=null
     var rlist = right_expr.list()
@@ -93,13 +87,6 @@ function $Assign(targets,right_expr,assign_pos){
     }
     return seq
 }
-
-// source text of the PyConvArgs function
-PyConvArgs += ''
-var lines = PyConvArgs.split('\n')
-lines = lines.slice(1,lines.length-1)
-PyConvArgs = ''
-for(var i=0;i<lines.length;i++){PyConvArgs += lines[i]+'\n'}
 
 $OpeningBrackets = $List2Dict('(','[','{')
 
@@ -228,6 +215,7 @@ function py2js(src,context){
                         }
                         sequence.pop() // remove last comma
                     }
+                    sequence.push(['bracket',')',stack.list[end][2]])
                 }else if(pyType=='tuple'){
                     var args = new Stack(stack.list.slice(br_elt+1,end))
                     var kvs = args.split(',') // array of Stack instances
@@ -237,11 +225,79 @@ function py2js(src,context){
                         stack.list[end-1]=['code',''] // remove last comma
                     }
                     sequence = sequence.concat(stack.list.slice(br_elt+1,end))
-                } else {
-                    sequence = sequence.concat(stack.list.slice(br_elt+1,end))
+                    sequence.push(['bracket',')',stack.list[end][2]])
+                }else{ // list
+                    var args = new Stack(stack.list.slice(br_elt+1,end))
+                    if(end > br_elt+1){ // not empty list
+                        var expr = args.atom_at(0,true)
+                        if(expr.end==args.list.length-1){ // simple list
+                            sequence = sequence.concat(stack.list.slice(br_elt+1,end))
+                            sequence.push(['bracket',')',stack.list[end][2]])
+                        }else{ //list comprehension ?
+                            var loops = []
+                            var condition = null
+                            var start = expr.end+1
+                            while(true){
+                                if(start>args.list.length-1){break}
+                                var $next = args.list[start]
+                                if($next[0]!='keyword' || $next[1]!='for'){break}
+                                var items = args.atom_at(start+1,true)
+                                if(items.list().length == 0){
+                                    document.line_num = pos2line[br_pos]
+                                    throw new SyntaxError("invalid syntax - no target list after 'for'")
+                                }
+                                var $next = args.list[items.end+1]
+                                if($next===undefined || $next[0]!=='operator'
+                                    || $next[1]!=='in'){
+                                    document.line_num = pos2line[br_pos]
+                                    log($next)
+                                    throw new SyntaxError("invalid syntax - missing 'in'")
+                                }
+                                var $src = args.atom_at(items.end+2,true)
+                                loops.push(args.list.slice(start,$src.end+1))
+                                start = $src.end+1
+                            }
+                            if(loops.length==0){
+                                document.line_num = pos2line[br_pos]
+                                throw new SyntaxError("invalid syntax")
+                            }
+                            if(start<args.list.length){
+                                var $next = args.list[start]
+                                if($next[0]=='keyword' || $next[1]=='if'){
+                                    condition = args.list.slice(start,args.list.length-1)
+                                }
+                            }
+                            sequence = [['code','$res=list()\n']]
+                            var lcindent = args.indent(br_elt)
+                            console.log(loops.length)
+                            for(var i=0;i<loops.length;i++){
+                                sequence.push(['indent',lcindent])
+                                console.log(loops[i])
+                                sequence = sequence.concat(loops[i])
+                                sequence.push(['delimiter',':'])
+                                sequence.push(['newline','\n'])
+                                lcindent += 4
+                            }
+                            if(condition){
+                                sequence.push(['indent',lcindent])
+                                sequence = sequence.concat(condition)
+                                sequence.push(['delimiter',':'])
+                                sequence.push(['newline','\n'])
+                                lcindent += 4
+                            }
+                            sequence.push(['indent',lcindent],['id','$res'],['point','.'],['id','append'],
+                                ['bracket','('])
+                            sequence = sequence.concat(expr.list())
+                            sequence.push(['bracket',')'])
+                            var s = new Stack(sequence)
+                            s.dump()
+                            alert(s.to_js())
+
+                       }
+                    }
                 }
-                sequence.push(['bracket',')',stack.list[end][2]])
                 tail = stack.list.slice(end+1,stack.list.length)
+                alert(tail)
                 stack.list = stack.list.slice(0,br_elt)
                 stack.list = stack.list.concat(sequence)
                 stack.list = stack.list.concat(tail)
@@ -276,6 +332,7 @@ function py2js(src,context){
             var args = s.split(',') // list of stacks
             var required = []
             var defaults = {}
+            var has_defaults = false
             var other_args = null
             var other_kw = null
             for(i=args.length-1;i>=0;i--){
@@ -299,6 +356,7 @@ function py2js(src,context){
                     if(elts.length>1){
                         // argument with default value
                         defaults[elts[0].list[0][1]]=elts[1].list[0][1]
+                        has_defaults = true
                         // remove argument
                         if(i==0){
                             stack.list.splice(def_pos+3+arg.start,arg.end-arg.start+1)
@@ -316,7 +374,7 @@ function py2js(src,context){
             if(end_def==null){
                 throw new SyntaxError("Unable to find definition end "+end_def)
             }
-            var arg_code = '"'+func_token[1]+'",$args,'
+            var arg_code = '"'+func_token[1]+'",arguments,'
             
             if(required.length==0){arg_code+='[],'}
             else{
@@ -327,18 +385,20 @@ function py2js(src,context){
                 }
                 arg_code = arg_code.substr(0,arg_code.length-1)+"],"
             }
-            req_code = '    $defaults={};\n'
-            for(x in defaults){
-                req_code += '    $defaults["'+x+'"]='+defaults[x]+'\n'
+
+            var def_code = '{'
+            if(has_defaults){
+                for(x in defaults){def_code += '"'+x+'":'+defaults[x]+','}
+                def_code = def_code.substr(0,def_code.length-1)
             }
-            arg_code += '$defaults,'
+            def_code += '}'
+            arg_code += def_code+','
             if(other_args==null){arg_code+="null,"}
             else{arg_code += '"'+other_args+'",'}
             if(other_kw==null){arg_code+="null"}
             else{arg_code += '"'+other_kw+'"'}
             var fcode = "    $fname='"+func_token[1]+"'\n"
-            var conv_args = PyConvArgs.replace(/\$arguments/,arg_code)
-            stack.list.splice(end_def+1,0,['code',req_code+conv_args,stack.list[end_def][2]])
+            stack.list.splice(end_def+1,0,['code',"$MakeArgs("+arg_code+")",stack.list[end_def][2]])
         }
         pos = def_pos-1
     }
@@ -728,7 +788,7 @@ function py2js(src,context){
         }
     }
 
-    var js2py = {'alert':'$Alert','prompt':'PyPrompt','confirm':'PyConfirm'}
+    var js2py = {'alert':'$alert','prompt':'$prompt','confirm':'$confirm'}
     for(key in js2py){
         pos = 0
         while(true){
@@ -747,6 +807,14 @@ function py2js(src,context){
         if(assign==null){break}
         var left = stack.atom_before(assign,true)
         var right = stack.atom_at(assign+1,true)
+        if(right.type=="tuple"){
+            var first = right.list()[0]
+            if(first[0]!=='bracket' || first[1]!=='('){
+                // transform into explicit tuple
+                stack.list.splice(right.end+1,0,['bracket',')'])
+                stack.list.splice(right.start,0,['code','tuple'],['bracket','('])
+            }
+        }
         if(left.type=="tuple" || left.type=="implicit_tuple"){
             // for multiple assignments
             var list = left.list()
@@ -880,7 +948,7 @@ function brython(debug){
     var elts = document.getElementsByTagName("script")
     for($i=0;$i<elts.length;$i++){
         elt = elts[$i]
-        if(elt.type=="text/brython"){
+        if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
             js = py2js(src).to_js()
             if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}

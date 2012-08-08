@@ -22,8 +22,10 @@ a.sort_link{margin-left:10px;text-decoration:none}
 <button onClick="post('cgi-bin/post_test.py')">POST request</button>
 <button onClick="go('cgi-bin/timeout.py')">timeout</button>
 
-<script id="ascript" type="text/brython">
-def on_complete(status,text):
+<script id="ascript" type="text/python">
+def on_complete(req):
+    status = req.status
+    text = req.text
     if status==200:
         doc["result"].html = text
     else:

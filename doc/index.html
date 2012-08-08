@@ -1,0 +1,150 @@
+<html>
+<head>
+<title>Brython</title>
+<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<link rel="stylesheet" href="brython.css">
+<script src="/brython.js"></script>
+</head>
+<body onload="brython()">
+
+<img src="/brython.png">
+
+<p>L'objectif de Brython est d'utiliser Python comme langage de script pour les navigateurs web, à la place de Javascript
+<p>Un exemple simple :
+<table>
+<tr>
+<td>
+CODE<br>
+<pre>&lt;html&gt;
+&lt;head&gt;
+&lt;script src="/brython.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body onLoad="brython()"&gt;
+&lt;script type="text/python"&gt;
+def echo():
+    alert(doc["zone"].value)
+&lt;/script&gt;
+&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td>
+<td>
+TEST<p>
+<script type="text/python">
+def echo():
+    alert(doc["zone"].value)
+</script>
+
+<input id="zone"><button onclick="echo()">clic !</button>
+</td>
+</tr>
+</table>
+
+<p>Pour faire fonctionner les scripts Python, il suffit d'importer le script <em>brython.js</em>, et d'exécuter la fonction <code>brython()</code> quand la page est chargée (attribut <tt>onload</tt> de la balise &lt;BODY&gt;)
+<p>Quand on clique sur le bouton, la fonction <code>echo()</code> définie dans le script Python est exécutée. Cette fonction récupère la valeur de l'élément INPUT par son id <tt>zone</tt>, en utilisant la syntaxe <code>doc["zone"]</code> au lieu de <code>document.getElementById("zone")</code> en Javascript : <code>doc</code> est un mot-clé de Brython, il se comporte comme un dictionnaire indexé par les id des éléments DOM. <code>doc["zone"]</code> est un objet correspondant à l'élément INPUT ; on accède à la valeur par l'attribut <tt>value</tt>
+<p>L'affichage est réalisé par une fonction intégrée de Brython, <code>alert()</code>, qui se comporte comme la fonction du même nom en Javascript
+
+<h2>Différences entre Python et Brython</h2>
+Brython supporte l'essentiel des mots-clés et des fonctions de Python 3 :
+<ul><li>mots clés : <code>break continue def elif else except False finally for global if import None pass return True try while </code>
+<li>fonctions intégrées : <code>abs() all() any() bool() dict() enumerate() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
+</ul>
+
+Ne sont pas pris en charge : 
+<ul>
+<li>les mots-clés <code>as assert class del from is lambda nonlocal raise with yield</code>. On ne peut pas définir de classe par le mot-clé <code>class</code>, il faut utiliser les types intégrés (listes, dictionnaires, ensembles)
+<li>parmi les fonctions intégrées :
+<ul><li>certaines seront peut-être intégrées dans des versions futures : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), dir(), divmod(), eval(), exec(), format(), frozenset(), globals() ,hex(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code>
+<li>d'autres ont peu de chances d'être intégrées : <code>bytearray(), bytes(), compile(), hash(), help(), id(), memoryview(), property(), super(), __import__() </code>
+<li>certaines ne sont pas pertinentes dans le contexte d'un navigateur : <code>input() open() print()</code>
+</ul>
+<li>la syntaxe des listes en extansion : <code>[ expr for item in iterable if condition ]</code> (trop difficile à implémenter en Javascript)
+</ul>
+
+Enfin, certains mots clés et fonctions intégrées sont ajoutées :
+<ul>
+<li>les fonctions intégrées <code>alert confirm prompt</code> correspondent à leur équivalent Javascript
+<li>la fonction intégrée <code>ajax</code> permet l'exécution de requêtes HTTP en mode Ajax
+<li>le mot clé <code>doc</code> représente le document HTML
+<li>les fonctions intégrées <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : chacune correspond à la balise HTML de même nom
+
+<p>
+<table class="transforms">
+<tr>
+<th>Python</th>
+<th>Javascript</th>
+</tr>
+
+<tr>
+<td><pre>for obj in iterable:
+    (...)</pre></td>
+<td><pre>$Iterable1 = iter(iterable)
+while(true){ 
+    try{ 
+        var $Next = next($Iterable1) 
+        obj = $Next
+        (...) 
+    }catch(err){ 
+        if(err.name=="StopIteration"){break} 
+        else{throw err} 
+    } 
+}</pre>
+</td>
+</tr>
+
+<tr>
+<td><pre>x,y = iterable</pre></td>
+<td><pre>var $var = iter(iterable)
+x = next($var)
+y = next($var)</pre>
+</td>
+</tr>
+
+<tr>
+<td><pre>def foo(x,y=3,*args,**kw):
+   (...)
+</pre></td>
+<td><pre>function foo(x){
+    $ns["foo"]={}
+    $MakeArgs("foo",arguments,['x'],{"y":3},"args","kw")
+    (...)
+}
+foo.__class__ = Function
+window.foo=foo; 
+</td>
+</tr>
+
+</table>
+
+<table class="transforms">
+<tr>
+<th>Javascript</th>
+<th>Python</th>
+</tr>
+
+<tr>
+<td><pre>document</td>
+<td><pre>doc</pre>
+</td>
+</tr>
+
+<tr>
+<td><pre>document.getElementById(elt_id)</td>
+<td><pre>doc[elt_id]</pre>
+</td>
+</tr>
+
+</table>
+
+<p>Ajax
+<pre>req = ajax()
+req.on_complete = on_complete
+req.set_timeout(timeout,err_msg)
+req.open('POST',url,True)
+req.set_header('content-type','application/x-www-form-urlencoded')
+req.send(data)
+</pre>
+
+</body>
+</html>

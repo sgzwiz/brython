@@ -5,12 +5,12 @@ body,td,th{font-family:sans-serif}
 a.sort_link{margin-left:10px;text-decoration:none}
 </style>
 
-<script src="../brython.js"></script>
+<script src="/brython.js"></script>
 
 </head>
 <body onLoad="brython()">
 
-<script type="text/brython">
+<script type="text/python">
 items = ['unan','daou','tri','pevar','pemp']
 
 def swap(src,dest):
@@ -44,14 +44,15 @@ tb = TBODY()
 up_down_left = BUTTON('\u2191',onClick="up(left)")
 up_down_left += BR()+BUTTON('\u2193',onClick="down(left)")
 
-left = SELECT(size=10,style="width:200px")
+left = SELECT(size=10)
+
 for i,_item in enumerate(items):
     left <= OPTION(_item,value=i,width=40)
 
 buttons = BUTTON('>',onClick="swap(left,right)")
 buttons += BR()+BUTTON('<',onClick="swap(right,left)")
 
-right = SELECT(size=10,style="width:200px")
+right = SELECT(size=10)
 
 up_down_right = BUTTON('\u2191',onClick="up(right)")
 up_down_right += BR()+BUTTON('\u2193',onClick="down(right)")

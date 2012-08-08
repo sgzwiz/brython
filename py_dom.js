@@ -239,7 +239,7 @@ function $TagClass(_class,args){
     var $obj = this
     if(_class!=undefined){
         this.name = str(_class).value
-        eval("this.__class__ ="+_class)
+        eval("this.__class__ =_class")
         this.elt = document.createElement(this.name)
         this.elt.$parent = this
     }
@@ -315,7 +315,7 @@ $TagClass.prototype.__iadd__ = function(other){
     this.__class__ = $AbstractTag // change to abstract tag
     this.children = [this.elt]
     if($isinstance(other,$AbstractTag)){
-        for($i=0;$i<other.children.length;$i++){
+        for(var $i=0;$i<other.children.length;$i++){
         this.children.push(other.children[$i])
         }
     } else {this.children.push(other.elt)}
@@ -483,11 +483,14 @@ $tags = ['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
             'HR', 'IMG', 'INPUT', 'ISINDEX', 'LINK',
             'META', 'PARAM']
 
-$tags = $tags.concat(['CIRCLE','ELLIPSE','SVG','TEXT','RECT'])
+// HTML5 tags
+$tags = $tags.concat(['ARTICLE','ASIDE','FIGURE','FOOTER','HEADER','NAV',
+    'SECTION','AUDIO','VIDEO','CANVAS','COMMAND','DATALIST',
+    'DETAILS','OUTPUT','PROGRESS','HGROUP','MARK','METER','TIME',
+    'RP','RT','RUBY'])
 
 // create classes
 for($i=0;$i<$tags.length;$i++){
     $code = $src.replace(/A/gm,$tags[$i])
     eval($code)
 }
-
