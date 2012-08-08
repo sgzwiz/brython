@@ -13,15 +13,22 @@ function $JS2Py(src){
     } else if(typeof src=="object"){
         if(src.constructor===Array){return new $ListClass(src)}
         else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
-        //else if(src.constructor===MouseEvent){return new $MouseEvent(src)}
         else{
             try{if(src.constructor==DragEvent){return new $MouseEvent(src)}}
             catch(err){void(0)}
             try{if(src.constructor==MouseEvent){return new $MouseEvent(src)}}
             catch(err){void(0)}
+            if(src.__class__!==undefined){return src}
             return new $DomObject(src)
         }
     }else{return src}
+}
+
+// define a function __eq__ for functions to allow test on Python classes
+// such as object.__class__ == SomeClass
+Function.prototype.__eq__ = function(other){
+    if(typeof other !== 'function'){return False}
+    return $bool_conv((other+'')===(this+''))
 }
 
 function $List2Dict(){
@@ -190,7 +197,7 @@ Stack.prototype.get_atoms = function(){
         return atoms
     }
 
-Stack.prototype.atom_at = function(pos,implicit_tuple){
+Stack.prototype.atom_at1 = function(pos,implicit_tuple){
         // return the atom starting at specified position
         // an atom is an identifier
         // with optional qualifiers :  x.foo
@@ -199,11 +206,13 @@ Stack.prototype.atom_at = function(pos,implicit_tuple){
         atom = new Atom(this)
         atom.start = pos
         var dict1 = $List2Dict('id','assign_id','str','int','float')
+        console.log('atom at '+this.list[pos])
         if(this.list[pos][0] in dict1){
             atom.type = this.list[pos][0]
             end = pos
             while(end<this.list.length-1){
                 var item = this.list[end+1]
+                console.log('atom at '+item)
                 if(item[0] in dict1){
                     end += 1
                 } else if(item[0]=="point"||item[0]=="qualifier"){
@@ -240,6 +249,82 @@ Stack.prototype.atom_at = function(pos,implicit_tuple){
             return atom
         }
     }
+
+Stack.prototype.raw_atom_at = function(pos){
+    atom = new Atom(this)
+    atom.valid_type = true
+    atom.start = pos
+    if(pos>this.list.length-1){
+        atom.valid_type = false
+        atom.end = pos
+        return atom
+    }
+    var dict1 = $List2Dict('id','assign_id','str','int','float')
+    if(this.list[pos][0] in dict1){
+        atom.type = this.list[pos][0]
+        end = pos
+        while(end<this.list.length-1){
+            var item = this.list[end+1]
+            if(item[0] in dict1 && atom.type=="qualified_id"){
+                end += 1
+            } else if(item[0]=="point"||item[0]=="qualifier"){
+                atom.type = "qualified_id"
+                end += 1
+            } else if(item[0]=="bracket" && item[1]=='('){
+                atom.type = "function_call"
+                end = this.find_next_matching(end+1)
+            } else if(item[0]=="bracket" && item[1]=='['){
+                atom.type = "slicing"
+                end = this.find_next_matching(end+1)
+            } else {
+                break
+            }
+        }
+        atom.end = end
+        return atom
+    } else if(this.list[pos][0]=="bracket" && 
+        (this.list[pos][1]=="(" || this.list[pos][1]=='[')){
+        atom.type = "tuple"
+        atom.end = this.find_next_matching(pos)
+        return atom
+    } else {
+        atom.type = this.list[pos][0]
+        atom.valid_type = false
+        atom.end = pos
+        return atom
+    }
+}
+
+Stack.prototype.tuple_at = function(pos){
+    var first = this.raw_atom_at(pos)
+    var items=[first]
+    while(true){
+        var last = items[items.length-1]
+        if(last.end+1>=this.list.length){break}
+        var delim = this.list[last.end+1]
+        if(delim[0]=='delimiter' && delim[1]==','){
+            var next=this.raw_atom_at(last.end+2)
+            if(next !==null && next.valid_type){items.push(next)}
+            else{break}
+        }else{break}
+    }
+    return items
+}
+
+Stack.prototype.atom_at = function(pos,implicit_tuple){
+    if(!implicit_tuple){return this.raw_atom_at(pos)}
+    else{
+        var items = this.tuple_at(pos) // array of raw atoms
+        atom = new Atom(this)
+        if(items.length==1){return items[0]}
+        else{
+            atom.type="tuple"
+            atom.start = items[0].start
+            atom.end = items[items.length-1].end
+            return atom
+        }
+    }
+}
 
 Stack.prototype.atom_before = function(pos,implicit_tuple){
         // return the atom before specified position

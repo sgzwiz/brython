@@ -1,0 +1,21 @@
+body,td { font-family: arial, sans-serif;
+    font-size: 14px;
+}
+code { font-size:15px;
+    font-weight: bold;
+    color:#33A;
+}
+tt { font-size:15px;
+    font-weight: bold;
+    color:#A33;
+}
+
+table.transforms{
+    border-width: 1px;
+    border-style: solid;
+    border-color: red;
+}
+td{
+    vertical-align: top;
+    padding: 5px;
+}

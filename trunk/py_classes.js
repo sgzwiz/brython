@@ -80,6 +80,8 @@ function abs(obj){
     else{throw new TypeError("Bad operand type for abs(): '"+$str(obj.__class__)+"'")}
 }
 
+function $alert(src){alert(str(src).value)}
+
 function all(iterable){
     while(true){
         try{
@@ -113,6 +115,8 @@ function $bool(obj){ // return true or false ; used for if / elif
 function $bool_conv(arg){if(arg){return True}else{return False}}
 
 function bool(obj){return $bool_conv($bool(obj))}
+
+function $confirm(src){return $bool_conv(confirm(src.value))}
 
 // dictionary
 function $DictClass($keys,$values){
@@ -904,6 +908,9 @@ function $ObjectClass(){
 function object(){
     return new $ObjectClass()
 }
+
+function $prompt(src){return str(prompt(src.value))}
+
 function $ReversedClass(seq){
     this.iter = null
     this.__next__ = function(){
@@ -1565,8 +1572,6 @@ function $NoneClass(){
 }
 None = new $NoneClass()
 
-// alert
-function $Alert(src){alert(str(src).value)}
 
 // slice
 function $SliceClass(start,stop,step){
