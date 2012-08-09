@@ -1744,15 +1744,10 @@ lcindent +=4
 sequence.push(['indent',lcindent],['id','$res'],['point','.'],['id','append'],
 ['bracket','('])
 sequence=sequence.concat(expr.list())
-sequence.push(['bracket',')'])
-var s=new Stack(sequence)
-s.dump()
-alert(s.to_js())
 }
-}
+}else{sequence.push(['bracket',')',stack.list[end][2]])}
 }
 tail=stack.list.slice(end+1,stack.list.length)
-alert(tail)
 stack.list=stack.list.slice(0,br_elt)
 stack.list=stack.list.concat(sequence)
 stack.list=stack.list.concat(tail)
