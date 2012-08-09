@@ -46,6 +46,22 @@ def echo():
 <p>L'affichage est réalisé par une fonction intégrée de Brython, <code>alert()</code>, qui se comporte comme la fonction du même nom en Javascript
 
 <h2>Différences entre Python et Brython</h2>
+
+<h3>Syntaxe</h3>
+Brython est conforme à la syntaxe de Python
+<ul>
+<li>bloc délimités par l'indentation
+<li>définition de listes par <code>[]</code> ou <code>list()</code>, de tuples par <code>()</code> ou <code>tuple()</code>, de dictionnaires par <code>{}</code> ou <code>dict()</code>, d'ensembles par <code>set()</code>
+<li>la définition des fonctions peut comporter des valeurs par défaut et des arguments et mot-clés optionnels : <code>def foo(x,y=0,*args,**kw):</code>
+</ul>
+
+<p>Certaines syntaxes ne sont pas prises en compte
+<ul>
+<li>les listes en extansion : <code>[ expr for item in iterable if condition ]</code> (trop difficile à implémenter en Javascript)
+</ul>
+
+<h3>Mots clés et fonction intégrées</h3>
+
 Brython supporte l'essentiel des mots-clés et des fonctions de Python 3 :
 <ul><li>mots clés : <code>break continue def elif else except False finally for global if import None pass return True try while </code>
 <li>fonctions intégrées : <code>abs() all() any() bool() dict() enumerate() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
@@ -59,15 +75,25 @@ Ne sont pas pris en charge :
 <li>d'autres ont peu de chances d'être intégrées : <code>bytearray(), bytes(), compile(), hash(), help(), id(), memoryview(), property(), super(), __import__() </code>
 <li>certaines ne sont pas pertinentes dans le contexte d'un navigateur : <code>input() open() print()</code>
 </ul>
-<li>la syntaxe des listes en extansion : <code>[ expr for item in iterable if condition ]</code> (trop difficile à implémenter en Javascript)
 </ul>
 
-Enfin, certains mots clés et fonctions intégrées sont ajoutées :
+Enfin, certains mots clés et fonctions intégrées adaptées au fonctionement dans un navigateur sont ajoutées :
 <ul>
 <li>les fonctions intégrées <code>alert confirm prompt</code> correspondent à leur équivalent Javascript
 <li>la fonction intégrée <code>ajax</code> permet l'exécution de requêtes HTTP en mode Ajax
 <li>le mot clé <code>doc</code> représente le document HTML
 <li>les fonctions intégrées <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : chacune correspond à la balise HTML de même nom
+</ul>
+
+<h3>Manipulation de documents HTML</h3>
+
+Une page HTML est considérée comme un arbre, dont le sommet est représenté par le mot-clé <code>doc</code> et les noeuds sont soit des objets intégrés Python (chaines de caractères, entiers...) soit des objets créés par les fonctions correspondant aux balises HTML
+<p>La syntaxe pour créer un objet (par exemple un lien hypertexte) est :
+<dl><dt><code>A(<i>[text,[attributes]]</i>)</code>
+<dd>
+</dl>
+
+<h3>Ajax</h3>
 
 <p>
 <table class="transforms">
