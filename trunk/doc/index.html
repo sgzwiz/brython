@@ -50,7 +50,7 @@ def echo():
 <h3>Syntaxe</h3>
 Brython est conforme à la syntaxe de Python
 <ul>
-<li>bloc délimités par l'indentation
+<li>blocs délimités par l'indentation
 <li>définition de listes par <code>[]</code> ou <code>list()</code>, de tuples par <code>()</code> ou <code>tuple()</code>, de dictionnaires par <code>{}</code> ou <code>dict()</code>, d'ensembles par <code>set()</code>
 <li>la définition des fonctions peut comporter des valeurs par défaut et des arguments et mot-clés optionnels : <code>def foo(x,y=0,*args,**kw):</code>
 </ul>
@@ -77,7 +77,7 @@ Ne sont pas pris en charge :
 </ul>
 </ul>
 
-Enfin, certains mots clés et fonctions intégrées adaptées au fonctionement dans un navigateur sont ajoutées :
+Enfin, certains mots clés et fonctions intégrées adaptés au fonctionnement dans un navigateur sont ajoutés :
 <ul>
 <li>les fonctions intégrées <code>alert confirm prompt</code> correspondent à leur équivalent Javascript
 <li>la fonction intégrée <code>ajax</code> permet l'exécution de requêtes HTTP en mode Ajax
@@ -89,11 +89,67 @@ Enfin, certains mots clés et fonctions intégrées adaptées au fonctionement dans 
 
 Une page HTML est considérée comme un arbre, dont le sommet est représenté par le mot-clé <code>doc</code> et les noeuds sont soit des objets intégrés Python (chaines de caractères, entiers...) soit des objets créés par les fonctions correspondant aux balises HTML
 <p>La syntaxe pour créer un objet (par exemple un lien hypertexte) est :
-<dl><dt><code>A(<i>[text,[attributes]]</i>)</code>
-<dd>
+<dl><dt><code>A(<i>[content,[attributes]]</i>)</code>
+<dd><em>content</em> est le noeud "fils" de l'objet ; <em>attributes</em> est une suite de mots-clés correspondant aux attributs de la balise HTML. Ces attributs doivent être fournis avec la syntaxe Javascript, pas CSS : <em>backgroundColor</em> et pas <em>background-color</em>
 </dl>
+Exemple :
+<p><pre>link1 = A('Brython',href='http://www.brython.info')
+link2 = A(B('Python'),href='http://www.python.org')
+</pre>
 
+<p>On peut aussi créer un objet sans argument, puis le compléter :
+<ul>
+<li>pour ajouter un noeud enfant, utiliser l'opérateur <=
+<li>pour ajouter des attributs, utiliser la syntaxe Python classique
+</ul>
+<p>par exemple :
+<p><pre>link = A()
+link <= B('connexion')
+link.href = 'http://exemple.com'
+</pre>
+<p>On peut aussi créer plusieurs éléments de même niveau par addition :
+<p><pre>row = TR(TH('Nom')+TH('Prénom'))</pre>
+<p>En combinant ces opérateurs et la syntaxe Python, voici comment créer une boite de sélection à partir d'une liste :
+<p><pre>items = ['un','deux','trois']
+sel = SELECT()
+for i,elt in enumerate(items):
+    sel <= OPTION(elt,value=i)
+doc <= sel
+</pre>
+<p>Les éléments créés par les fonctions telles que SELECT ont des attributs de même nom que les objets Javascript correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT
 <h3>Ajax</h3>
+La fonction intégrée <code>ajax()</code> renvoie un objet comparable à XMLHTTPRequest en Javascript, mais son interface est légèrement différente. Il possède les méthodes suivantes
+
+<ul><li><code>open(<em>methode,url,async</em>)</code> : <em>methode</em> est la méthode HTTP utilisée pour la requête (habituellement GET ou POST), <em>url</em> est l'url appelée, <em>async</em> est un booléen qui indique si l'appel est asynchrone ou non
+<li><code>set_header(<em>nom,valeur</em>)</code> : affecte la valeur <em>valeur</em> à l'entête <em>nom</em>
+<li><code>set_timeout(<em>duree,fonction</em>)</code> : si la requête n'a pas renvoyé de réponse dans les <em>duree</em> secondes, annule la requête et exécute la <em>fonction</em>. Cette fonction ne prend pas d'argument
+<li><code>send()</code> : lance la requête
+</ul>
+Pour interagir avec le serveur, il faut définir les attributs suivants, correspondant à chaque état de la variable <tt>readyState</tt> en Javascript :
+<p><table><tr><th>readyState</th><th>attribut</th></tr>
+<tr><td>0</td><td><code>on_uninitialized</code></td></tr>
+<tr><td>1</td><td><code>on_loading</code></td></tr>
+<tr><td>2</td><td><code>on_loaded</code></td></tr>
+<tr><td>3</td><td><code>on_interactive</code></td></tr>
+<tr><td>4</td><td><code>on_complete</code></td></tr>
+</table>
+<p>L'attribut doit prendre pour valeur une fonction à un seul argument, qui est l'objet <code>ajax</code>. Cet objet possède les attributs suivants :
+<ul>
+<li><code>status</code> : un entier représentant le statut HTTP de la requête
+<li><code>text</code> : la réponse du serveur sous forme de chaine de caractères (correspond à <tt>responseText</tt> en Javascript)
+<li><code>xml</code> : la réponse du serveur sous forme d'objet DOM (correspond à <tt>responseXML</tt> en Javascript)
+</ul>
+
+
+<pre>req = ajax()
+req.on_complete = on_complete
+req.set_timeout(timeout,err_msg)
+req.open('POST',url,True)
+req.set_header('content-type','application/x-www-form-urlencoded')
+req.send(data)
+</pre>
+
+<h3>Implémentation</h3>
 
 <p>
 <table class="transforms">
@@ -163,14 +219,8 @@ window.foo=foo;
 
 </table>
 
-<p>Ajax
-<pre>req = ajax()
-req.on_complete = on_complete
-req.set_timeout(timeout,err_msg)
-req.open('POST',url,True)
-req.set_header('content-type','application/x-www-form-urlencoded')
-req.send(data)
-</pre>
+
+
 
 </body>
 </html>
