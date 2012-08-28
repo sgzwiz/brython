@@ -19,3 +19,8 @@ td{
     vertical-align: top;
     padding: 5px;
 }
+pre {
+    color: #633;
+    font-weight:bold;
+    margin-left:10px;
+}
