@@ -673,7 +673,7 @@ function py2js(src,context){
             pos = kw_pos+1
         }
     }
-
+    
     var dobj = new Date()
     times['if def class for'] = dobj.getTime()-t0
     
@@ -886,19 +886,30 @@ function py2js(src,context){
             stack.list = stack.list.slice(0,br_pos)
             stack.list = stack.list.concat(sequence).concat(tail)
         } else {
-            var sequence = [['point','.',src_pos],['qualifier','__getitem__',src_pos],
+            var func = '__getitem__'
+            var x = stack.atom_before(br_pos)
+            if(x.start>0){
+                var before = stack.list[x.start-1]
+                if(before[0]=='keyword' && before[1]=='del'){
+                    var func = '__delitem__'
+                }
+            }
+            var sequence = [['point','.',src_pos],['qualifier',func,src_pos],
                 ['bracket','(',src_pos]]
             sequence = sequence.concat(new_args)
             sequence.push(['bracket',')',stack.list[end][2]]) // close __getitem__
             tail = stack.list.slice(end+1,stack.list.length)
             stack.list = stack.list.slice(0,br_pos)
             stack.list = stack.list.concat(sequence).concat(tail)
+            if(func=='__delitem__'){ // remove 'del'
+                stack.list.splice(x.start-1,1)
+            }                
         }
         pos = br_pos-1
     }
 
     var dobj = new Date()
-    times['slincings'] = dobj.getTime()-t0
+    times['slicings'] = dobj.getTime()-t0
 
     // replace qualifiers by __getattr__ or __setattr___
     pos = stack.list.length-1
@@ -916,11 +927,22 @@ function py2js(src,context){
                 ['str',"'"+q_name+"'"],['delimiter',',']]
             seq = seq.concat(ro.list()).concat([['bracket',')']])
             stack.list = stack.list.slice(0,q_pos).concat(seq).concat(tail)
-        }else{ // get attribute
+        }else{ // get attribute if its name doesnt start with __
+            var func = '__getattr__'
+            var x = stack.atom_before(q_pos)
+            if(x.start>0){
+                var before = stack.list[x.start-1]
+                if(before[0]=='keyword' && before[1]=='del'){
+                    var func = '__delattr__'
+                }
+            }
             var q_name = stack.list[q_pos][1]
             if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
-            stack.list.splice(q_pos,1,['id','__getattr__'],['bracket','('],
+            stack.list.splice(q_pos,1,['id',func],['bracket','('],
                 ['str',"'"+q_name+"'"],['bracket',')'])
+            if(func=='__delattr__'){ // remove 'del'
+                stack.list.splice(x.start-1,1)
+            }
         }
         pos = q_pos-1
     }
