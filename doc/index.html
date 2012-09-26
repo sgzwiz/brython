@@ -63,24 +63,30 @@ Brython est conforme à la syntaxe de Python
 <h3>Mots clés et fonction intégrées</h3>
 
 Brython supporte l'essentiel des mots-clés et des fonctions de Python 3 :
-<ul><li>mots clés : <code>break continue def elif else except False finally for global if import None pass return True try while </code>
+<ul><li>mots clés : <code>break continue def del elif else except False finally for global if import None pass return True try while </code>
 <li>fonctions intégrées : <code>abs() all() any() bool() dict() enumerate() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
 Ne sont pas pris en charge : 
 <ul>
-<li>les mots-clés <code>as assert class del from is lambda nonlocal raise with yield</code>. On ne peut pas définir de classe par le mot-clé <code>class</code>, il faut utiliser les types intégrés (listes, dictionnaires, ensembles)
+<li>les mots-clés <code>as assert class from is lambda nonlocal raise with yield</code>
 <li>parmi les fonctions intégrées :
 <ul><li>certaines seront peut-être intégrées dans des versions futures : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), dir(), divmod(), eval(), exec(), format(), frozenset(), globals() ,hex(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code>
 <li>d'autres ont peu de chances d'être intégrées : <code>bytearray(), bytes(), compile(), hash(), help(), id(), memoryview(), property(), super(), __import__() </code>
 <li>certaines ne sont pas pertinentes dans le contexte d'un navigateur : <code>input() open() print()</code>
 </ul>
 </ul>
-
+Le mot-clé <code>class</code> n'étant pas pris en charge, on ne peut pas définir de classe autre que les types intégrés (listes, dictionnaires, ensembles). En revanche, contrairement à Python, on peut ajouter des attributs aux objects créés par la fonction intégrée <code>object()</code> :
+<p><pre>x = object()
+x.foo = 44
+del x.foo
+</pre>
+<p>
 Enfin, certains mots clés et fonctions intégrées adaptés au fonctionnement dans un navigateur sont ajoutés :
 <ul>
 <li>les fonctions intégrées <code>alert confirm prompt</code> correspondent à leur équivalent Javascript
 <li>la fonction intégrée <code>ajax</code> permet l'exécution de requêtes HTTP en mode Ajax
+<li>le mot clé <code>local_storage</code> représente le stockage local spécifié dans HTML5
 <li>le mot clé <code>doc</code> représente le document HTML
 <li>les fonctions intégrées <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : chacune correspond à la balise HTML de même nom
 </ul>
@@ -117,6 +123,13 @@ for i,elt in enumerate(items):
 doc <= sel
 </pre>
 <p>Les éléments créés par les fonctions telles que SELECT ont des attributs de même nom que les objets Javascript correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT
+<p>La collection <code>options</code> associée à un objet SELECT a l'interface d'une liste Python :
+<ul>
+<li>accès à une option par son index : <pre style="display:inline">option = elt.options[index]</pre>
+<li>insertion d'une option à la position <em>index</em> : <pre style="display:inline">elt.options.insert(index,option)</pre>
+<li>insertion d'une option en fin de liste : <pre style="display:inline">elt.options.append(option)</pre>
+<li>suppression d'une option : <pre style="display:inline">del elt.options[index]</pre>
+</ul>
 <h3>Ajax</h3>
 La fonction intégrée <code>ajax()</code> renvoie un objet comparable à XMLHTTPRequest en Javascript, mais son interface est légèrement différente. Il possède les méthodes suivantes
 
@@ -140,7 +153,7 @@ Pour interagir avec le serveur, il faut définir les attributs suivants, correspo
 <li><code>xml</code> : la réponse du serveur sous forme d'objet DOM (correspond à <tt>responseXML</tt> en Javascript)
 </ul>
 
-
+<h4>Exemple</h4>
 <pre>req = ajax()
 req.on_complete = on_complete
 req.set_timeout(timeout,err_msg)
@@ -148,6 +161,19 @@ req.open('POST',url,True)
 req.set_header('content-type','application/x-www-form-urlencoded')
 req.send(data)
 </pre>
+
+<h3>Local storage</h3>
+
+Le stockage local défini par HTML5 (classe <tt>Storage</tt> et objet <tt>localStorage</tt> de Javascript) est accessible sous la syntaxe <code>local_storage</code>. On l'utilise comme un dictionnaire Python classique, sauf que la recherche d'un mot clé inexistant renvoie <code>None</code> au lieu de déclencher une exception, et que la suppression d'une clé inexistante ne déclenche pas non plus d'exception
+
+<h4>Exemple</h4>
+<pre>local_storage['foo']='bar'
+log(local_storage['foo'])
+del local_storage['foo']
+log(local_storage['foo']) # affiche None
+</pre>
+
+
 
 <h3>Implémentation</h3>
 
