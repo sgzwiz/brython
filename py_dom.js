@@ -98,10 +98,20 @@ function $OptionsClass(parent){ // parent is a SELECT tag
 
     this.__getattr__ = function(attr){
         if('get_'+attr.value in this){return eval('this.get_'+attr.value)}
-        return $JS2Py(eval('parent.elt.options.'+attr.value))}
+        if(attr.value in parent.elt.options){
+            var obj = eval('parent.elt.options.'+attr.value)
+            if((typeof obj)=='function'){
+                throw new AttributeError("'options' object has no attribute '"+attr.value+'"')
+            }
+            return $JS2Py(obj)
+        }
+    }
 
-    this.__getitem__ = function(attr){
-        return $DomElement(parent.elt.options[attr.value])
+    this.__getitem__ = function(arg){
+        return $DomElement(parent.elt.options[arg.value])
+    }
+    this.__delitem__ = function(arg){
+        parent.elt.options.remove(arg.value)
     }
 
     this.__len__ = function() {return int(parent.elt.options.length)}
@@ -114,7 +124,11 @@ function $OptionsClass(parent){ // parent is a SELECT tag
         parent.elt.options[attr.value]= $JS2Py(value)
     }
 
-    this.get_add = function(element,index){
+    this.get_append = function(element){
+        parent.elt.options.add(element.elt)
+    }
+
+    this.get_insert = function(index,element){
         if(index===undefined){parent.elt.options.add(element.elt)}
         else{parent.elt.options.add(element.elt,index.value)}
     }
@@ -274,7 +288,10 @@ function $TagClass(_class,args){
                 }else if($arg.name.toLowerCase()=="style"){
                     this.set_style($arg.value)
                 } else {
-                    this.elt.setAttribute($arg.name.toLowerCase(),$arg.value.value)
+                    if($arg.value.value!==false){
+                        // option.selected=false sets it to true :-)
+                        this.elt.setAttribute($arg.name.toLowerCase(),$arg.value.value)
+                    }
                 }
             }
         }
@@ -429,15 +446,12 @@ $TagClass.prototype.make_draggable = function(target){
         ev.preventDefault();
         var elt_id=document.$drag_id
         if(elt_id in this.$accepted){ // dropping the item is accepted
-            log('drop !')
             var dropped = document.getElementById(elt_id)
             if(dropped !== ev.target && dropped.parentElement!==ev.target && dropped.parentElement!==ev.target.parentElement){
                 //ev.target.appendChild(dropped)
             }
             doc.mouse = $mouseCoords(ev)
-            log(ev.target.$parent.on_drop)
             if('on_drop' in ev.target.$parent){
-                log('has drop')
                 ev.target.$parent['on_drop'](ev.target.$parent,dropped.$parent)
             }
         }
