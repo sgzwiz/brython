@@ -18,8 +18,8 @@ def swap(src,dest):
     if selected == -1:
         return
     option = src.options[selected]
-    src.options.remove(selected)
-    dest.options.add(option)
+    del src.options[selected]
+    dest.options.append(option)
     option.selected = False
 
 def up(src):
@@ -27,16 +27,16 @@ def up(src):
     if selected == -1 or selected == 0:
         return
     option = src.options[selected]
-    src.options.remove(selected)
-    src.options.add(option,selected-1)
+    del src.options[selected]
+    src.options.insert(selected-1,option)
 
 def down(src):
     selected = src.selectedIndex
     if selected == -1 or selected == len(src.options)-1:
         return
     option = src.options[selected]
-    src.options.remove(selected)
-    src.options.add(option,selected+1)
+    del src.options[selected]
+    src.options.insert(selected+1,option)
 
 t = TABLE()
 tb = TBODY()
@@ -47,7 +47,9 @@ up_down_left += BR()+BUTTON('\u2193',onClick="down(left)")
 left = SELECT(size=10)
 
 for i,_item in enumerate(items):
-    left <= OPTION(_item,value=i,width=40)
+    option = OPTION(_item,value=i,width=40,Id='opt%s' %i,selected=i==1)
+    log(option.selected)
+    left <= option
 
 buttons = BUTTON('>',onClick="swap(left,right)")
 buttons += BR()+BUTTON('<',onClick="swap(right,left)")

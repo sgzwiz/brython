@@ -1,0 +1,50 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<script src="/brython.js"></script>
+
+</head>
+<body onLoad="brython()">
+<script type="text/python">
+
+def on_complete(req):
+    log(req.text)
+
+def update(elt):
+    req = ajax()
+    req.on_complete = on_complete
+    req.open('POST','/cgi-bin/store.py',True)
+    req.set_header('content-type','application/x-www-form-urlencoded')    
+    req.send({elt.id:elt.value})
+
+nb_cols = 3
+nb_lines = 6
+
+t = TABLE()
+tb = TBODY()
+for i in range(nb_lines):
+    row = TR()
+    for j in range(nb_cols):
+        row <= TD(INPUT(id="cell_%i_%i" %(i,j),onchange="update(this)"))
+    tb <= row
+t <= tb
+doc <= t
+
+# initialize
+def load_data(req):
+    content = req.text
+    log(content)
+    lines = content.split('\n')
+    log(lines)
+    for line in lines:
+        log(line)
+        row,col,data = line.split()
+    
+req = ajax()
+req.on_complete = load_data
+req.open('POST','/cgi-bin/load.py',False)
+req.send()
+
+</script>
+</body>
+</html>
