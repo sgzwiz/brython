@@ -24,3 +24,13 @@ alert(v)
 'azertu'.startswith(('a','sazer'))
 '15'.isdigit()
 ',,'.join(['a','bc'])
+
+x = {1:2,3:4}
+log(x)
+log(x[1])
+del x[1]
+log(x)
+
+x = [1,2,5,8,99,'a']
+del x[1::2]
+log(x)
