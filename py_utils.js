@@ -432,7 +432,7 @@ Stack.prototype.to_js = function(){
             if(x[0]=="indent") {
                 for(j=0;j<x[1];j++){js += " "}
             } else if(x[0] in t2) {
-                if(x[0]=='str'){js += 'str('+x[1].replace(/\n/gm,'\\\n')+')'}
+                if(x[0]=='str'){js += 'str('+x[1].replace(/\n/gm,'\\n')+')'}
                 else if(x[0]=='int'){js += 'int('+x[1]+')'}
                 else if(x[0]=='float'){js += 'float('+x[1]+')'}
                 else if(x[0]=="id"){
