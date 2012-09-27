@@ -1372,7 +1372,7 @@ $StringClass.prototype.endswith = function(){
     if(!$isinstance(suffixes,tuple)){suffixes=$list(suffixes)}
     var start = $ns[0]['start'] || int(0)
     var end = $ns[0]['end'] || int(this.value.length-1)
-    var s = value.substr(start.value,end.value+1)
+    var s = this.value.substr(start.value,end.value+1)
     for(var i=0;i<suffixes.items.length;i++){
         suffix = suffixes.items[i]
         if(suffix.value.length<=s.length &&
@@ -1446,7 +1446,7 @@ $StringClass.prototype.replace = function(old,_new,count){
         var re = new RegExp(old.value)
         var res = this.value
         while(count>0){
-            if(value.search(re)==-1){return str(res)}
+            if(this.value.search(re)==-1){return str(res)}
             res = res.replace(re,_new.value)
             count--
         }
@@ -1489,27 +1489,25 @@ $StringClass.prototype.rstrip = function(x){
     if(x==undefined){pattern="\\s*"}
     else{pattern = "["+x.value+"]*"}
     sp = new RegExp(pattern+'$')
-    return str(value.replace(sp,""))
+    return str(this.value.replace(sp,""))
 }
 
 $StringClass.prototype.split = function(){
     $ns[0]={}
-    $MakeArgs(0,arguments,[],{'sep':None,'maxsplit':int(-1)},null,null)
+    $MakeArgs(0,arguments,['sep'],{'sep':None,'maxsplit':int(-1)},null,null)
     var sep=$ns[0]['sep'],maxsplit=$ns[0]['maxsplit'].value
-    console.log('separator '+sep)
     var res = [],pos=0,spos=0
     if($isinstance(sep,str)){
         var sep = sep.value
         while(true){
             spos = this.value.substr(pos).search(sep)
-            console.log('in split '+(pos+spos))
             if(spos==-1){break}
-            res.push(str(this.value.substring(pos,spos)))
+            res.push(str(this.value.substr(pos,spos)))
             if(maxsplit != -1 && res.length==maxsplit){break}
             pos += spos+sep.length
         }
         res.push(str(this.value.substr(pos)))
-        return $list(res)
+        return list(res)
     }
 }
 
@@ -1551,6 +1549,7 @@ function $str(obj){ // JS string for obj
 function str(arg){
     // compute value = JS string
     if(arg===undefined){return str('--undefined--')}
+    var value = ""
     try{
         // value is a Python type
         value = arg.__str__().value
@@ -1630,6 +1629,7 @@ False = new $FalseClass()
 function $NoneClass(){
     this.__str__ = function(){return str('None')}
     this.__bool__ = function(){return False}
+    this.__or__ = function(other){return other}
 }
 None = new $NoneClass()
 
