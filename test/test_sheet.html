@@ -5,17 +5,17 @@
 
 </head>
 <body onLoad="brython()">
+<h1>Local storage</h1>
+Edit values, then close the browser and open it again, the values are stored locally
+<p>
 <script type="text/python">
 
 def on_complete(req):
     log(req.text)
 
 def update(elt):
-    req = ajax()
-    req.on_complete = on_complete
-    req.open('POST','/cgi-bin/store.py',True)
-    req.set_header('content-type','application/x-www-form-urlencoded')    
-    req.send({elt.id:elt.value})
+    local_storage[elt.id]=elt.value
+    log(local_storage[elt.id])
 
 nb_cols = 3
 nb_lines = 6
@@ -25,25 +25,12 @@ tb = TBODY()
 for i in range(nb_lines):
     row = TR()
     for j in range(nb_cols):
-        row <= TD(INPUT(id="cell_%i_%i" %(i,j),onchange="update(this)"))
+        cell_id = "cell_%i_%i" %(i,j)
+        value = local_storage[cell_id] or ""
+        row <= TD(INPUT(id=cell_id,value=value,onchange="update(this)"))
     tb <= row
 t <= tb
 doc <= t
-
-# initialize
-def load_data(req):
-    content = req.text
-    log(content)
-    lines = content.split('\n')
-    log(lines)
-    for line in lines:
-        log(line)
-        row,col,data = line.split()
-    
-req = ajax()
-req.on_complete = load_data
-req.open('POST','/cgi-bin/load.py',False)
-req.send()
 
 </script>
 </body>
