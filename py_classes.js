@@ -377,7 +377,6 @@ for($op in $operators){
     }
 }
 
-
 function float(value){
     if(typeof value=="number"){return new $FloatClass(parseFloat(value))}
     else if(typeof value=="string" && parseFloat(value)!=NaN){return new $FloatClass(parseFloat(value))}
@@ -420,7 +419,7 @@ function $ModuleClass(module){
 }
 function Import(){
 
-    var js_modules = $List2Dict('time')
+    var js_modules = $List2Dict('time','datetime')
     var calling={'line':document.line_num,'context':document.$context}
     for(var i=0;i<arguments.length;i++){
         module = arguments[i]
