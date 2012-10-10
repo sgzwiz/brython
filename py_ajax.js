@@ -54,7 +54,7 @@ function $AjaxClass(){
     this.send = function(params){
         // params is a Python dictionary
         if(!params || params.$keys.length==0){$xmlhttp.send();return}
-        if(!$isinstance(params,dict)){throw new TypeError(
+        if(!$isinstance(params,dict)){$raise('TypeError',
             "send() argument must be dictonary, not '"+$str(params.__class__)+"'")}
         var res = ''
         for(i=0;i<params.$keys.length;i++){
