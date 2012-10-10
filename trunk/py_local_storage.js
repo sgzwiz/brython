@@ -6,7 +6,7 @@ function $LocalStorageClass(){
 
     this.__delitem__ = function(key){
         if(this.supported){localStorage.removeItem(key.value)}
-        else{throw new NameError("local storage is not supported by this browser")}
+        else{$raise('NameError',"local storage is not supported by this browser")}
    }
 
     this.__getitem__ = function(key){
@@ -15,12 +15,12 @@ function $LocalStorageClass(){
             if(res===undefined){return None}
             else{return $JS2Py(res)}
         }
-        else{throw new NameError("local storage is not supported by this browser")}
+        else{$raise('NameError',"local storage is not supported by this browser")}
    }
 
     this.__setitem__ = function(key,value){
         if(this.supported){localStorage[key.value]=value.value}
-        else{throw new NameError("local storage is not supported by this browser")}
+        else{$raise('NameError',"local storage is not supported by this browser")}
    }
     
 }

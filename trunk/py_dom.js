@@ -49,13 +49,13 @@ function $StyleClass(parent){
 
     this.__getattr__ = function(attr){
         var value = eval('parent.elt.style.'+attr.value)
-        if(value===undefined){throw new AttributeError("object has no attribute "+attr.value)}
+        if(value===undefined){$raise('AttributeError',"object has no attribute "+attr.value)}
         return $JS2Py(value)
     }
 
     this.__getitem__ = function(attr){
         var value = parent.elt.style[attr.value]
-        if(value===undefined){throw new KeyError(attr.value)}
+        if(value===undefined){$raise('KeyError',attr.value)}
         return $JS2Py(value)
     }
 
@@ -72,6 +72,32 @@ $MouseEvent.prototype.__getattr__ = function(attr){
     if(attr.value=="mouse"){return $mouseCoords(this.event)}
     if(attr.value=="data"){return new $Clipboard(this.event.dataTransfer)}
     return getattr(this.event,attr)
+}
+
+function $DomWrapper(js_dom){this.value=js_dom}
+
+$DomWrapper.prototype.__getattr__ = function(attr){
+    if(attr.value in this.value){
+        obj = this
+        if(typeof this.value[attr.value]=='function'){
+            return function(){
+                var args = []
+                for(var i=0;i<arguments.length;i++){args.push(arguments[i].value)}
+                var res = obj.value[attr.value].apply(obj.value,args)
+                if(typeof res == 'object'){return new $DomWrapper(res)}
+                else if(res===undefined){return None}
+                else{return $JS2Py(res)}
+            }
+        }else{
+            return $JS2Py(this.value[attr.value])
+        }
+    }else{
+        $raise('AttributeError','object has no attribute '+attr.value)
+    }
+}
+
+$DomWrapper.prototype.__setattr__ = function(attr,value){
+    this.value[attr.value]=value.value
 }
 
 function $Clipboard(data){ // drag and drop dataTransfer
@@ -101,7 +127,7 @@ function $OptionsClass(parent){ // parent is a SELECT tag
         if(attr.value in parent.elt.options){
             var obj = eval('parent.elt.options.'+attr.value)
             if((typeof obj)=='function'){
-                throw new AttributeError("'options' object has no attribute '"+attr.value+'"')
+                $raise('AttributeError',"'options' object has no attribute '"+attr.value+'"')
             }
             return $JS2Py(obj)
         }
@@ -142,7 +168,6 @@ function $OptionsClass(parent){ // parent is a SELECT tag
     }
     
     this.get_remove = function(arg){parent.elt.options.remove(arg.value)}
-    
 }
 
 function log(data){try{console.log($str(data))}catch(err){void(0)}}
@@ -275,7 +300,7 @@ function $TagClass(_class,args){
                 }
             } else {
                 try{this.elt.appendChild($first.elt)}
-                catch(err){throw new ValueError('wrong element '+$first.elt)}
+                catch(err){$raise('ValueError','wrong element '+$first.elt)}
             }
         }
         // attributes
@@ -362,6 +387,13 @@ $TagClass.prototype.clone = function(){
     res = new TagClass(this.name)
     res.elt = this.elt.cloneNode(true)
     return res
+}
+
+$TagClass.prototype.get_getContext = function(){ // for CANVAS tag
+    if(!('getContext' in this.elt)){$raise('AttributeError',
+        "object has no attribute 'getContext'")}
+    var obj = this.elt
+    return function(ctx){return new $DomWrapper(obj.getContext(ctx.value))}
 }
 
 $TagClass.prototype.get_parent = function(){
