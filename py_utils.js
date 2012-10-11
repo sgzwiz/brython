@@ -2,6 +2,8 @@
 function $JS2Py(src){
     if($isinstance(src,list(str,int,float,list,dict,set))){return src}
     if(src===null){return None}
+    if(src===false){return False}
+    if(src===true){return True}
     htmlelt_pattern = new RegExp(/\[object HTML(.*)Element\]/)
     if(typeof src=="string"){
         return str(src)
