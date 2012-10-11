@@ -62,7 +62,10 @@ def sort_by_col(cell,numeric=False):
                     rank += 1
                     if rank==num:
                         nb_val += 1
-                        val = cell.text
+                        if not numeric:
+                            val = cell.text
+                        else:
+                            val = float(cell.text)
                         col_values.append(val)
                     line.append(cell.html)
             if flag: # only if row has TD cells : skip table header (TH)
@@ -144,8 +147,11 @@ doc <= H2("Pays d'Europe")
 table = TABLE()
 t = TBODY()
 title = TR()
-link = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
-title <= TH('Pays')+TH('Capitale'+link)+TH('Superficie')+TH('Population')
+link1 = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
+link2 = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
+link_num1 = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this,true)")
+link_num2 = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this,true)")
+title <= TH('Pays'+link1)+TH('Capitale'+link2)+TH('Superficie'+link_num1)+TH('Population'+link_num2)
 t <= title
 t2 = time.time()
 times = []
