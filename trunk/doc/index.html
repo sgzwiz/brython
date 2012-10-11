@@ -106,7 +106,7 @@ link2 = A(B('Python'),href='http://www.python.org')
 <p>On peut aussi créer un objet sans argument, puis le compléter :
 <ul>
 <li>pour ajouter un noeud enfant, utiliser l'opérateur <=
-<li>pour ajouter des attributs, utiliser la syntaxe Python classique
+<li>pour ajouter des attributs, utiliser la syntaxe Python classique : <pre style="display:inline">objet.attribut = valeur</pre>
 </ul>
 <p>par exemple :
 <p><pre>link = A()
@@ -122,7 +122,14 @@ for i,elt in enumerate(items):
     sel <= OPTION(elt,value=i)
 doc <= sel
 </pre>
-<p>Les éléments créés par les fonctions telles que SELECT ont des attributs de même nom que les objets Javascript correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT
+<p>A noter que la création d'une instance d'une classe HTML entraine la création d'un unique objet DOM. Si affecte l'instance à une variable, on ne peut pas l'utiliser à plusieurs endroits. Par exemple avec ce code :
+<p><pre>link = A('Python',href='http://www.python.org')
+doc <= 'Site officiel de Python : '+link
+doc <= P()+'Je répète : le site est '+link
+</pre>
+le lien ne sera montré que dans la deuxième ligne
+
+<p>En général, les instances des classes HTML ont des attributs de même nom que les objets Javascript correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT
 <p>La collection <code>options</code> associée à un objet SELECT a l'interface d'une liste Python :
 <ul>
 <li>accès à une option par son index : <pre style="display:inline">option = elt.options[index]</pre>
