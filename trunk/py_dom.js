@@ -276,7 +276,7 @@ function $TagClass(_class,args){
     // represents an HTML tag
     var $i = null
     var $obj = this
-    if(_class!=undefined){
+    if(_class!==undefined){
         this.name = str(_class).value
         eval("this.__class__ =_class")
         this.elt = document.createElement(this.name)
@@ -384,7 +384,7 @@ $TagClass.prototype.__setitem__ = function(key,value){
 }
     
 $TagClass.prototype.clone = function(){
-    res = new TagClass(this.name)
+    res = new $TagClass(this.name)
     res.elt = this.elt.cloneNode(true)
     return res
 }
