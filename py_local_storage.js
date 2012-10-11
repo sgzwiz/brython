@@ -22,7 +22,6 @@ function $LocalStorageClass(){
         if(this.supported){localStorage[key.value]=value.value}
         else{$raise('NameError',"local storage is not supported by this browser")}
    }
-    
 }
 
 local_storage = new $LocalStorageClass()
