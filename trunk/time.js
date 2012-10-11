@@ -8,5 +8,3 @@ function $TimeClass(){
     }
 }
 time = new $TimeClass()
-
-//window.time = time
