@@ -424,20 +424,32 @@ function $IntegerClass(value){
     this.value = value
     this.__class__ = int
 }
-$IntegerClass.prototype.__str__ = function(){return str(this.value)}
-$IntegerClass.prototype.__int__ = function(){return this}
+
+$IntegerClass.prototype.__add__ = function(other){
+    if($isinstance(other,int)){return int(this.value+other.value)}
+    else if($isinstance(other,float)){return float(this.value+other.value)}
+    else{$UnsupportedOpType("+",int,other.__class__)}
+}
+
 $IntegerClass.prototype.__float__ = function(){return float(this.value)}
 
-var $op_func = function(other){
-    if($isinstance(other,int)){return int(this.value-other.value)}
-    else if($isinstance(other,float)){return int(this.value-other.value)}
-    else{$UnsupportedOpType("-",int,other.__class__)}
+$IntegerClass.prototype.__floordiv__ = function(other){
+    if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
+    else{$UnsupportedOpType("//",int,other.__class__)}
 }
-$op_func += '' // source code
-var $not_comps = {'+':'add','-':'sub'}
-for($op in $not_comps){
-    eval('$IntegerClass.prototype.__'+$not_comps[$op]+'__ = '+$op_func.replace(/-/gm,$op))
+
+$IntegerClass.prototype.__getattr__ = function(attr){$raise('AttributeError',
+    "'int' object has no attribute '"+attr.value+"'")}
+
+$IntegerClass.prototype.__ifloordiv__ = function(other){
+    if($isinstance(other,int)){this.value = Math.floor(this.value/other.value)}
+    else if($isinstance(other,float)){this.value = Math.floor(this.value/other.value)}
+    else{$UnsupportedOpType("//=",int,other.__class__)}
 }
+
+$IntegerClass.prototype.__in__ = function(item){return item.__contains__(this)}
+
+$IntegerClass.prototype.__int__ = function(){return this}
 
 $IntegerClass.prototype.__mul__ = function(other){
     if($isinstance(other,int)){return int(this.value*other.value)}
@@ -449,19 +461,27 @@ $IntegerClass.prototype.__mul__ = function(other){
     }else{$UnsupportedOpType("*",int,other.__class__)}
 }
 
-$IntegerClass.prototype.__truediv__ = function(other){
-    if($isinstance(other,list(int,float))){return float(this.value/other.value)}
-    else{$UnsupportedOpType("/",int,other.__class__)}
-}
-
-$IntegerClass.prototype.__floordiv__ = function(other){
-    if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
-    else{$UnsupportedOpType("//",int,other.__class__)}
-}
+$IntegerClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
 
 $IntegerClass.prototype.__pow__ = function(other){
     if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
     else{$UnsupportedOpType("//",int,other.__class__)}
+}
+
+$IntegerClass.prototype.__setattr__ = function(attr,value){$raise('AttributeError',
+    "'int' object has no attribute "+attr.value+"'")}
+
+$IntegerClass.prototype.__str__ = function(){return str(this.value)}
+
+$IntegerClass.prototype.__sub__ = function(other){
+    if($isinstance(other,int)){return int(this.value-other.value)}
+    else if($isinstance(other,float)){return float(this.value-other.value)}
+    else{$UnsupportedOpType("-",int,other.__class__)}
+}
+
+$IntegerClass.prototype.__truediv__ = function(other){
+    if($isinstance(other,list(int,float))){return float(this.value/other.value)}
+    else{$UnsupportedOpType("/",int,other.__class__)}
 }
 
 var $augm_op_func = function(other){
@@ -474,23 +494,11 @@ for($op in $ops){
     eval('$IntegerClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
 }
 
-$IntegerClass.prototype.__ifloordiv__ = function(other){
-    if($isinstance(other,int)){this.value = Math.floor(this.value/other.value)}
-    else if($isinstance(other,float)){this.value = Math.floor(this.value/other.value)}
-    else{$UnsupportedOpType("//=",int,other.__class__)}
-}
-
-$IntegerClass.prototype.__in__ = function(item){return item.__contains__(this)}
-$IntegerClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
-
 // comparison methods
 var $comp_func = function(other){
-    if($isinstance(other,list(int,float))){
-        return $bool_conv(this.value > other.value)
-    }
+    if($isinstance(other,list(int,float))){return $bool_conv(this.value > other.value)}
     else{$raise('TypeError',
-            "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
-    }
+        "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")}
 }
 $comp_func += '' // source code
 var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
@@ -1076,7 +1084,8 @@ $StringClass.prototype.__float__ = function(){
         else{return float($float)}
     }
 
-$StringClass.prototype.__getattr__ = function(attr){return getattr(this,attr)}
+$StringClass.prototype.__getattr__ = function(attr){$raise('AttributeError',
+    "'str' object has no attribute '"+attr.value+"'")}
 
 $StringClass.prototype.__getitem__ = function(arg){
         if($isinstance(arg,int)){
@@ -1245,6 +1254,9 @@ $StringClass.prototype.__repr__ = function(){
     res += "'"
     return str(res)
 }
+
+$StringClass.prototype.__setattr__ = function(attr,value){$raise('AttributeError',
+    "'str' object has no attribute '"+attr.value+"'")}
 
 $StringClass.prototype.__str__ = function(){return this}
 
