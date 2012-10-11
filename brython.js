@@ -383,19 +383,25 @@ function $IntegerClass(value){
 this.value=value
 this.__class__=int
 }
-$IntegerClass.prototype.__str__=function(){return str(this.value)}
-$IntegerClass.prototype.__int__=function(){return this}
+$IntegerClass.prototype.__add__=function(other){
+if($isinstance(other,int)){return int(this.value+other.value)}
+else if($isinstance(other,float)){return float(this.value+other.value)}
+else{$UnsupportedOpType("+",int,other.__class__)}
+}
 $IntegerClass.prototype.__float__=function(){return float(this.value)}
-var $op_func=function(other){
-if($isinstance(other,int)){return int(this.value-other.value)}
-else if($isinstance(other,float)){return int(this.value-other.value)}
-else{$UnsupportedOpType("-",int,other.__class__)}
+$IntegerClass.prototype.__floordiv__=function(other){
+if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
+else{$UnsupportedOpType("//",int,other.__class__)}
 }
-$op_func +='' 
-var $not_comps={'+':'add','-':'sub'}
-for($op in $not_comps){
-eval('$IntegerClass.prototype.__'+$not_comps[$op]+'__ = '+$op_func.replace(/-/gm,$op))
+$IntegerClass.prototype.__getattr__=function(attr){$raise('AttributeError',
+"'int' object has no attribute '"+attr.value+"'")}
+$IntegerClass.prototype.__ifloordiv__=function(other){
+if($isinstance(other,int)){this.value=Math.floor(this.value/other.value)}
+else if($isinstance(other,float)){this.value=Math.floor(this.value/other.value)}
+else{$UnsupportedOpType("//=",int,other.__class__)}
 }
+$IntegerClass.prototype.__in__=function(item){return item.__contains__(this)}
+$IntegerClass.prototype.__int__=function(){return this}
 $IntegerClass.prototype.__mul__=function(other){
 if($isinstance(other,int)){return int(this.value*other.value)}
 else if($isinstance(other,float)){return float(this.value*other.value)}
@@ -405,17 +411,22 @@ for(i=0;i<this.value;i++){res+=other.value}
 return str(res)
 }else{$UnsupportedOpType("*",int,other.__class__)}
 }
-$IntegerClass.prototype.__truediv__=function(other){
-if($isinstance(other,list(int,float))){return float(this.value/other.value)}
-else{$UnsupportedOpType("/",int,other.__class__)}
-}
-$IntegerClass.prototype.__floordiv__=function(other){
-if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
-else{$UnsupportedOpType("//",int,other.__class__)}
-}
+$IntegerClass.prototype.__not_in__=function(item){return not(item.__contains__(this))}
 $IntegerClass.prototype.__pow__=function(other){
 if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
 else{$UnsupportedOpType("//",int,other.__class__)}
+}
+$IntegerClass.prototype.__setattr__=function(attr,value){$raise('AttributeError',
+"'int' object has no attribute "+attr.value+"'")}
+$IntegerClass.prototype.__str__=function(){return str(this.value)}
+$IntegerClass.prototype.__sub__=function(other){
+if($isinstance(other,int)){return int(this.value-other.value)}
+else if($isinstance(other,float)){return float(this.value-other.value)}
+else{$UnsupportedOpType("-",int,other.__class__)}
+}
+$IntegerClass.prototype.__truediv__=function(other){
+if($isinstance(other,list(int,float))){return float(this.value/other.value)}
+else{$UnsupportedOpType("/",int,other.__class__)}
 }
 var $augm_op_func=function(other){
 if($isinstance(other,list(int,float))){this.value -=other.value}
@@ -426,21 +437,11 @@ var $ops={'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv'}
 for($op in $ops){
 eval('$IntegerClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
 }
-$IntegerClass.prototype.__ifloordiv__=function(other){
-if($isinstance(other,int)){this.value=Math.floor(this.value/other.value)}
-else if($isinstance(other,float)){this.value=Math.floor(this.value/other.value)}
-else{$UnsupportedOpType("//=",int,other.__class__)}
-}
-$IntegerClass.prototype.__in__=function(item){return item.__contains__(this)}
-$IntegerClass.prototype.__not_in__=function(item){return not(item.__contains__(this))}
 
 var $comp_func=function(other){
-if($isinstance(other,list(int,float))){
-return $bool_conv(this.value > other.value)
-}
+if($isinstance(other,list(int,float))){return $bool_conv(this.value > other.value)}
 else{$raise('TypeError',
-"unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
-}
+"unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")}
 }
 $comp_func +='' 
 var $comps={'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
@@ -964,7 +965,8 @@ if($float==NaN){$raise('ValueError',
 "could not convert string to float(): '"+this.value+"'")}
 else{return float($float)}
 }
-$StringClass.prototype.__getattr__=function(attr){return getattr(this,attr)}
+$StringClass.prototype.__getattr__=function(attr){$raise('AttributeError',
+"'str' object has no attribute '"+attr.value+"'")}
 $StringClass.prototype.__getitem__=function(arg){
 if($isinstance(arg,int)){
 var pos=arg.value
@@ -1118,6 +1120,8 @@ res +=this.value.replace('\n','\\\n')
 res +="'"
 return str(res)
 }
+$StringClass.prototype.__setattr__=function(attr,value){$raise('AttributeError',
+"'str' object has no attribute '"+attr.value+"'")}
 $StringClass.prototype.__str__=function(){return this}
 
 var $comp_func=function(other){
@@ -2662,6 +2666,8 @@ return stack
 function $JS2Py(src){
 if($isinstance(src,list(str,int,float,list,dict,set))){return src}
 if(src===null){return None}
+if(src===false){return False}
+if(src===true){return True}
 htmlelt_pattern=new RegExp(/\[object HTML(.*)Element\]/)
 if(typeof src=="string"){
 return str(src)
@@ -3318,14 +3324,17 @@ return $DomElement(document.getElementById(id.value))
 }
 this.__le__=function(other){
 if($isinstance(other,$AbstractTag)){
-var $i=0
-for($i=0;$i<other.children.length;$i++){
-document.body.appendChild(other.children[$i])
+for(var $i=0;$i<other.children.length;$i++){
+other.children[$i].__init__()
+document.body.appendChild(other.children[$i].elt)
 }
 }else if($isinstance(other,list(str,int,float,list,dict,set,tuple))){
 txt=document.createTextNode($str(other))
 document.body.appendChild(txt)
-}else{document.body.appendChild(other.elt)}
+}else{
+other.__init__()
+document.body.appendChild(other.elt)
+}
 }
 this.insert_before=function(other,ref_elt){
 document.insertBefore(other.elt,ref_elt.elt)
@@ -3353,21 +3362,22 @@ function $AbstractTagClass(){
 this.__class__=$AbstractTag
 this.children=[]
 }
-$AbstractTag.prototype.appendChild=function(child){
+$AbstractTagClass.prototype.appendChild=function(child){
 this.children.push(child)
 }
-$AbstractTag.prototype.__add__=function(other){
+$AbstractTagClass.prototype.__add__=function(other){
 if($isinstance(other,$AbstractTag)){
 this.children=this.children.concat(other.children)
-}else{this.children.push(other.elt)}
+}else{this.children.push(other)}
 return this
 }
-$AbstractTag.prototype.__iadd__=function(other){
+$AbstractTagClass.prototype.__iadd__=function(other){
 if($isinstance(other,$AbstractTag)){
 this.children=this.children.concat(other.children)
-}else{this.children.push(other.elt)}
+}else{this.children.push(other)}
 }
-$AbstractTag.prototype.clone=function(){
+$AbstractTagClass.prototype.__init__=function(){}
+$AbstractTagClass.prototype.clone=function(){
 var res=$AbstractTag(), $i=0
 for($i=0;$i<this.children.length;$i++){
 res.children.push(this.children[$i].cloneNode(true))
@@ -3393,19 +3403,33 @@ $events=$List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'onresizeend','onresizestart','onrowenter','onrowexit','onrowsdelete',
 'onrowsinserted','onscroll','onsearch','onselect','onselectionchange',
 'onselectstart','onstart','onstop','onsubmit','onunload')
+function $TextWrapper(txt){
+this.$value=txt
+this.__init__=function(){
+console.log('init text')
+this.elt=document.createTextNode(txt)
+}
+}
 function $TagClass(_class,args){
+
+
 
 var $i=null
 var $obj=this
-if(_class!=undefined){
-this.name=str(_class).value
-eval("this.__class__ =_class")
+this._class=_class
+this.args=args
+}
+$TagClass.prototype.__init__=function(){
+console.log('class '+$str(this._class))
+if(this._class!==undefined){
+this.name=str(this._class).value
+eval("this.__class__ =this._class")
 this.elt=document.createElement(this.name)
 this.elt.$parent=this
 }
+var args=this.args
 if(args!=undefined && args.length>0){
-$start=0
-$first=args[0]
+var $start=0,$first=args[0],txt=''
 
 if(!$isinstance($first,$Kw)){
 $start=1
@@ -3416,8 +3440,10 @@ this.elt.appendChild(txt)
 txt=document.createTextNode($first.value.toString())
 this.elt.appendChild(txt)
 }else if($isinstance($first,$AbstractTag)){
-for($i=0;$i<$first.children.length;$i++){
-this.elt.appendChild($first.children[$i])
+for(var $i=0;$i<$first.children.length;$i++){
+console.log($i+' '+$first.children[$i])
+$first.children[$i].__init__()
+this.elt.appendChild($first.children[$i].elt)
 }
 }else{
 try{this.elt.appendChild($first.elt)}
@@ -3425,7 +3451,7 @@ catch(err){$raise('ValueError','wrong element '+$first.elt)}
 }
 }
 
-for($i=$start;$i<args.length;$i++){
+for(var $i=$start;$i<args.length;$i++){
 
 $arg=args[$i]
 if($isinstance($arg,$Kw)){
@@ -3446,15 +3472,16 @@ this.elt.setAttribute($arg.name.toLowerCase(),$arg.value.value)
 if('elt' in this && !this.elt.getAttribute('id')){
 this.elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
 }
+console.log('init '+$str(this._class)+' ok')
 }
 $TagClass.prototype.__add__=function(other){
 var res=$AbstractTag()
-res.children=[this.elt]
+res.children=[this]
 if($isinstance(other,$AbstractTag)){
 for(var $i=0;$i<other.children.length;$i++){res.children.push(other.children[$i])}
 }else if($isinstance(other,list(str,int,float,list,dict,set,tuple))){
 res.children.push(document.createTextNode($str(other)))
-}else{res.children.push(other.elt)}
+}else{res.children.push(other)}
 return res
 }
 $TagClass.prototype.__eq__=function(other){
@@ -3481,8 +3508,9 @@ this.children.push(other.children[$i])
 $TagClass.prototype.__ne__=function(other){return not(this.__eq__(other))}
 $TagClass.prototype.__radd__=function(other){
 var res=$AbstractTag()
-var txt=document.createTextNode(other.value)
-res.children=[txt,this.elt]
+var txt=new $TextWrapper(other.value)
+console.log('in radd')
+res.children=[txt,this]
 return res 
 }
 $TagClass.prototype.__setattr__=function(attr,value){
@@ -3495,7 +3523,7 @@ $TagClass.prototype.__setitem__=function(key,value){
 this.elt.setAttribute($str(key),$str(value))
 }
 $TagClass.prototype.clone=function(){
-res=new TagClass(this.name)
+res=new $TagClass(this.name)
 res.elt=this.elt.cloneNode(true)
 return res
 }
@@ -3591,12 +3619,13 @@ ev.target.$parent['on_drop'](ev.target.$parent,dropped.$parent)
 $TagClass.prototype.set_html=function(value){this.elt.innerHTML=$str(value)}
 $TagClass.prototype.set_value=function(value){this.elt.value=$str(value)}
 $TagClass.prototype.__le__=function(other){
+this.__init__()
 if($isinstance(other,$AbstractTag)){
-var $i=0
-for($i=0;$i<other.children.length;$i++){
-this.elt.appendChild(other.children[$i])
+for(var $i=0;$i<other.children.length;$i++){
+other.children[$i].__init__()
+this.elt.appendChild(other.children[$i].elt)
 }
-}else{this.elt.appendChild(other.elt)}
+}else{other.__init__();this.elt.appendChild(other.elt)}
 }
 function A(){
 var $args=[],$i=0
