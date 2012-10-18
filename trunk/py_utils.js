@@ -200,59 +200,6 @@ Stack.prototype.get_atoms = function(){
         return atoms
     }
 
-Stack.prototype.atom_at1 = function(pos,implicit_tuple){
-        // return the atom starting at specified position
-        // an atom is an identifier
-        // with optional qualifiers :  x.foo
-        // and calls : x(...)
-        // if implicit_tuple is set, consume all atoms joined by ,
-        atom = new Atom(this)
-        atom.start = pos
-        var dict1 = $List2Dict('id','assign_id','str','int','float')
-        console.log('atom at '+this.list[pos])
-        if(this.list[pos][0] in dict1){
-            atom.type = this.list[pos][0]
-            end = pos
-            while(end<this.list.length-1){
-                var item = this.list[end+1]
-                console.log('atom at '+item)
-                if(item[0] in dict1){
-                    end += 1
-                } else if(item[0]=="point"||item[0]=="qualifier"){
-                    atom.type = "qualified_id"
-                    end += 1
-                } else if(item[0]=="bracket" && item[1]=='('){
-                    atom.type = "function_call"
-                    end = this.find_next_matching(end+1)
-                } else if(item[0]=="bracket" && item[1]=='['){
-                    atom.type = "slicing"
-                    end = this.find_next_matching(end+1)
-                } else if(implicit_tuple && item[0]=="delimiter" && item[1]==','){
-                    // implicit tuple
-                    if(atom.type=="id" || atom.type=="str" || atom.type=='int' || atom.type=='float'){
-                        atom.type = "tuple"
-                    }
-                    end += 1
-                } else if(atom.type=="tuple" && item[0]=="id"){
-                    end += 1
-                } else {
-                    break
-                }
-            }
-            atom.end = end
-            return atom
-        } else if(this.list[pos][0]=="bracket" && 
-            (this.list[pos][1]=="(" || this.list[pos][1]=='[')){
-            atom.type = "tuple"
-            atom.end = this.find_next_matching(pos)
-            return atom
-        } else {
-            atom.type = this.list[pos][0]
-            atom.end = pos
-            return atom
-        }
-    }
-
 Stack.prototype.raw_atom_at = function(pos){
     atom = new Atom(this)
     atom.valid_type = true
@@ -355,14 +302,30 @@ Stack.prototype.atom_before = function(pos,implicit_tuple){
     }
     
 Stack.prototype.indent = function(pos){
-        // return indentation of the line of the item at specified position
-        var nl = this.find_previous(pos,"newline")
-        if(nl==null){nl=0}
-        if(nl<this.list.length-1 && this.list[nl+1][0]=="indent"){
-            return this.list[nl+1][1]
-        } else{return 0}
-    }
-    
+    // return indentation of the line of the item at specified position
+    var nl = this.find_previous(pos,"newline")
+    if(nl==null){nl=0}
+    if(nl<this.list.length-1 && this.list[nl+1][0]=="indent"){
+        return this.list[nl+1][1]
+    }else{return 0}    
+}
+
+Stack.prototype.next_at_same_indent = function(pos){
+    var indent = this.indent(pos)
+    var nxt_pos = this.find_next(pos,"newline")
+    while(true){
+        if(nxt_pos===null){return null}
+        if(nxt_pos>=this.list.length-1){return null}
+        else if(this.list[nxt_pos+1][0]=="indent"){
+            var nxt_indent = this.list[nxt_pos+1][1]
+            nxt_pos++
+        }else{var nxt_indent=0}
+        if(nxt_indent==indent){return nxt_pos+1}
+        else if(nxt_indent<indent){return null}
+        nxt_pos = this.find_next(nxt_pos+1,"newline")
+    }    
+}    
+
 Stack.prototype.split = function(delimiter){
         // split stack with specified delimiter
         var items = new Array()
@@ -463,7 +426,7 @@ Stack.prototype.dump = function(){
         ch = ''
         for(var i=0;i<this.list.length;i++){
             _item = this.list[i]
-            ch += _item[0]+' '+_item[1]+'\n'
+            ch += i+' '+_item[0]+' '+_item[1]+'\n'
         }
         alert(ch)
     }
