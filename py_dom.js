@@ -308,7 +308,7 @@ function $TagClass(_class,args){
             // keyword arguments
             $arg = args[$i]
             if($isinstance($arg,$Kw)){
-                if($arg.name.toLowerCase() in $events){
+                if($arg.name.toLowerCase() in $events){ // events
                     eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){
                     this.set_style($arg.value)
@@ -386,6 +386,10 @@ $TagClass.prototype.__setitem__ = function(key,value){
 $TagClass.prototype.clone = function(){
     res = new $TagClass(this.name)
     res.elt = this.elt.cloneNode(true)
+    // copy events
+    for(var evt in $events){    
+        if(this.elt[evt]){res.elt[evt]=this.elt[evt]}
+    }
     return res
 }
 
