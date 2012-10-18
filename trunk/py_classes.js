@@ -1084,8 +1084,7 @@ $StringClass.prototype.__float__ = function(){
         else{return float($float)}
     }
 
-$StringClass.prototype.__getattr__ = function(attr){$raise('AttributeError',
-    "'str' object has no attribute '"+attr.value+"'")}
+$StringClass.prototype.__getattr__ = function(attr){return getattr(this,attr)}
 
 $StringClass.prototype.__getitem__ = function(arg){
         if($isinstance(arg,int)){
@@ -1255,8 +1254,7 @@ $StringClass.prototype.__repr__ = function(){
     return str(res)
 }
 
-$StringClass.prototype.__setattr__ = function(attr,value){$raise('AttributeError',
-    "'str' object has no attribute '"+attr.value+"'")}
+$StringClass.prototype.__setattr__ = function(attr,value){setattr(this,attr,value)}
 
 $StringClass.prototype.__str__ = function(){return this}
 
