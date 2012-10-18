@@ -269,10 +269,8 @@ function py2js(src,context){
                             }
                             sequence = [['code','$res=list()\n']]
                             var lcindent = args.indent(br_elt)
-                            console.log(loops.length)
                             for(var i=0;i<loops.length;i++){
                                 sequence.push(['indent',lcindent])
-                                console.log(loops[i])
                                 sequence = sequence.concat(loops[i])
                                 sequence.push(['delimiter',':'])
                                 sequence.push(['newline','\n'])
@@ -510,12 +508,63 @@ function py2js(src,context){
 
     var dobj = new Date()
     times['misc'] = dobj.getTime()-t0
+    
+    // for "try", close block by "catch(err)"
+    var pos = 0
+    while(true){
+        var try_pos = stack.find_next(pos,"keyword","try")
+        if(try_pos===null){break}
+        var try_indent = 0
+        if(try_pos==0){try_indent=0}
+        else if(stack.list[try_pos-1][0]=='indent'){try_indent = stack.list[try_pos][1]}
+        var block = stack.find_block(try_pos)
+        var nxt = block[1]+1
+        // find all except clauses for this try
+        var exc_pos = try_pos
+        while(true){
+            exc_pos = stack.next_at_same_indent(exc_pos)
+            if(exc_pos===null){break}
+            // insert the variable name used to test error type just after
+            // the "except" keyword
+            if(stack.list[exc_pos][0]=="keyword" && stack.list[exc_pos][1]=="except"){
+                stack.list.splice(exc_pos+1,0,['id','$err'+pos])
+            }else{break}
+        }
+        // insert pseudo-Python code just after the "try" block :
+        // ======
+        // catch $errX:
+        // =====
+        stack.list.splice(nxt,0,['keyword','catch'],['id','$err'+pos],['delimiter',':'],['newline','\n'])
+        pos = try_pos+1
+    }
+
+    // indent except clauses
+    pos = 0
+    while(true){
+        var exc_pos = stack.find_next(pos,"keyword","except")
+        if(exc_pos===null){break}
+        var block = stack.find_block(exc_pos)
+        for(var x=block[0];x<block[1];x++){
+            if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+12}
+        }
+        if(stack.list[exc_pos-1][0]=='indent'){
+            var except_indent = stack.list[exc_pos-1][1]+8
+            stack.list[exc_pos-1][1]=except_indent
+        }
+        else{var except_indent=8;stack.list.splice(exc_pos,0,['indent',8]);exc_pos++}
+        pos = exc_pos+1
+    }
+
+    // add a line before all except clauses to avoid syntax error if there is only 
+    // one clause "except:" without an error name
+    stack.list.splice(nxt+4,0,['indent',except_indent],['code','if(false){void(0)}'],
+        ['newline','\n'])
 
     // replace if,def,class,for by equivalents
     var kws = {'if':'if','else':'else','elif':'else if',
         'def':'function','class':'function','for':'for',
-        'try':'try','except':'catch($exc)','finally':'finally'}
-    var has_parenth = $List2Dict('if','elif','for')
+        'try':'try','catch':'catch','finally':'finally'}
+    var has_parenth = $List2Dict('if','elif','for','catch')
     var $funcs = []
     var module_level_functions = []
     var loop_id = 0
@@ -583,13 +632,21 @@ function py2js(src,context){
                         ['indent',kw_indent+4,src_pos],['code','}',src_pos]])
                     stack.list = stack.list.slice(0,kw_pos)
                     stack.list = stack.list.concat(seq)
-                } else { // if and elif : use bool()
+                } else if(kw=='if' || kw=='elif'){ // if and elif : use bool()
                     var seq = [['bracket','(',src_pos]]
                     seq.push(['code','$bool',src_pos])
                     seq.push(['bracket','(',src_pos])
                     seq = seq.concat(stack.list.slice(kw_pos+1,block[0]))
                     seq.push(['bracket',')',src_pos]) // close bool
                     seq.push(['bracket',')',src_pos]) // close if / elif
+                    seq.push(stack.list[block[0]])
+                    seq = seq.concat(stack.list.slice(block[0]+1,block[1]))
+                    stack.list = stack.list.slice(0,kw_pos+1)
+                    stack.list = stack.list.concat(seq)
+                } else{ // catch
+                    var seq = [['bracket','(',src_pos]]
+                    seq = seq.concat(stack.list.slice(kw_pos+1,block[0]))
+                    seq.push(['bracket',')',src_pos])
                     seq.push(stack.list[block[0]])
                     seq = seq.concat(stack.list.slice(block[0]+1,block[1]))
                     stack.list = stack.list.slice(0,kw_pos+1)
@@ -643,6 +700,10 @@ function py2js(src,context){
                 }
                 tail.splice(0,0,['code',code])
             }else if(kw=="except"){
+                // error name is the next token
+                var var_name = stack.list[kw_pos+1]
+                stack.list.splice(kw_pos+1,1)
+                stack.list[block[0]][1]='('
                 var exc = new Stack(stack.list.slice(kw_pos+1,block[0]))
                 if(exc.list.length>0){
                     var excs = stack.atom_at(kw_pos+1,true)
@@ -656,10 +717,13 @@ function py2js(src,context){
                         stack.list = stack.list.slice(0,block[0]+1)
                         stack.list.splice(kw_pos+1,1)
                         stack.list.push(['code',
-                            'if($exc.name!="'+exc_name+'"){throw $exc};',
+                            var_name+'.name=="'+exc_name+'"){',
                             stack.list[block[0][2]]])
                         stack.list = stack.list.concat(_block)
                     }
+                }else{
+                    var _block = stack.list.slice(block[0]+1,block[1])
+                    stack.list = stack.list.concat(_block)
                 }
             } else {
                 stack.list = stack.list.slice(0,block[1])
@@ -672,6 +736,50 @@ function py2js(src,context){
             stack.list = stack.list.concat(tail)
             pos = kw_pos+1
         }
+    }
+
+    // except clauses
+    var pos = 0
+    while(true){
+        var exc_pos = stack.find_next(pos,"keyword","except")
+        if(exc_pos===null){break}
+        var block = stack.find_block(exc_pos)
+        var tail = stack.list.slice(block[1],stack.list.length)
+        var var_name = stack.list[exc_pos+1][1]
+        if(stack.list[exc_pos+2][0]=='id'){
+            var block = stack.find_block(exc_pos)
+            // block[0] = position of :
+            // block[1] = last newline of block
+            var exc = new Stack(stack.list.slice(exc_pos+1,block[0]))
+            var excs = stack.atom_at(exc_pos+1,true)
+            if(excs.type=="function_call"){
+                document.line_num = pos2line[stack.list[exc_pos][2]]
+                throw new SyntaxError("can only handle a single exception")
+            }
+            else if(excs.type=="id"){
+                var exc_name = stack.list[exc_pos+2][1]
+                var _block = stack.list.slice(block[0]+1,block[1])
+                stack.list.splice(exc_pos,4)
+                stack.list = stack.list.slice(0,block[0])
+                stack.list.push(['code',
+                    "if("+var_name+'.name=="'+exc_name+'"){',
+                    stack.list[block[0][2]]])
+                stack.list = stack.list.concat(_block)
+            }
+        }else{
+            var _block = stack.list.slice(block[0]+1,block[1])
+            stack.list = stack.list.slice(0,block[0])
+            stack.list.splice(exc_pos,3)
+            stack.list.push(['code',"else{"])
+            stack.list = stack.list.concat(_block)
+        }
+        stack.list.push(['newline','\n',end_pos])
+        if(block[2]>0){
+            stack.list.push(['indent',block[2],end_pos])
+        }
+        stack.list.push(['bracket','}',end_pos])
+        stack.list = stack.list.concat(tail)
+        pos = exc_pos+1
     }
     
     var dobj = new Date()
