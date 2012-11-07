@@ -49,8 +49,9 @@ for fname in sources:
             res += src[pos]
             pos += 1
 
-out = open('brython.js','w')
-out.write(res)
-out.close()
+for dest in 'brython.js','test/brython.js':
+    out = open(dest,'w')
+    out.write(res)
+    out.close()
 
 print('size : originals %s compact %s gain %.2f' %(src_size,len(res),100*(src_size-len(res))/src_size))

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset=utf-8>
+    <script src="brython.js"></script>
+    <title>Liquid Particles - spielzeugz.de canvas experiment </title>
+    <meta name="description" content="HTML5/canvas demo, 500 particles to play around with." />
+    <meta name="keywords" content="html5,canvas,javascript,particles,interactive,velocity,programming,flash" />
+
+<style type="text/css"">
+html, body {
+text-align: center;
+margin:0;
+padding:0;
+background: #000000; 
+color: #666666;
+line-height: 1.25em;
+}        
+
+#outer {
+position: absolute;
+top: 50%;
+left: 50%;
+width: 1px;
+height: 1px;
+overflow: visible;
+}        
+        
+#canvasContainer { 
+position: absolute;
+width: 1000px;
+height: 560px;
+top: -280px;
+left: -500px;
+}
+            
+canvas { 
+border: 1px solid #333333; 
+}
+        
+a {
+color: #00CBCB;
+text-decoration:none;
+font-weight:bold;
+}
+a:hover {
+color:#FFFFFF;
+}
+        
+#output {
+font-family: Arial, Helvetica, sans-serif; 
+font-size: 0.75em;
+margin-top:4px;
+}
+        
+#footer{
+font-size: 0.6em;
+font-family: Arial, Helvetica, sans-serif;
+position: absolute;
+bottom:8px;
+width:98%;
+}
+        
+</style>
+  </head>
+  <body onLoad="brython()">
+    <div id="outer">
+        <div id="canvasContainer">
+            <canvas id="mainCanvas" width="1000" height="560"></canvas>
+            <div id="output"></div>
+        </div>
+    </div>
+
+<script type="text/python">
+import math
+import random
+import time
+
+def C():
+    e.globalCompositeOperation="source-over";
+    e.fillStyle="rgba(8,8,12,0.65)";
+    e.fillRect(0,0,f,p);
+    e.globalCompositeOperation="lighter";
+    x=q-u;
+    y=r-v;
+    u=q;
+    v=r;
+    d=0.86*f
+    l=0.125*f
+    m=0.5*f
+    for o in range(z-1,0,-1):
+        h=A[o]
+        i=h.x
+        j=h.y
+        a=h.a
+        b=h.b
+        c=i-q
+        k=j-r
+        g=math.sqrt(c*c+k*k) or 0.001
+        c=c/g
+        k=k/g
+        if w and g<m:
+            dfg = 9
+            s=14*(1-g/m)
+            a=a+(c*s+0.5-random.random())
+            b=b+(k*s+0.5-random.random())
+        if g<d:
+            s=0.0014*(1-g/d)*f
+            a-=c*s
+            b-=k*s
+        if g<l:
+            c=2.6E-4*(1-g/l)*f
+            a+=x*c
+            b+=y*c
+        a*=B
+        b*=B
+        c=abs(a)
+        k=abs(b)
+        g=0.5*(c+k)
+        if 0.1>c:
+            a*=3*random.random()
+        if 0.1>k:
+            b*=3*random.random()
+        c=0.45*g
+        c=max(min(c,3.5),0.4);
+        i+=a;
+        j+=b;
+        if i>f:
+            i=f
+            a*=-1
+        elif 0>i:
+            i=0
+            a*=-1
+        if j>p:
+            j=p
+            b*=-1
+        elif 0>j:
+            j=0
+            b*=-1
+        h.a=a
+        h.b=b
+        h.x=i
+        h.y=j
+        e.fillStyle=h.color
+        e.beginPath()
+        e.arc(i,j,c,0,D,True)
+        e.closePath();
+        e.fill()
+
+def E(d):
+    global q,r
+    if not d:
+        d=window.event
+    q=d.clientX-m.offsetLeft-n.offsetLeft
+    r=d.clientY-m.offsetTop-n.offsetTop
+    log('%s %s %s %s' %(d.clientX,m.offsetLeft,n.offsetLeft,q))
+
+def F():
+    global w
+    w = True
+    return False
+
+def G():
+    global w
+    w = False
+    return False
+
+def H():
+    self = object()
+    self.color="rgb(%s,%s,%s)" %(math.floor(255*random.random()),math.floor(255*random.random()),
+        math.floor(255*random.random()))
+    self.b=self.a=self.x=self.y=0
+    self.size=1
+    return self
+
+D=2*math.pi
+f=1000
+p=560
+z=60
+B=0.96
+A=[]
+
+o=doc["mainCanvas"]
+w=None
+s=None
+q=None
+r=None
+if o.getContext:
+    m=doc["outer"]
+    n=doc["canvasContainer"]
+    e=o.getContext("2d")
+    for d in range(z,0,-1):
+        l= H()
+        l.x=0.5*f
+        l.y=0.5*p
+        l.a=34*math.cos(d)*random.random()
+        l.b=34*math.sin(d)*random.random()
+        A.append(l)
+    q=u=0.5*f
+    r=v=0.5*p
+    doc.onmousedown=F
+    doc.onmouseup=G
+    doc.onmousemove=E
+    time.set_interval(C,33)
+    doc["output"].innerHTML='hgk666hg'
+else:
+    doc["output"].innerHTML="Sorry, needs a recent version of Chrome, Firefox, Opera, Safari, or Internet Explorer 9."
+</script>
+
+<script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+try {
+var pageTracker = _gat._getTracker("UA-11054609-1");
+pageTracker._trackPageview();
+} catch(err) {}
+</script>
+  </body>
+</html>
