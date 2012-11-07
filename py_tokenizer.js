@@ -28,7 +28,7 @@ function $tokenize(src){
         "as","elif","if","yield","assert","else","import","pass",
         "break","except","raise")
     var unsupported = $List2Dict("class","is","from","nonlocal","with",
-        "as","yield","assert")
+        "as","yield")
     // causes errors for some browsers
     // complete list at http://www.javascripter.net/faq/reserved.htm
     var forbidden = $List2Dict("item")
@@ -42,6 +42,7 @@ function $tokenize(src){
     var name = ""
     var _type = null
     var pos = 0
+    var indent_stack = [0]
 
     var pos2line = {}
     var lnum=1
@@ -49,10 +50,52 @@ function $tokenize(src){
         pos2line[i]=lnum
         if(src.charAt(i)=='\n'){lnum+=1}
     }
-    lnum = 1
+    lnum = 0
     while(pos<src.length){
+        document.line_num = pos2line[pos]
         var flag = false
         var car = src.charAt(pos)
+        // check indentation
+        if(stack.length==0 || $last(stack)[0]=='newline'){
+            var indent = 0
+            while(pos<src.length && src.charAt(pos)==" "){
+                indent++;pos++
+            }
+            // ignore empty lines
+            if(src.charAt(pos)=='\n'){pos++;lnum++;continue}
+            // indentation must be equal to some value in indent_stack, or
+            // greater if last line ended with :
+            if(stack.length>1){
+                if(indent>$last(indent_stack)){
+                    if(stack[stack.length-2][0] != "delimiter" &&
+                        stack[stack.length-2][1] != ":"){
+                        $raise("IndentationError","unexpected indent")
+                    }else{
+                        indent_stack.push(indent)
+                    }
+                }else if(indent==$last(indent_stack)){
+                    if(stack[stack.length-2][0]=="delimiter" &&
+                        stack[stack.length-2][1]==":"){
+                        $raise("IndentationError","expected an indented block")
+                    }
+                }else if(indent<$last(indent_stack)){
+                    indent_stack.pop()
+                    while(true){
+                        if(indent_stack.length==0){
+                            $raise('IndentationError','unexpected indent')
+                        }
+                        if(indent>$last(indent_stack)){
+                            $raise('IndentationError','unexpected indent')
+                        }else if(indent==$last(indent_stack)){break}
+                        else{indent_stack.pop()}
+                    }
+                }
+            }else if(indent>0){
+                $raise("IndentationError","unexpected indent")
+            }
+            stack.push(["indent",indent,pos-indent])
+            continue
+        }
         // comment
         if(car=="#"){
             var end = src.substr(pos+1).search('\n')
@@ -233,21 +276,10 @@ function $tokenize(src){
                 continue
             }
         }
-        if(car==" " && $last(stack)[0]=="newline"){
-            // indentation
-            var indent=1
-            pos++
-            while(pos<src.length && src.charAt(pos)==" "){
-                indent++
-                pos++
-            }
-            stack.push(["indent",indent,pos-indent])
-            continue
-        }
         if(car=='\\' && src.charAt(pos+1)=='\n'){
             lnum++;pos+=2;continue
         }
-        if(car!=' '){try{console.log('unknown token '+car)}catch(err){alert('unknown token '+car)}}
+        if(car!=' '){$raise('SyntaxError','unknown token '+car)}
         pos += 1
     }
 

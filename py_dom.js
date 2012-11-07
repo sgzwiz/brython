@@ -78,12 +78,12 @@ function $DomWrapper(js_dom){this.value=js_dom}
 
 $DomWrapper.prototype.__getattr__ = function(attr){
     if(attr.value in this.value){
-        obj = this
+        var obj = this.value,obj_attr = this.value[attr.value]
         if(typeof this.value[attr.value]=='function'){
             return function(){
                 var args = []
                 for(var i=0;i<arguments.length;i++){args.push(arguments[i].value)}
-                var res = obj.value[attr.value].apply(obj.value,args)
+                var res = obj_attr.apply(obj,args)
                 if(typeof res == 'object'){return new $DomWrapper(res)}
                 else if(res===undefined){return None}
                 else{return $JS2Py(res)}
@@ -177,10 +177,22 @@ function $Document(){
     this.elt = document
     this.mouse = null
     
-    this.__getattr__ = function(attr){return getattr(this,attr)}
+    this.__getattr__ = function(attr){return getattr(this.elt,attr)}
 
-    this.__getitem__ = function(id){
-        return $DomElement(document.getElementById(id.value))
+    this.__getitem__ = function(key){
+        if($isinstance(key,str)){
+            var res = document.getElementById(key.value)
+            if(res){return $DomElement(res)}
+            else{$raise("KeyError",str(key))}
+        }else{
+            try{
+                var elts=document.getElementsByTagName(key.name),res=list()
+                for(var $i=0;$i<elts.length;$i++){res.append($DomElement(elts[$i]))}
+                return res
+            }catch(err){
+                $raise("KeyError",str(key))
+            }
+        }
     }
 
     this.__le__ = function(other){
@@ -194,7 +206,11 @@ function $Document(){
             document.body.appendChild(txt)
         } else {document.body.appendChild(other.elt)}
     }
-    
+
+    this.__setattr__ = function(attr,other){
+        document[attr.value]=other
+    }
+
     this.insert_before = function(other,ref_elt){
         document.insertBefore(other.elt,ref_elt.elt)
     }
@@ -202,6 +218,10 @@ function $Document(){
 }
 
 doc = new $Document()
+
+win = { 
+    __getattr__ : function(attr){return getattr(window,attr)}
+}
 
 function $DomElement(elt){
     var i = null

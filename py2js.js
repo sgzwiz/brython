@@ -94,7 +94,7 @@ function py2js(src,context){
     // context is "main" for the main script, the module name if import
     var i = 0
     src = src.replace(/\r\n/gm,'\n')
-    while (src.length>0 && (src.charAt(0)=="\n" || src.charAt(0)=="\r" || src.charAt(0)==" ")){
+    while (src.length>0 && (src.charAt(0)=="\n" || src.charAt(0)=="\r")){
         src = src.substr(1)
     }
     if(src.charAt(src.length-1)!="\n"){src+='\n'}
@@ -112,22 +112,37 @@ function py2js(src,context){
     var dobj = new Date()
     t0 = dobj.getTime()
     var times = {}
+        
+    // tokenization
     tokens = $tokenize(src)
 
     stack = new Stack(tokens)
+
+    // syntax check
+    //$syntax_check(stack,pos2line)
         
     // add a line number at the end of each line in source code
-    // used for traceback
-    
-    stack.list.splice(0,0,['code','document.line_num=1',0],['newline','\n',0])
-    var pos = 2
+    // used for traceback    
+    //stack.list.splice(0,0,['code','document.line_num=1',0],['newline','\n',0])
+    var pos = 0
+    var s_nl = 0
     while(true){
         var nl = stack.find_next(pos,'newline')
         if(nl==null){break}
-        stack.list.splice(nl,0,['code',';document.line_num='+stack.list[nl][1],stack.list[nl][2]])
-        pos = nl+2
+        var indent_pos = stack.find_previous(nl,'indent')
+        if(!stack.list[indent_pos+1].match(['keyword','else']) &&
+            !stack.list[indent_pos+1].match(['keyword','elif']) &&
+            !stack.list[indent_pos+1].match(['keyword','except'])){
+            stack.list.splice(s_nl,0,stack.list[indent_pos],
+                ['code','document.line_num='+stack.list[nl][1],stack.list[nl][2]],
+                ['newline','\n'])
+            s_nl = nl+4
+            pos = nl+5
+        }else{
+            s_nl = nl+1
+            pos = nl+2
+        }
     }
-    
     var dobj = new Date()
     times['add line nums'] = dobj.getTime()-t0
     
@@ -139,9 +154,8 @@ function py2js(src,context){
         while(pos>0){
             var op_pos = stack.find_previous(pos,"operator",seq[1])
             if(op_pos==null){break}
-            if(op_pos>1 && stack.list[op_pos-1][0]=="operator"
-                && stack.list[op_pos-1][1]==seq[0]){
-                    stack.list.splice(op_pos-1,2,['operator',seq[0]+'_'+seq[1],stack.list[op_pos][2]])
+            if(op_pos>1 && stack.list[op_pos-1].match(["operator",seq[0]])){
+                stack.list.splice(op_pos-1,2,['operator',seq[0]+'_'+seq[1],stack.list[op_pos][2]])
             }
             pos = op_pos-2
         }
@@ -160,9 +174,9 @@ function py2js(src,context){
         }
     var PyType = {'(':'tuple','[':'$list','{':'dict'}
     var br_list = ['[','(','{']
-    for(ibr=0;ibr<br_list.length;ibr++){
-        bracket = br_list[ibr]
-        pos = stack.list.length-1
+    for(var ibr=0;ibr<br_list.length;ibr++){
+        var bracket = br_list[ibr]
+        var pos = stack.list.length-1
         while(true){
             var br_elt = stack.find_previous(pos,"bracket",bracket)
             if(br_elt==null){break}
@@ -181,7 +195,7 @@ function py2js(src,context){
                 // display : insert tuple, list or dict
                 var pyType = PyType[bracket]
                 var br_pos = stack.list[br_elt][2]
-                sequence = [['id',pyType,br_elt[2]],['bracket','(',br_pos]]
+                var sequence = [['id',pyType,br_elt[2]],['bracket','(',br_pos]]
                 var end = stack.find_next_matching(br_elt)
                 if(pyType=='dict'){
                     // split elements
@@ -195,7 +209,7 @@ function py2js(src,context){
                             var elts = kv.split(':')
                             if(elts.length!=2){
                                 document.line_num = pos2line[br_pos]
-                                throw new SyntaxError("invalid syntax")
+                                $raise("SyntaxError","invalid syntax")
                             }
                             var key = elts[0] // key.start = position in kv
                             var value = elts[1]
@@ -229,64 +243,8 @@ function py2js(src,context){
                 }else{ // list
                     var args = new Stack(stack.list.slice(br_elt+1,end))
                     if(end > br_elt+1){ // not empty list
-                        var expr = args.atom_at(0,true)
-                        if(expr.end==args.list.length-1){ // simple list
-                            sequence = sequence.concat(stack.list.slice(br_elt+1,end))
-                            sequence.push(['bracket',')',stack.list[end][2]])
-                        }else{ //list comprehension ?
-                            var loops = []
-                            var condition = null
-                            var start = expr.end+1
-                            while(true){
-                                if(start>args.list.length-1){break}
-                                var $next = args.list[start]
-                                if($next[0]!='keyword' || $next[1]!='for'){break}
-                                var items = args.atom_at(start+1,true)
-                                if(items.list().length == 0){
-                                    document.line_num = pos2line[br_pos]
-                                    throw new SyntaxError("invalid syntax - no target list after 'for'")
-                                }
-                                var $next = args.list[items.end+1]
-                                if($next===undefined || $next[0]!=='operator'
-                                    || $next[1]!=='in'){
-                                    document.line_num = pos2line[br_pos]
-                                    log($next)
-                                    throw new SyntaxError("invalid syntax - missing 'in'")
-                                }
-                                var $src = args.atom_at(items.end+2,true)
-                                loops.push(args.list.slice(start,$src.end+1))
-                                start = $src.end+1
-                            }
-                            if(loops.length==0){
-                                document.line_num = pos2line[br_pos]
-                                throw new SyntaxError("invalid syntax")
-                            }
-                            if(start<args.list.length){
-                                var $next = args.list[start]
-                                if($next[0]=='keyword' || $next[1]=='if'){
-                                    condition = args.list.slice(start,args.list.length-1)
-                                }
-                            }
-                            sequence = [['code','$res=list()\n']]
-                            var lcindent = args.indent(br_elt)
-                            for(var i=0;i<loops.length;i++){
-                                sequence.push(['indent',lcindent])
-                                sequence = sequence.concat(loops[i])
-                                sequence.push(['delimiter',':'])
-                                sequence.push(['newline','\n'])
-                                lcindent += 4
-                            }
-                            if(condition){
-                                sequence.push(['indent',lcindent])
-                                sequence = sequence.concat(condition)
-                                sequence.push(['delimiter',':'])
-                                sequence.push(['newline','\n'])
-                                lcindent += 4
-                            }
-                            sequence.push(['indent',lcindent],['id','$res'],['point','.'],['id','append'],
-                                ['bracket','('])
-                            sequence = sequence.concat(expr.list())
-                       }
+                        sequence = sequence.concat(stack.list.slice(br_elt+1,end))
+                        sequence.push(['bracket',')',stack.list[end][2]])
                     }else{sequence.push(['bracket',')',stack.list[end][2]])}
                 }
                 tail = stack.list.slice(end+1,stack.list.length)
@@ -309,11 +267,11 @@ function py2js(src,context){
         var func_token = stack.list[def_pos+1]
         var arg_start = stack.list[def_pos+2]
         document.line_num = pos2line[func_token[2]]
-        if(!func_token[0]=='id'){throw new SyntaxError("wrong type after def")}
-        if(arg_start[0]!='bracket' || arg_start[1]!='('){throw new SyntaxError("missing ( after function name")}
+        if(!func_token[0]=='id'){$raise("SyntaxError","wrong type after def")}
+        if(arg_start[0]!='bracket' || arg_start[1]!='('){$raise("SyntaxError","missing ( after function name")}
         if(func_token[0]=='id' && arg_start[0]=='bracket'
             && arg_start[1]=='(' && 
-            !(stack.list[def_pos+3][0]=="bracket" && stack.list[def_pos+3][1]==")")){
+            !(stack.list[def_pos+3].match(["bracket",")"]))){
             // function definition
             arg_end = stack.find_next_matching(def_pos+2)
             // mark ids as argument ids
@@ -364,7 +322,7 @@ function py2js(src,context){
             // insert code after end of function definition (next delimiter ':')
             var end_def = stack.find_next_at_same_level(def_pos,"delimiter",":")
             if(end_def==null){
-                throw new SyntaxError("Unable to find definition end "+end_def)
+                $raise("SyntaxError","Unable to find definition end "+end_def)
             }
             var arg_code = '"'+func_token[1]+'",arguments,'
             
@@ -403,8 +361,8 @@ function py2js(src,context){
     while(true){
         var br_pos = stack.find_previous(pos,"bracket","(")
         if(br_pos==null){break}
-        if(stack.list[br_pos-1][0]=='id' && br_pos>1 && stack.list[br_pos-2][0]!="keyword" &&
-            stack.list[br_pos-2][1] != 'def'){
+        if(stack.list[br_pos-1][0]=='id' && br_pos>1 && 
+            !(stack.list[br_pos-2].match(["keyword",'def']))){
             var end_call = stack.find_next_matching(br_pos)
             var s = new Stack(stack.list.slice(br_pos+1,end_call))
             var args = s.split(',')
@@ -462,7 +420,7 @@ function py2js(src,context){
         var op = stack.list[sign]
         if(sign>0 && 
             (stack.list[sign-1][0] in $List2Dict("delimiter","newline","indent","assign","operator") ||
-                (stack.list[sign-1][0]=="bracket" && stack.list[sign-1][1]=="("))){
+                stack.list[sign-1].match(["bracket","("]))){
             if(sign<stack.list.length-1){
                 var next = stack.list[sign+1]
                 if(next[0]=="int" || next[0]=="float") { // literal
@@ -491,7 +449,7 @@ function py2js(src,context){
         var imported = stack.atom_at(imp_pos+1,true)
         if(imported.type != 'id' && imported.type != 'tuple'){
             document.line_num = pos2line[stack.list[imp_pos][2]]
-            throw new SyntaxError("invalid syntax")
+            $raise("SyntaxError","invalid syntax")
         }
         for(var i=0;i<imported.list().length;i++){
             if(stack.list[imported.start+i][0]=="id"){
@@ -526,20 +484,21 @@ function py2js(src,context){
             if(exc_pos===null){break}
             // insert the variable name used to test error type just after
             // the "except" keyword
-            if(stack.list[exc_pos][0]=="keyword" && stack.list[exc_pos][1]=="except"){
+            if(stack.list[exc_pos].match(["keyword","except"])){
                 stack.list.splice(exc_pos+1,0,['id','$err'+pos])
             }else{break}
         }
-        // insert pseudo-Python code just after the "try" block :
-        // ======
-        // catch $errX:
-        // =====
+        // insert pseudo-Python code "catch $err:" just after the "try" block
         stack.list.splice(nxt,0,['keyword','catch'],['id','$err'+pos],['delimiter',':'],['newline','\n'])
+        // add a line before all except clauses to avoid syntax error if there is only 
+        // one clause "except:" without an error name
+        stack.list.splice(nxt+4,0,['indent',except_indent],['code','if(false){void(0)}'],
+            ['newline','\n'])
         pos = try_pos+1
     }
 
     // indent except clauses
-    pos = 0
+    var pos = 0
     while(true){
         var exc_pos = stack.find_next(pos,"keyword","except")
         if(exc_pos===null){break}
@@ -555,14 +514,34 @@ function py2js(src,context){
         pos = exc_pos+1
     }
 
-    // add a line before all except clauses to avoid syntax error if there is only 
-    // one clause "except:" without an error name
-    stack.list.splice(nxt+4,0,['indent',except_indent],['code','if(false){void(0)}'],
-        ['newline','\n'])
+    // "assert condition" becomes "if condition: pass else: raise AssertionError"
+    var pos = 0
+    while(true){
+        var assert_pos = stack.find_next(pos,"keyword","assert")
+        if(assert_pos===null){break}
+        var assert_indent = 0
+        if(assert_pos==0){assert_indent=0}
+        else if(stack.list[assert_pos-1][0]=='indent'){assert_indent = stack.list[assert_pos-1][1]}
+        var end = stack.find_next(assert_pos,"newline")
+        if(end===null){end=stack.list.length-1}
+        var cond_block = stack.list.slice(assert_pos+1,end+1)
+        alert(cond_block)
+        // replace assert by if
+        stack.list.splice(assert_pos,1,['keyword','if'])
+        stack.dump()
+        stack.list.splice(end-1,0,['delimiter',':'],['newline','\n'],
+            ['indent',assert_indent+4],['keyword','pass'],['newline','\n'])
+        stack.dump()
+        if(assert_indent>0){stack.list.splice(end+4,0,['indent',assert_indent]);end++}
+        stack.list.splice(end+4,0,['keyword','else'],['delimiter',':'],['newline','\n'],
+            ['indent',assert_indent+4],['code','$raise("AssertionError")'])
+        stack.dump()
+        pos = assert_pos+1
+    }
 
-    // replace if,def,class,for by equivalents
+    // replace if,elif,else,def,for,try,catch,finally by equivalents
     var kws = {'if':'if','else':'else','elif':'else if',
-        'def':'function','class':'function','for':'for',
+        'def':'function','for':'for',
         'try':'try','catch':'catch','finally':'finally'}
     var has_parenth = $List2Dict('if','elif','for','catch')
     var $funcs = []
@@ -597,7 +576,7 @@ function py2js(src,context){
                     var _in_list = stack.list.slice(_in.start,_in.end+1)
                     if(_in_list.length != 1 || 
                         _in_list[0][0]!="operator" || _in_list[0][1]!="in"){
-                        throw new SyntaxError("missing 'in' after 'for'",src,src_pos)
+                        $raise("SyntaxError","missing 'in' after 'for'",src,src_pos)
                     }
                     var iterable = stack.atom_at(_in.end+1,true)
                     seq = []
@@ -709,7 +688,7 @@ function py2js(src,context){
                     var excs = stack.atom_at(kw_pos+1,true)
                     if(excs.type=="function_call"){
                         document.line_num = pos2line[stack.list[kw_pos][2]]
-                        throw new SyntaxError("can only handle a single exception")
+                        $raise("SyntaxError","can only handle a single exception")
                     }
                     else if(excs.type=="id"){
                         var exc_name = stack.list[kw_pos+1][1]
@@ -754,7 +733,7 @@ function py2js(src,context){
             var excs = stack.atom_at(exc_pos+1,true)
             if(excs.type=="function_call"){
                 document.line_num = pos2line[stack.list[exc_pos][2]]
-                throw new SyntaxError("can only handle a single exception")
+                $raise("SyntaxError","can only handle a single exception")
             }
             else if(excs.type=="id"){
                 var exc_name = stack.list[exc_pos+2][1]
@@ -781,6 +760,7 @@ function py2js(src,context){
         stack.list = stack.list.concat(tail)
         pos = exc_pos+1
     }
+
     
     var dobj = new Date()
     times['if def class for'] = dobj.getTime()-t0
@@ -816,7 +796,7 @@ function py2js(src,context){
             var lo = stack.atom_before(op,false)
             if(!lo.type in $lo_ok){
                 document.line_num = pos2line[stack.list[op][2]]
-                throw new SyntaxError("Bad left operand type "+lo.type+" for "+op_sign)
+                $raise("SyntaxError","Bad left operand type "+lo.type+" for "+op_sign)
             }
             var par_before_lo = false
             if(lo.type!="tuple"){
@@ -828,7 +808,7 @@ function py2js(src,context){
                 }
             }
             if(op==stack.list.length-1){
-                throw new SyntaxError("Bad right operand ",src,stack.list[op][2])
+                $raise("SyntaxError","Bad right operand ",src,stack.list[op][2])
             }
             var ro = stack.atom_at(op+1,false)
             var ro_startswith_par = false
@@ -909,14 +889,6 @@ function py2js(src,context){
         if(assign==null){break}
         var left = stack.atom_before(assign,true)
         var right = stack.atom_at(assign+1,true)
-        if(right.type=="tuple"){
-            var first = right.list()[0]
-            if(first[0]!=='bracket' || first[1]!=='('){
-                // transform into explicit tuple
-                stack.list.splice(right.end+1,0,['bracket',')'])
-                stack.list.splice(right.start,0,['code','tuple'],['bracket','('])
-            }
-        }
         if(left.type=="tuple" || left.type=="implicit_tuple"){
             // for multiple assignments
             var list = left.list()
@@ -933,7 +905,7 @@ function py2js(src,context){
         } else if(left.type=='str' || left.type=='int' || left.type=='float'){
             pos = left.list()[0][2]
             document.line_num = pos2line[pos]
-            throw new SyntaxError("can't assign to literal")
+            $raise("SyntaxError","can't assign to literal")
         } else if(left.type=='qualified_id' || left.type=='slicing' || left.type=="function_call"){
             pos = assign-1
         } else {            
@@ -945,7 +917,6 @@ function py2js(src,context){
 
     var dobj = new Date()
     times['assignments'] = dobj.getTime()-t0
-    
 
     // remaining [ indicate subscription or slicing
     pos = stack.list.length-1
@@ -1031,7 +1002,7 @@ function py2js(src,context){
             var q_name = stack.list[q_pos][1]
             if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
             tail = stack.list.slice(ro.end+1,stack.list.length)
-            var seq = [['code','__setattr__'],['bracket','('],
+            var seq = [['id','__setattr__'],['bracket','('],
                 ['str',"'"+q_name+"'"],['delimiter',',']]
             seq = seq.concat(ro.list()).concat([['bracket',')']])
             stack.list = stack.list.slice(0,q_pos).concat(seq).concat(tail)
@@ -1059,8 +1030,6 @@ function py2js(src,context){
     times['total'] = dobj.getTime()-t0
     var ch = '',attr=''
     for(attr in times){ch+=attr+':'+times[attr]+'\n'}
-    //alert(ch)
-    // return stack
     return stack
 }
 

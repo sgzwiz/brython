@@ -34,6 +34,16 @@ Function.prototype.__eq__ = function(other){
     return $bool_conv((other+'')===(this+''))
 }
 
+Array.prototype.match = function(other){
+    // return true if array and other have the same first items
+    var $i = 0
+    while($i<this.length && $i<other.length){
+        if(this[$i]!==other[$i]){return false}
+        $i++
+    }
+    return true
+}
+
 function $List2Dict(){
     var res = {}
     var i=0
@@ -73,132 +83,131 @@ function Stack(stack_list){
     this.list = stack_list
 }    
 Stack.prototype.find_next = function(){
-        // arguments are position to search from, researched type and
-        // optional researched values
-        // return position of next matching stack item or null
-        var pos = arguments[0]
-        var _type = arguments[1]
-        var values = null
-        if(arguments.length>2){
-            values = {}
-            for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
-        }
-        for(i=pos;i<this.list.length;i++){
-            if(this.list[i][0]==_type){
-                if(values==null){
-                    return i
-                } else if(this.list[i][1] in values){
-                    return i
-                }
+    // arguments are position to search from, researched type and
+    // optional researched values
+    // return position of next matching stack item or null
+    var pos = arguments[0]
+    var _type = arguments[1]
+    var values = null
+    if(arguments.length>2){
+        values = {}
+        for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
+    }
+    for(i=pos;i<this.list.length;i++){
+        if(this.list[i][0]==_type){
+            if(values==null){
+                return i
+            } else if(this.list[i][1] in values){
+                return i
             }
         }
-        return null
     }
+    return null
+}
 
 Stack.prototype.find_next_at_same_level = function(){
-        // same as find_next but skips enclosures to find the token
-        // at the same level as the one where search starts
-        var pos = arguments[0]
-        var _type = arguments[1]
-        var values = null
-        if(arguments.length>2){
-            values = {}
-            for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
-        }
-        while(true){
-            if(this.list[pos][0]=="bracket" 
-                && this.list[pos][1] in $OpeningBrackets){
-                // opening bracket
-                pos = this.find_next_matching(pos)
-            } else if(this.list[pos][0]==_type){
-                if(values==null){return pos}
-                else if(this.list[pos][1] in values){return pos}
-            }
-            pos++
-            if (pos>this.list.length-1){return null}
-        }
+    // same as find_next but skips enclosures to find the token
+    // at the same level as the one where search starts
+    var pos = arguments[0]
+    var _type = arguments[1]
+    var values = null
+    if(arguments.length>2){
+        values = {}
+        for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
     }
+    while(true){
+        if(this.list[pos][0]=="bracket" 
+            && this.list[pos][1] in $OpeningBrackets){
+            // opening bracket
+            pos = this.find_next_matching(pos)
+        } else if(this.list[pos][0]==_type){
+            if(values==null){return pos}
+            else if(this.list[pos][1] in values){return pos}
+        }
+        pos++
+        if (pos>this.list.length-1){return null}
+    }
+}
     
 Stack.prototype.find_previous = function(){
-        // same as find_next but search backwards from pos
-        var pos = arguments[0]
-        var _type = arguments[1]
-        var values = null
-        if(arguments.length>2){
-            values = {}
-            for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
-        }
-        for(i=pos;i>=0;i--){
-            if(this.list[i][0]==_type){
-                if(values==null){
-                    return i
-                } else if(this.list[i][1] in values){
-                    return i
-                }
+    // same as find_next but search backwards from pos
+    var pos = arguments[0]
+    var _type = arguments[1]
+    var values = null
+    if(arguments.length>2){
+        values = {}
+        for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
+    }
+    for(i=pos;i>=0;i--){
+        if(this.list[i][0]==_type){
+            if(values==null){
+                return i
+            } else if(this.list[i][1] in values){
+                return i
             }
         }
-        return null
     }
+    return null
+}
 
 Stack.prototype.find_next_matching = function(pos){
-        // find position of stack item closing the bracket 
-        // at specified position in the tokens stack
-        
-        var brackets = {"(":")","[":"]","{":"}"}
-        var _item = this.list[pos]
-        if(_item[0]=="bracket"){
-            opening = _item[1]
-            count = 0
-            for(i=pos;i<this.list.length;i++){
-                if(this.list[i][0]=="bracket"){
-                    var value = this.list[i][1]
-                    if(value==opening){count += 1}
-                    else if(value==brackets[opening]){
-                        count -= 1
-                        if(count==0){return i}
-                    }
+    // find position of stack item closing the bracket 
+    // at specified position in the tokens stack
+    
+    var brackets = {"(":")","[":"]","{":"}"}
+    var _item = this.list[pos]
+    if(_item[0]=="bracket"){
+        opening = _item[1]
+        count = 0
+        for(i=pos;i<this.list.length;i++){
+            if(this.list[i][0]=="bracket"){
+                var value = this.list[i][1]
+                if(value==opening){count += 1}
+                else if(value==brackets[opening]){
+                    count -= 1
+                    if(count==0){return i}
                 }
             }
         }
-        return null
     }
+    return null
+}
 
 Stack.prototype.find_previous_matching = function(pos){
-        // find position of stack item closing the bracket 
-        // at specified position in the tokens stack
-        
-        var brackets = {")":"(","]":"[","}":"{"}
-        var item = this.list[pos]
-        var i=0
-        if(item[0]=="bracket"){
-            closing = item[1]
-            count = 0
-            for(i=pos;i>=0;i--){
-                if(this.list[i][0]=="bracket"){
-                    var value = this.list[i][1]
-                    if(value==closing){count += 1;}
-                    else if(value==brackets[closing]){
-                        count -= 1
-                        if(count==0){return i}
-                    }
+    // find position of stack item closing the bracket 
+    // at specified position in the tokens stack
+    
+    var brackets = {")":"(","]":"[","}":"{"}
+    var item = this.list[pos]
+    var i=0
+    if(item[0]=="bracket"){
+        closing = item[1]
+        count = 0
+        for(i=pos;i>=0;i--){
+            if(this.list[i][0]=="bracket"){
+                var value = this.list[i][1]
+                if(value==closing){count += 1;}
+                else if(value==brackets[closing]){
+                    count -= 1
+                    if(count==0){return i}
                 }
             }
         }
-        return null
     }
-    
+    return null
+}
     
 Stack.prototype.get_atoms = function(){
-        var pos = 0
-        var nb = 0
-        var atoms = []
-        while(pos<this.list.length){
-            atom = this.atom_at(pos,true)
-            atoms.push(atom)
-            pos += atom.end-atom.start
-        }
-        return atoms
+    var pos = 0
+    var nb = 0
+    var atoms = []
+    while(pos<this.list.length){
+        atom = this.atom_at(pos,true)
+        atoms.push(atom)
+        pos += atom.end-atom.start
     }
+    return atoms
+}
 
 Stack.prototype.raw_atom_at = function(pos){
     atom = new Atom(this)
@@ -327,28 +336,25 @@ Stack.prototype.next_at_same_indent = function(pos){
 }    
 
 Stack.prototype.split = function(delimiter){
-        // split stack with specified delimiter
-        var items = new Array()
-        var count = 0
-        var pos = 0
-        var start = 0
-        while(pos<this.list.length){
-            pos = this.find_next_at_same_level(pos,'delimiter',delimiter)
-            if(pos==null){pos=this.list.length;break}
-            var s = new Stack(this.list.slice(start,pos))
-            s.start = start
-            s.end = pos-1
-            items.push(s)
-            start = pos+1
-            pos++
-        }
+    // split stack with specified delimiter
+    var items = new Array(), count = 0,pos = 0,start = 0
+    while(pos<this.list.length){
+        pos = this.find_next_at_same_level(pos,'delimiter',delimiter)
+        if(pos==null){pos=this.list.length;break}
         var s = new Stack(this.list.slice(start,pos))
         s.start = start
         s.end = pos-1
-        if(s.end<start){s.end=start}
         items.push(s)
-        return items
+        start = pos+1
+        pos++
     }
+    var s = new Stack(this.list.slice(start,pos))
+    s.start = start
+    s.end = pos-1
+    if(s.end<start){s.end=start}
+    items.push(s)
+    return items
+}
 
 Stack.prototype.find_block = function(pos){
         var item = this.list[pos]
@@ -387,49 +393,49 @@ Stack.prototype.find_block = function(pos){
     }
 
 Stack.prototype.to_js = function(){
-        // build Javascript code
-        var i=0,j=0,x=null
-        var js = "",scope_stack=[]
-        var t2 = $List2Dict('id','assign_id','str','int','float','keyword','code')
+    // build Javascript code
+    var i=0,j=0,x=null
+    var js = "",scope_stack=[]
+    var t2 = $List2Dict('id','assign_id','str','int','float','keyword','code')
 
-        for(i=0;i<this.list.length;i++){
-            x = this.list[i]
-            if(x[0]=="indent") {
-                for(j=0;j<x[1];j++){js += " "}
-            } else if(x[0] in t2) {
-                if(x[0]=='str'){js += 'str('+x[1].replace(/\n/gm,'\\n')+')'}
-                else if(x[0]=='int'){js += 'int('+x[1]+')'}
-                else if(x[0]=='float'){js += 'float('+x[1]+')'}
-                else if(x[0]=="id"){
-                    // resolve id name with scope
-                    if(x[3]==undefined){js += x[1]}
-                    else{js += '$resolve("'+x[1]+'","'+x[3]+'")'}
-                } else if(x[0]=="assign_id"){
-                    // assignment inside a scope
-                    if(x[3]==undefined){js += x[1]}
-                    else{js += '$ns["'+x[3]+'"]["'+x[1]+'"]'}
-                } else {
-                    js += x[1]
-                }
-                if(i<this.list.length-1 && this.list[i+1][0] != "bracket"){
-                    js += " "
-                }
+    for(i=0;i<this.list.length;i++){
+        x = this.list[i]
+        if(x[0]=="indent") {
+            for(j=0;j<x[1];j++){js += " "}
+        } else if(x[0] in t2) {
+            if(x[0]=='str'){js += 'str('+x[1].replace(/\n/gm,'\\n')+')'}
+            else if(x[0]=='int'){js += 'int('+x[1]+')'}
+            else if(x[0]=='float'){js += 'float('+x[1]+')'}
+            else if(x[0]=="id"){
+                // resolve id name with scope
+                if(x[3]==undefined){js += x[1]}
+                else{js += '$resolve("'+x[1]+'","'+x[3]+'")'}
+            } else if(x[0]=="assign_id"){
+                // assignment inside a scope
+                if(x[3]==undefined){js += x[1]}
+                else{js += '$ns["'+x[3]+'"]["'+x[1]+'"]'}
             } else {
-                if(x[0]=="newline"){js += '\r\n'}
-                else{js += x[1]}
+                js += x[1]
             }
+            if(i<this.list.length-1 && this.list[i+1][0] != "bracket"){
+                js += " "
+            }
+        } else {
+            if(x[0]=="newline"){js += '\r\n'}
+            else{js += x[1]}
         }
-        return js
     }
+    return js
+}
 
 Stack.prototype.dump = function(){
-        ch = ''
-        for(var i=0;i<this.list.length;i++){
-            _item = this.list[i]
-            ch += i+' '+_item[0]+' '+_item[1]+'\n'
-        }
-        alert(ch)
+    ch = ''
+    for(var i=0;i<this.list.length;i++){
+        _item = this.list[i]
+        ch += i+' '+_item[0]+' '+_item[1]+'\n'
     }
+    alert(ch)
+}
 
 
 

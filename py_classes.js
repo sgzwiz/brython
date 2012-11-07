@@ -252,6 +252,10 @@ function $FloatClass(value){
     this.value = value
     this.__class__ = float
 }
+$FloatClass.prototype.__or__ = function(other){
+    if(this.value){return this}
+    else{return other}
+}
 $FloatClass.prototype.__str__ = function(){return str(this.value)}
 $FloatClass.prototype.__int__ = function(){return int(parseInt(this.value))}
 $FloatClass.prototype.__float__ = function(){return this}
@@ -260,7 +264,7 @@ var $op_func = function(other){
     if($isinstance(other,int)){return float(this.value-other.value)}
     else if($isinstance(other,float)){return float(this.value-other.value)}
     else{$raise('TypeError',
-        "unsupported operand type(s) for -: 'int' and '"+$str(other.__class__)+"'")
+        "unsupported operand type(s) for -: "+this.value+" (float) and '"+$str(other.__class__)+"'")
     }
 }
 $op_func += '' // source code
@@ -273,11 +277,11 @@ var $augm_op_func = function(other){
     if($isinstance(other,int)){this.value -= other.value}
     else if($isinstance(other,float)){this.value -= other.value}
     else{$raise('TypeError',
-        "unsupported operand type(s) for -=: 'int' and '"+$str(other.__class__)+"'")
+        "unsupported operand type(s) for -=: 'float' and '"+$str(other.__class__)+"'")
     }
 }
 $augm_op_func += '' // source code
-var $ops = {'+=':'iadd','*=':'imul','/=':'itruediv'}
+var $ops = {'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv'}
 for($op in $ops){
     eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
 }
@@ -331,7 +335,7 @@ function float(value){
 }
 
 function getattr(obj,attr,_default){
-    if(!$isinstance(attr,str)){$raise('TypeError',"getattr(): attribute name must be string")}
+    if(!$isinstance(attr,str)){$raise('TypeError',"getattr(): attribute name must be string "+$str(attr))}
     if(attr.value in obj){
         var res = obj[attr.value]
         if(typeof res==="function"){
@@ -362,7 +366,7 @@ function $ModuleClass(module){
 }
 function Import(){
 
-    var js_modules = $List2Dict('time','datetime')
+    var js_modules = $List2Dict('time','datetime','math','random')
     var calling={'line':document.line_num,'context':document.$context}
     for(var i=0;i<arguments.length;i++){
         module = arguments[i]
@@ -400,7 +404,7 @@ function Import(){
             $raise('ImportError',"No module named '"+module+"'")}, 5000)
         $xmlhttp.send()
         if(is_js){
-            eval(res)
+            try{eval(res)}catch(err){$raise('ImportError',err.message)}
         }else{
             // if module was found, res is set to the Python source code
             // wrap it inside a def for name resolutions
@@ -572,7 +576,7 @@ $ListClass.prototype.__len__ = function(){return int(this.items.length)}
 $ListClass.prototype.__str__ = function(){
     var res = "[",i=null
     for(i=0;i<this.items.length;i++){
-        x = this.items[i]
+        var x = this.items[i]
         if($isinstance(x,str)){res += x.__repr__().value} 
         else{res += x.__str__().value}
         if(i<this.items.length-1){res += ','}
@@ -860,7 +864,6 @@ function $extreme(args,op){ // used by min() and max()
         }else{$raise('TypeError',$op_name+"() got an unexpected keyword argument")}
     }else{var func = function(x){return x}}
     if((has_key && args.length==2)||(!has_key && args.length==1)){
-        alert('cas 1')
         var arg = args[0]
         if(!('__next__' in arg)){$raise('TypeError',"'"+$str(arg)+"' object is not iterable")}
         var res = null
@@ -878,7 +881,7 @@ function $extreme(args,op){ // used by min() and max()
         var res = null
         for(var i=0;i<=last_i;i++){
             var x = args[i]
-            if(res===null || $bool(getattr(func(x),op)(func(res)))){res = x}
+            if(res===null || $bool(getattr(func(x),str(op))(func(res)))){res = x}
         }
         return res
     }
@@ -906,19 +909,48 @@ function not(obj){
 }
 
 function $ObjectClass(){
-    this.__getattr__ = function(attr){
-        if(attr.value in this){return this[attr.value]}
-        else{$raise('AttributeError',"object has no attribute '"+attr.value+"'")}
-    }
-    this.__delattr__ = function(attr){eval('delete this.'+attr.value)}
-    this.__setattr__ = function(attr,value){this[attr.value]=value}
 }
+$ObjectClass.prototype.__getattr__ = function(attr){
+    if(attr.value in this){return this[attr.value]}
+    else{$raise('AttributeError',"object has no attribute '"+attr.value+"'")}
+}
+$ObjectClass.prototype.__delattr__ = function(attr){eval('delete this.'+attr.value)}
+$ObjectClass.prototype.__setattr__ = function(attr,value){this[attr.value]=value}
 
 function object(){
     return new $ObjectClass()
 }
 
 function $prompt(src){return str(prompt(src.value))}
+
+// range
+function $RangeClass(start,stop,step){
+    var pos = start.value
+    this.__next__ = function(){
+        var res = int(pos)
+        if((step.value>0 && pos<stop.value) || (step.value<0 && pos>stop.value)){
+            pos += step.value
+            return res
+        }else{$raise('StopIteration')}
+    }
+}
+
+function range(){
+    var start=int(0)
+    var stop=int(0)
+    var step=int(1)
+    if(arguments.length==1){
+        stop = arguments[0]
+    } else if(arguments.length>=2){
+        start = arguments[0]
+        stop = arguments[1]
+    }
+    if(arguments.length>=3){
+        step=arguments[2]
+    }
+    return new $RangeClass(start,stop,step)
+}
+
 
 function $ReversedClass(seq){
     this.iter = null
@@ -961,7 +993,7 @@ $SetClass.prototype.__len__ = function(){return int(this.items.length)}
 $SetClass.prototype.__str__ = function(){
     var res = "["
     for(var i=0;i<this.items.length;i++){
-        x = this.items[i]
+        var x = this.items[i]
         if($isinstance(x,str)){
             res += x.__repr__().value
         } else {
@@ -1561,6 +1593,7 @@ function zip(){
 
 // built-in constants : True, False, None
 function $TrueClass(){
+    this.__class__ = "True"
     this.value = true
     this.__str__ = function(){return str('True')}
     this.__bool__ = function(){return True}
@@ -1570,6 +1603,7 @@ function $TrueClass(){
 True = new $TrueClass()
 
 function $FalseClass(){
+    this.__class__ = "False"
     this.value = false
     this.__str__ = function(){return str('False')}
     this.__bool__ = function(){return False}
@@ -1579,12 +1613,13 @@ function $FalseClass(){
 False = new $FalseClass()
 
 function $NoneClass(){
-    this.__str__ = function(){return str('None')}
+    this.__class__ = "None"
+    this.__and__ = function(other){return False}
     this.__bool__ = function(){return False}
     this.__or__ = function(other){return other}
+    this.__str__ = function(){return str('None')}
 }
 None = new $NoneClass()
-
 
 // slice
 function $SliceClass(start,stop,step){
@@ -1607,34 +1642,6 @@ function slice(){
         if(step.value===0){$raise('ValueError','slice step cannot be zero')}
     }
     return new $SliceClass(start,stop,step)
-}
-
-// range
-function $RangeClass(start,stop,step){
-    var pos = start.value
-    this.__next__ = function(){
-        if(pos<stop.value){
-            var res = int(pos)
-            pos += step.value
-            return res
-        }else{$raise('StopIteration')}
-    }
-}
-
-function range(){
-    var start=int(0)
-    var stop=int(0)
-    var step=int(1)
-    if(arguments.length==1){
-        stop = arguments[0]
-    } else if(arguments.length>=2){
-        start = arguments[0]
-        stop = arguments[1]
-    }
-    if(arguments.length>=3){
-        step=arguments[2]
-    }
-    return new $RangeClass(start,stop,step)
 }
 
 // used in function calls for keyword arguments

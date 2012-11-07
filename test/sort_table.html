@@ -5,7 +5,6 @@ body,td,th{font-family:sans-serif}
 a.sort_link{margin-left:10px;text-decoration:none}
 </style>
 
-
 <script src="../py_tokenizer.js"></script>
 <script src="../py_utils.js"></script>
 <script src="../py_classes.js"></script>
@@ -23,6 +22,7 @@ t0 = time.time()
 orders = {}
 
 def sort_by_col(cell,numeric=False):
+    log('sort by col')
     th_elt = cell.parent
     th_id = th_elt['id']
     if th_id not in orders:
@@ -147,11 +147,9 @@ doc <= H2("Pays d'Europe")
 table = TABLE()
 t = TBODY()
 title = TR()
-link1 = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
-link2 = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
-link_num1 = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this,true)")
-link_num2 = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this,true)")
-title <= TH('Pays'+link1)+TH('Capitale'+link2)+TH('Superficie'+link_num1)+TH('Population'+link_num2)
+link = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
+link_num = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this,true)")
+title <= TH('Pays'+link)+TH('Capitale'+link.clone())+TH('Superficie'+link_num)+TH('Population'+link_num.clone())
 t <= title
 t2 = time.time()
 times = []
