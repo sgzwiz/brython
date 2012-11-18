@@ -7,6 +7,7 @@ msg +='\nLine '+document.line_num+'\n'+lines[document.line_num-1]
 err=new Error(name+": "+msg)
 err.name=name
 err.message=name+": "+msg
+err.py_error=true
 throw err
 }
 function $UnsupportedOpType(op,class1,class2){
@@ -94,7 +95,6 @@ this.$values.splice(i,1)
 return
 }
 }
-console.log($str(arg))
 $raise('KeyError',$str(arg))
 }
 $DictClass.prototype.__eq__=function(other){
@@ -116,7 +116,7 @@ if(!test){return False}
 }
 return True
 }
-$DictClass.prototype.__ne__=function(other){return not(this.__eq__(other))}
+$DictClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
 $DictClass.prototype.__getitem__=function(arg){
 
 for(var i=0;i<this.$keys.length;i++){
@@ -150,7 +150,7 @@ $raise('StopIteration')
 }
 }
 $DictClass.prototype.__in__=function(item){return item.__contains__(this)}
-$DictClass.prototype.__not_in__=function(item){return not(item.__contains__(this))}
+$DictClass.prototype.__not_in__=function(item){return $not(item.__contains__(this))}
 $DictClass.prototype.__contains__=function(item){
 return list(this.$keys).__contains__(item)
 }
@@ -251,7 +251,7 @@ else{$raise('TypeError',
 }
 }
 $augm_op_func +='' 
-var $ops={'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv'}
+var $ops={'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv','%=':'imod'}
 for($op in $ops){
 eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
 }
@@ -263,7 +263,7 @@ else{$raise('TypeError',
 }
 }
 $FloatClass.prototype.__in__=function(item){return item.__contains__(this)}
-$FloatClass.prototype.__not_in__=function(item){return not(item.__contains__(this))}
+$FloatClass.prototype.__not_in__=function(item){return $not(item.__contains__(this))}
 
 var $comp_func=function(other){
 if($isinstance(other,int)){return $bool_conv(this.value > other.value)}
@@ -406,6 +406,10 @@ else{$UnsupportedOpType("//=",int,other.__class__)}
 }
 $IntegerClass.prototype.__in__=function(item){return item.__contains__(this)}
 $IntegerClass.prototype.__int__=function(){return this}
+$IntegerClass.prototype.__mod__=function(other){
+if($isinstance(other,int)){return int(this.value%other.value)}
+else{$UnsupportedOpType("%",int,other.__class__)}
+}
 $IntegerClass.prototype.__mul__=function(other){
 if($isinstance(other,int)){return int(this.value*other.value)}
 else if($isinstance(other,float)){return float(this.value*other.value)}
@@ -415,7 +419,7 @@ for(i=0;i<this.value;i++){res+=other.value}
 return str(res)
 }else{$UnsupportedOpType("*",int,other.__class__)}
 }
-$IntegerClass.prototype.__not_in__=function(item){return not(item.__contains__(this))}
+$IntegerClass.prototype.__not_in__=function(item){return $not(item.__contains__(this))}
 $IntegerClass.prototype.__pow__=function(other){
 if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
 else{$UnsupportedOpType("//",int,other.__class__)}
@@ -569,7 +573,7 @@ return True
 }
 return False
 }
-$ListClass.prototype.__ne__=function(other){return not(this.__eq__(other))}
+$ListClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
 $ListClass.prototype.__getitem__=function(arg){
 if($isinstance(arg,int)){
 var pos=arg.value
@@ -636,7 +640,7 @@ $raise('StopIteration')
 }
 }
 $ListClass.prototype.__in__=function(item){return item.__contains__(this)}
-$ListClass.prototype.__not_in__=function(item){return not(item.__contains__(this))}
+$ListClass.prototype.__not_in__=function(item){return $not(item.__contains__(this))}
 $ListClass.prototype.__contains__=function(item){
 for(var i=0;i<this.items.length;i++){
 try{if(this.items[i].__eq__(item)===True){return True}
@@ -810,7 +814,7 @@ function next(obj){
 if('__next__' in obj){return obj.__next__()}
 $raise('TypeError',"'"+$str(obj.__class__)+"' object is not iterable")
 }
-function not(obj){
+function $not(obj){
 if($bool(obj)){return False}else{return True}
 }
 function $ObjectClass(){
@@ -915,7 +919,7 @@ return True
 }
 return False
 }
-$SetClass.prototype.__ne__=function(other){return not(this.__eq__(other))}
+$SetClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
 $SetClass.prototype.__next__=function(){
 if(this.iter==null){this.iter==0}
 if(this.iter<this.items.length){
@@ -927,7 +931,7 @@ $raise('StopIteration')
 }
 }
 $SetClass.prototype.__in__=function(item){return item.__contains__(this)}
-$SetClass.prototype.__not_in__=function(item){return not(item.__contains__(this))}
+$SetClass.prototype.__not_in__=function(item){return $not(item.__contains__(this))}
 $SetClass.prototype.__contains__=function(item){
 for(var i=0;i<this.items.length;i++){
 try{if(this.items[i].__eq__(item)){return True}
@@ -1137,7 +1141,7 @@ this.iter=null
 $raise('StopIteration')
 }
 }
-$StringClass.prototype.__not_in__=function(item){return not(item.__contains__(this))}
+$StringClass.prototype.__not_in__=function(item){return $not(item.__contains__(this))}
 $StringClass.prototype.__or__=function(other){
 if(this.value.length==0){return other}
 else{return this}
@@ -1535,7 +1539,7 @@ if($arg.name in $defaults){delete $defaults[$arg.name]}
 }
 if($other_kw!=null){$ns[$fname][$other_kw]=dict($keys,$values)}
 }
-function $Assign(targets,right_expr,assign_pos){
+function $multiple_assign(targets,right_expr,assign_pos){
 var i=0,target=null
 var rlist=right_expr.list()
 if(rlist[0][0]=="bracket"){rlist=rlist.slice(1,rlist.length-1)}
@@ -1543,9 +1547,9 @@ var rs=new Stack(rlist)
 var rs_items=rs.split(',')
 if(rs_items.length>1){
 if(rs_items.length>targets.length){
-throw new ValueError("Too many values to unpack (expected "+rs_items.length+")")
+$raise("ValueError","Too many values to unpack (expected "+targets.length+")")
 }else if(rs_items.length<targets.length){
-throw new ValueError("Need more than "+rs_items.length+" values to unpack")
+$raise("ValueError","Need more than "+rs_items.length+" values to unpack")
 }else{
 var seq=[]
 for(i=0;i<targets.length;i++){
@@ -1564,8 +1568,7 @@ seq.push(['delimiter',';',assign_pos])
 for(var i=0;i<targets.length;i++){
 target=targets[i]
 seq=seq.concat(target.list)
-seq.push(['assign','=',assign_pos])
-seq.push(['code','next($var);',assign_pos])
+seq.push(['assign','='],['code','next($var)'],['delimiter',';'])
 }
 }
 return seq
@@ -1595,8 +1598,7 @@ var times={}
 
 tokens=$tokenize(src)
 stack=new Stack(tokens)
-
-
+var $err_num=0
 
 
 
@@ -1636,7 +1638,7 @@ pos=op_pos-2
 }
 }
 
-stack.list.splice(0,0,['code','try{$ns}catch(err){$ns={0:{}}}',0],
+stack.list.splice(0,0,['code','try{$ns}catch($err){$ns={0:{}}}',0],
 ['newline','\n',0])
 
 
@@ -1936,9 +1938,9 @@ var try_pos=stack.find_next(pos,"keyword","try")
 if(try_pos===null){break}
 var try_indent=0
 if(try_pos==0){try_indent=0}
-else if(stack.list[try_pos-1][0]=='indent'){try_indent=stack.list[try_pos][1]}
+else if(stack.list[try_pos-1][0]=='indent'){try_indent=stack.list[try_pos-1][1]}
 var block=stack.find_block(try_pos)
-var nxt=block[1]+1
+var nxt=block[1]
 
 var exc_pos=try_pos
 while(true){
@@ -1947,16 +1949,18 @@ if(exc_pos===null){break}
 
 
 if(stack.list[exc_pos].match(["keyword","except"])){
-stack.list.splice(exc_pos+1,0,['id','$err'+pos])
+stack.list.splice(exc_pos+1,0,['id','$err'+$err_num])
 }else{break}
 }
 
-stack.list.splice(nxt,0,['keyword','catch'],['id','$err'+pos],['delimiter',':'],['newline','\n'])
+stack.list.splice(nxt+1,0,['indent',try_indent],['keyword','catch'],
+['id','$err'+$err_num],['delimiter',':'],['newline','\n'])
 
 
-stack.list.splice(nxt+4,0,['indent',except_indent],['code','if(false){void(0)}'],
+stack.list.splice(nxt+6,0,['indent',try_indent+4],['code','if(false){void(0)}'],
 ['newline','\n'])
 pos=try_pos+1
+$err_num++
 }
 
 var pos=0
@@ -1965,13 +1969,13 @@ var exc_pos=stack.find_next(pos,"keyword","except")
 if(exc_pos===null){break}
 var block=stack.find_block(exc_pos)
 for(var x=block[0];x<block[1];x++){
-if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+12}
+if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+8}
 }
 if(stack.list[exc_pos-1][0]=='indent'){
-var except_indent=stack.list[exc_pos-1][1]+8
+var except_indent=stack.list[exc_pos-1][1]+4
 stack.list[exc_pos-1][1]=except_indent
 }
-else{var except_indent=8;stack.list.splice(exc_pos,0,['indent',8]);exc_pos++}
+else{var except_indent=4;stack.list.splice(exc_pos,0,['indent',4]);exc_pos++}
 pos=exc_pos+1
 }
 
@@ -2014,6 +2018,10 @@ if(kw_pos==null){break}
 var kw_indent=stack.indent(kw_pos)
 var src_pos=stack.list[kw_pos][2]
 var block=stack.find_block(kw_pos)
+if(block===null){
+document.line_num=pos2line[stack.list[kw_pos][2]]
+$raise('SyntaxError')
+}
 
 
 s=new Stack(stack.list.slice(block[0],block[1]+1))
@@ -2052,23 +2060,27 @@ if(iterable.type=="tuple"){seq.push(['bracket',')',src_pos])}
 seq.push(['newline','\n',src_pos])
 if(kw_indent){seq.push(['indent',kw_indent,src_pos])}
 seq=seq.concat([['code','while(true){',src_pos],
-['newline','\n',src_pos],['indent',kw_indent+4,src_pos],
+['newline','\n',src_pos],['indent',kw_indent,src_pos],
 ['code','try{',src_pos],['newline','\n',src_pos],
-['indent',kw_indent+8,src_pos],['code','var $Next=next($Iterable'+loop_id+')',src_pos],
-['newline','\n',src_pos],['indent',kw_indent+8,src_pos]])
+['indent',kw_indent+4,src_pos],['code','var $Next=next($Iterable'+loop_id+')',src_pos],
+['newline','\n',src_pos],['indent',kw_indent+4,src_pos]])
 seq=seq.concat(stack.list.slice(arg_list.start,arg_list.end+1))
 seq.push(['assign','=',src_pos])
 seq.push(['code','$Next',src_pos])
 seq=seq.concat(stack.list.slice(block[0],block[1]))
 
-seq=seq.concat([['indent',kw_indent+4,src_pos],
-['code','}catch(err){',src_pos],['newline','\n',src_pos],
-['indent',kw_indent+8,src_pos],['code','if(err.name=="StopIteration"){break}',src_pos],
-['newline','\n',src_pos],['indent',kw_indent+8,src_pos],
-['code','else{throw err}',src_pos],['newline','\n',src_pos],
-['indent',kw_indent+4,src_pos],['code','}',src_pos]])
+seq=seq.concat([['indent',kw_indent,src_pos],
+['code','}catch(err'+$err_num+'){',src_pos],
+['newline','\n',src_pos],
+['indent',kw_indent+8,src_pos],
+['code','if(err'+$err_num+'.name=="StopIteration"){break}',src_pos],
+['newline','\n',src_pos],['indent',kw_indent+4,src_pos],
+['code','else{throw err'+$err_num+'}',src_pos],
+['newline','\n',src_pos],
+['indent',kw_indent,src_pos],['code','}',src_pos]])
 stack.list=stack.list.slice(0,kw_pos)
 stack.list=stack.list.concat(seq)
+$err_num++
 }else if(kw=='if' || kw=='elif'){
 var seq=[['bracket','(',src_pos]]
 seq.push(['code','$bool',src_pos])
@@ -2220,10 +2232,23 @@ pos=exc_pos+1
 var dobj=new Date()
 times['if def class for']=dobj.getTime()-t0
 
+pos=stack.list.length-1
+while(true){
+var op=stack.find_previous(pos,"operator","not")
+if(op==null){break}
+ro=stack.atom_at(op+1)
+seq=[['bracket','(']]
+seq=seq.concat(ro.list())
+seq.push(['bracket',')'])
+stack.list[op]=["id","$not",stack.list[op][2]]
+stack.list=stack.list.slice(0,op+1).concat(seq).concat(stack.list.slice(ro.end+1,stack.length))
+pos=op-1
+}
+
 var ops_order=["**","*","/","//","%","+","-",
 "<","<=",">",">=","!=","==",
 "+=","-=","*=","/=","//=","%=","**=",
-"not_in","and","or","in","is_not"]
+"not_in","in","is_not"]
 var ops=[], op=null
 var lo1=$List2Dict(["id","bracket"])
 var lo2=$List2Dict(["id","bracket","delimiter","operator"])
@@ -2264,6 +2289,10 @@ if(op==stack.list.length-1){
 $raise("SyntaxError","Bad right operand ",src,stack.list[op][2])
 }
 var ro=stack.atom_at(op+1,false)
+if(op_sign in $List2Dict("+=","-=","*=","/=","//=","%=","**=")){
+
+ro.end=stack.find_next(op,'newline')-1
+}
 var ro_startswith_par=false
 if(ro!=null && ro.type=="tuple"){ro_startswith_par=true}
 
@@ -2292,20 +2321,58 @@ stack.list=stack.list.slice(0,lo.start).concat(sequence).concat(tail)
 pos=op-1
 }
 }
+
+
+var ops={"and":"&&","or":"||"}
+for(var op in ops){
+var pos=0
+while(true){
+var op_pos=stack.find_next(pos,'operator',op)
+if(op_pos===null){break}
+stack.list[op_pos][1]=ops[op]
+var left=stack.atom_before(op_pos,false)
+var right=stack.atom_at(op_pos+1,false)
+var head=stack.list.slice(0,left.start)
+var tail=stack.list.slice(right.end+1,stack.list.length)
+var nb=0
+if(left.list()[0].match(['bracket','('])){
+left=[['id','$test_item']].concat(left.list())
+nb++
+}else if(!left.list()[0].match(['id','$test_item'])){
+left=[['id','$test_item'],['bracket','(']].concat(left.list()).concat([['bracket',')']])
+nb +=3
+}else{
+left=left.list()
+}
+if(right.list()[0].match(['bracket','('])){
+right=[['id','$test_item']].concat(right.list())
+nb++
+}else{
+right=[['id','$test_item'],['bracket','(']].concat(right.list()).concat([['bracket',')']])
+nb+=3
+}
+stack.list=head
+stack.list=stack.list.concat(left).concat([['operator',ops[op]]]).concat(right)
+stack.list=stack.list.concat(tail)
+pos+=nb
+}
+}
+
+var pos=0
+while(true){
+var test_pos=stack.find_next(pos,'id','$test_item')
+if(test_pos===null){break}
+var test_end=stack.find_next_matching(test_pos+1)
+while(test_end<stack.list.length-1 && stack.list[test_end+1][0]=='operator'
+&&(stack.list[test_end+1][1]=='&&' || stack.list[test_end+1][1]=='||')){
+test_end=stack.find_next_matching(test_end+3)
+}
+stack.list.splice(test_end,0,['bracket',')'])
+stack.list.splice(test_pos,0,['code','$test_expr'],['bracket','('])
+pos=test_end
+}
 var dobj=new Date()
 times['operators']=dobj.getTime()-t0
-
-pos=stack.list.length-1
-while(true){
-var op=stack.find_previous(pos,"operator","not")
-if(op==null){break}
-ro=stack.atom_at(op+1)
-seq=[['bracket','(']]
-seq=seq.concat(ro.list())
-seq.push(['bracket',')'])
-stack.list=stack.list.slice(0,op+1).concat(seq).concat(stack.list.slice(ro.end+1,stack.length))
-pos=op-1
-}
 
 var js2py={'pass':'void(0)'}
 for(key in js2py){
@@ -2344,8 +2411,8 @@ list=list.slice(1,list.length-1)
 var t_stack=new Stack(list)
 var targets=t_stack.split(',')
 document.line_num=pos2line[stack.list[assign][2]]
-var seq=$Assign(targets,right,stack.list[assign][2])
-tail=stack.list.slice(right.end+1,stack.list.length)
+var seq=$multiple_assign(targets,right,stack.list[assign][2])
+var tail=stack.list.slice(right.end+1,stack.list.length)
 stack.list=stack.list.slice(0,left.start).concat(seq).concat(tail)
 pos=left.start+seq.length-1
 }else if(left.type=='str' || left.type=='int' || left.type=='float'){
@@ -2357,6 +2424,12 @@ pos=assign-1
 }else{
 
 left.list()[0][0]="assign_id"
+
+var head=stack.list.slice(0,right.start)
+var tail=stack.list.slice(right.end+1,stack.list.length)
+seq=[['code','$assign'],['bracket','(']].concat(right.list())
+seq=seq.concat([['bracket',')']])
+stack.list=head.concat(seq).concat(tail)
 pos=assign-1
 }
 }
@@ -2483,7 +2556,12 @@ if(elt.type=="text/python"){
 var src=(elt.innerHTML || elt.textContent)
 js=py2js(src).to_js()
 if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
+try{
 $run(js)
+}catch(err){
+if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+else{throw err}
+}
 }
 }
 }var $operators={
@@ -2518,7 +2596,7 @@ var unsupported=$List2Dict("class","is","from","nonlocal","with",
 
 
 var forbidden=$List2Dict("item")
-var punctuation={',':0,':':0,';':0}
+var punctuation={',':0,':':0}
 var int_pattern=new RegExp("^\\d+")
 var float_pattern=new RegExp("^\\d+\\.\\d*")
 var id_pattern=new RegExp("[\\$_a-zA-Z]\\w*")
@@ -2605,35 +2683,35 @@ if(escaped){zone+=src.charAt(end);escaped=false;end+=1}
 else if(src.charAt(end)=="\\"){
 if(raw){
 zone +='\\\\'
-end +=1
+end++
 }else{
 if(src.charAt(end+1)=='\n'){
 
 end +=2
-lnum +=1
+lnum++
 }else{
 zone+=src.charAt(end);escaped=true;end+=1
 }
 }
 }else if(src.charAt(end)==car){
 if(_type=="triple_string" && src.substr(end,3)!=car+car+car){
-end +=1
+end++
 }else{
 found=true
 
-if(stack.length>0 && $last(stack)[0]=="string"){
+if(stack.length>0 && $last(stack)[0]=="str"){
 
-$last(stack)[1]+=zone
-}else{
-stack.push(["str",zone+car,pos])
+stack.push(['operator','+',end])
 }
+stack.push(["str",zone+car,pos])
 pos=end+1
 if(_type=="triple_string"){pos=end+3}
 break
 }
 }else{
 zone +=src.charAt(end)
-end +=1
+if(src.charAt(end)=='\n'){lnum++}
+end++
 }
 }
 if(!found){
@@ -2799,6 +2877,25 @@ if(src.__class__!==undefined){return src}
 return new $DomObject(src)
 }
 }else{return src}
+}
+function $assign(expr){
+
+
+
+
+if($isinstance(expr,list(int,float,str))){return $JS2Py(expr.value)}
+else{return expr}
+}
+function $test_item(expr){
+
+
+
+document.$test_result=expr
+return $bool(expr)
+}
+function $test_expr(){
+
+return document.$test_result
 }
 
 
@@ -2978,9 +3075,17 @@ atom.end=pos
 return atom
 }
 var dict1=$List2Dict('id','assign_id','str','int','float')
-if(this.list[pos][0]in dict1){
+var $valid_kws=$List2Dict("True","False","None")
+if(this.list[pos][0]in dict1 || 
+(this.list[pos][0]=="keyword" && this.list[pos][1]in $valid_kws)||
+(this.list[pos][0]=="bracket" && 
+(this.list[pos][1]=="(" || this.list[pos][1]=='['))){
 atom.type=this.list[pos][0]
 end=pos
+if(this.list[pos][0]=='bracket'){
+atom.type="tuple"
+end=this.find_next_matching(pos)
+}
 while(end<this.list.length-1){
 var item=this.list[end+1]
 if(item[0]in dict1 && atom.type=="qualified_id"){
@@ -3049,11 +3154,15 @@ atom.end=pos-1
 atom.start=pos-1
 
 var atom_parts=$List2Dict("id","assign_id","str",'int','float',"point","qualifier")
+var $valid_kws=$List2Dict("True","False","None")
 var closing=$List2Dict(')',']')
 while(true){
 if(atom.start==-1){break}
 var item=this.list[atom.start]
 if(item[0]in atom_parts){atom.start--;continue}
+else if(item[0]=="keyword" && item[1]in $valid_kws){
+atom.start--;continue
+}
 else if(item[0]=="bracket" && item[1]in closing){
 atom.start=this.find_previous_matching(atom.start)-1
 continue
@@ -3141,7 +3250,7 @@ break
 stop=nl+1
 }
 return[closing_pos,stop,kw_indent]
-}
+}else{return null}
 }
 Stack.prototype.to_js=function(){
 
@@ -3581,7 +3690,7 @@ this.children.push(other.children[$i])
 }
 }else{this.children.push(other.elt)}
 }
-$TagClass.prototype.__ne__=function(other){return not(this.__eq__(other))}
+$TagClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
 $TagClass.prototype.__radd__=function(other){
 var res=$AbstractTag()
 var txt=document.createTextNode(other.value)

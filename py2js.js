@@ -21,6 +21,7 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
         if(!$isinstance($arg,$Kw)){
             if(i<$required.length){
                 eval($required[i]+"=$PyVar")
+                console.log('set '+$required[i]+' from '+$arg+' to '+$PyVar)
                 $ns[$fname][$required[i]]=$PyVar
             } else if(i<$required.length+$def_names.length) {
                 $ns[$fname][$def_names[i-$required.length]]=$PyVar
@@ -52,7 +53,7 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     if($other_kw!=null){$ns[$fname][$other_kw]=dict($keys,$values)}
 }
 
-function $Assign(targets,right_expr,assign_pos){
+function $multiple_assign(targets,right_expr,assign_pos){
     var i=0,target=null
     var rlist = right_expr.list()
     if(rlist[0][0]=="bracket"){rlist=rlist.slice(1,rlist.length-1)}
@@ -60,9 +61,9 @@ function $Assign(targets,right_expr,assign_pos){
     var rs_items = rs.split(',')
     if(rs_items.length>1){
         if(rs_items.length>targets.length){
-            throw new ValueError("Too many values to unpack (expected "+rs_items.length+")")
+            $raise("ValueError","Too many values to unpack (expected "+targets.length+")")
         } else if(rs_items.length<targets.length){
-            throw new ValueError("Need more than "+rs_items.length+" values to unpack")
+            $raise("ValueError","Need more than "+rs_items.length+" values to unpack")
         } else {
             var seq=[]
             for(i=0;i<targets.length;i++){
@@ -81,8 +82,7 @@ function $Assign(targets,right_expr,assign_pos){
         for(var i=0;i<targets.length;i++){
             target = targets[i]
             seq = seq.concat(target.list)
-            seq.push(['assign','=',assign_pos])
-            seq.push(['code','next($var);',assign_pos])
+            seq.push(['assign','='],['code','next($var)'],['delimiter',';'])
         }
     }
     return seq
@@ -117,10 +117,8 @@ function py2js(src,context){
     tokens = $tokenize(src)
 
     stack = new Stack(tokens)
-
-    // syntax check
-    //$syntax_check(stack,pos2line)
-        
+    
+    var $err_num = 0
     // add a line number at the end of each line in source code
     // used for traceback    
     //stack.list.splice(0,0,['code','document.line_num=1',0],['newline','\n',0])
@@ -162,7 +160,7 @@ function py2js(src,context){
     }
 
     // create variable $ns for namespace if it doesn't exist
-    stack.list.splice(0,0,['code','try{$ns}catch(err){$ns={0:{}}}',0],
+    stack.list.splice(0,0,['code','try{$ns}catch($err){$ns={0:{}}}',0],
         ['newline','\n',0])
 
     // for each opening bracket, define after which token_types[,token values] 
@@ -474,9 +472,9 @@ function py2js(src,context){
         if(try_pos===null){break}
         var try_indent = 0
         if(try_pos==0){try_indent=0}
-        else if(stack.list[try_pos-1][0]=='indent'){try_indent = stack.list[try_pos][1]}
+        else if(stack.list[try_pos-1][0]=='indent'){try_indent = stack.list[try_pos-1][1]}
         var block = stack.find_block(try_pos)
-        var nxt = block[1]+1
+        var nxt = block[1]
         // find all except clauses for this try
         var exc_pos = try_pos
         while(true){
@@ -485,16 +483,18 @@ function py2js(src,context){
             // insert the variable name used to test error type just after
             // the "except" keyword
             if(stack.list[exc_pos].match(["keyword","except"])){
-                stack.list.splice(exc_pos+1,0,['id','$err'+pos])
+                stack.list.splice(exc_pos+1,0,['id','$err'+$err_num])
             }else{break}
         }
         // insert pseudo-Python code "catch $err:" just after the "try" block
-        stack.list.splice(nxt,0,['keyword','catch'],['id','$err'+pos],['delimiter',':'],['newline','\n'])
+        stack.list.splice(nxt+1,0,['indent',try_indent],['keyword','catch'],
+            ['id','$err'+$err_num],['delimiter',':'],['newline','\n'])
         // add a line before all except clauses to avoid syntax error if there is only 
         // one clause "except:" without an error name
-        stack.list.splice(nxt+4,0,['indent',except_indent],['code','if(false){void(0)}'],
+        stack.list.splice(nxt+6,0,['indent',try_indent+4],['code','if(false){void(0)}'],
             ['newline','\n'])
         pos = try_pos+1
+        $err_num++
     }
 
     // indent except clauses
@@ -504,13 +504,13 @@ function py2js(src,context){
         if(exc_pos===null){break}
         var block = stack.find_block(exc_pos)
         for(var x=block[0];x<block[1];x++){
-            if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+12}
+            if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+8}
         }
         if(stack.list[exc_pos-1][0]=='indent'){
-            var except_indent = stack.list[exc_pos-1][1]+8
+            var except_indent = stack.list[exc_pos-1][1]+4
             stack.list[exc_pos-1][1]=except_indent
         }
-        else{var except_indent=8;stack.list.splice(exc_pos,0,['indent',8]);exc_pos++}
+        else{var except_indent=4;stack.list.splice(exc_pos,0,['indent',4]);exc_pos++}
         pos = exc_pos+1
     }
 
@@ -555,6 +555,10 @@ function py2js(src,context){
             var kw_indent = stack.indent(kw_pos)
             var src_pos = stack.list[kw_pos][2]
             var block = stack.find_block(kw_pos)
+            if(block===null){
+                document.line_num = pos2line[stack.list[kw_pos][2]]
+                $raise('SyntaxError')
+            }
             // block[0] = position of :
             // block[1] = last newline of block
             s = new Stack(stack.list.slice(block[0],block[1]+1))
@@ -594,23 +598,27 @@ function py2js(src,context){
                     seq.push(['newline','\n',src_pos])
                     if(kw_indent){seq.push(['indent',kw_indent,src_pos])}
                     seq= seq.concat([['code','while(true){',src_pos],
-                        ['newline','\n',src_pos],['indent',kw_indent+4,src_pos],
+                        ['newline','\n',src_pos],['indent',kw_indent,src_pos],
                         ['code','try{',src_pos],['newline','\n',src_pos],
-                        ['indent',kw_indent+8,src_pos],['code','var $Next=next($Iterable'+loop_id+')',src_pos],
-                        ['newline','\n',src_pos],['indent',kw_indent+8,src_pos]])
+                        ['indent',kw_indent+4,src_pos],['code','var $Next=next($Iterable'+loop_id+')',src_pos],
+                        ['newline','\n',src_pos],['indent',kw_indent+4,src_pos]])
                     seq = seq.concat(stack.list.slice(arg_list.start,arg_list.end+1))
                     seq.push(['assign','=',src_pos])
                     seq.push(['code','$Next',src_pos])
                     seq = seq.concat(stack.list.slice(block[0],block[1]))
                     // code to include at block end
-                    seq = seq.concat([['indent',kw_indent+4,src_pos],
-                        ['code','}catch(err){',src_pos],['newline','\n',src_pos],
-                        ['indent',kw_indent+8,src_pos],['code','if(err.name=="StopIteration"){break}',src_pos],
-                        ['newline','\n',src_pos],['indent',kw_indent+8,src_pos],
-                        ['code','else{throw err}',src_pos],['newline','\n',src_pos],
-                        ['indent',kw_indent+4,src_pos],['code','}',src_pos]])
+                    seq = seq.concat([['indent',kw_indent,src_pos],
+                        ['code','}catch(err'+$err_num+'){',src_pos],
+                        ['newline','\n',src_pos],
+                        ['indent',kw_indent+8,src_pos],
+                        ['code','if(err'+$err_num+'.name=="StopIteration"){break}',src_pos],
+                        ['newline','\n',src_pos],['indent',kw_indent+4,src_pos],
+                        ['code','else{throw err'+$err_num+'}',src_pos],
+                        ['newline','\n',src_pos],
+                        ['indent',kw_indent,src_pos],['code','}',src_pos]])
                     stack.list = stack.list.slice(0,kw_pos)
                     stack.list = stack.list.concat(seq)
+                    $err_num++
                 } else if(kw=='if' || kw=='elif'){ // if and elif : use bool()
                     var seq = [['bracket','(',src_pos]]
                     seq.push(['code','$bool',src_pos])
@@ -760,16 +768,29 @@ function py2js(src,context){
         stack.list = stack.list.concat(tail)
         pos = exc_pos+1
     }
-
-    
+  
     var dobj = new Date()
     times['if def class for'] = dobj.getTime()-t0
-    
+
+    // replace not expr by $not(expr)
+    pos = stack.list.length-1
+    while(true){
+        var op = stack.find_previous(pos,"operator","not")
+        if(op==null){break}
+        ro = stack.atom_at(op+1)
+        seq = [['bracket','(']]
+        seq = seq.concat(ro.list())
+        seq.push(['bracket',')'])
+        stack.list[op]=["id","$not",stack.list[op][2]]
+        stack.list = stack.list.slice(0,op+1).concat(seq).concat(stack.list.slice(ro.end+1,stack.length))
+        pos = op-1
+    }
+                
     // operators with authorized left operand types
     var ops_order = ["**","*","/","//","%","+","-",
         "<","<=",">",">=","!=","==",
         "+=","-=","*=","/=","//=","%=","**=",
-        "not_in","and","or","in","is_not"]
+        "not_in","in","is_not"]
 
     var ops = [], op = null
     var lo1 = $List2Dict(["id","bracket"])
@@ -811,9 +832,12 @@ function py2js(src,context){
                 $raise("SyntaxError","Bad right operand ",src,stack.list[op][2])
             }
             var ro = stack.atom_at(op+1,false)
+            if(op_sign in $List2Dict("+=","-=","*=","/=","//=","%=","**=")){
+                // for augmented assignments, right operand is the rest of the statement
+                ro.end = stack.find_next(op,'newline')-1
+            } 
             var ro_startswith_par = false
             if(ro!=null && ro.type=="tuple"){ro_startswith_par=true}
-            
             // build replacement sequence
             var sequence = new Array()
             // add leading bracket if absent
@@ -841,23 +865,62 @@ function py2js(src,context){
             pos = op-1
         }
     }
+    
+    // for "and" and "or", rely on JS to avoid useless evaluations
+    // eg don't evaluate "x[5]==3" in "5 in x and x[5]==3" if 5 is not in x
+
+    var ops = {"and":"&&","or":"||"}
+    for(var op in ops){
+        var pos = 0
+        while(true){
+            var op_pos = stack.find_next(pos,'operator',op)
+            if(op_pos===null){break}
+            stack.list[op_pos][1]=ops[op]
+            var left = stack.atom_before(op_pos,false)
+            var right = stack.atom_at(op_pos+1,false)
+            var head = stack.list.slice(0,left.start)
+            var tail = stack.list.slice(right.end+1,stack.list.length)
+            var nb = 0
+            if(left.list()[0].match(['bracket','('])){
+                left = [['id','$test_item']].concat(left.list())
+                nb++
+            }else if(!left.list()[0].match(['id','$test_item'])){
+                left = [['id','$test_item'],['bracket','(']].concat(left.list()).concat([['bracket',')']])
+                nb += 3
+            }else{
+                left = left.list()
+            }
+            if(right.list()[0].match(['bracket','('])){
+                right = [['id','$test_item']].concat(right.list())
+                nb++
+            }else{
+                right = [['id','$test_item'],['bracket','(']].concat(right.list()).concat([['bracket',')']])
+                nb+=3
+            }
+            stack.list = head
+            stack.list = stack.list.concat(left).concat([['operator',ops[op]]]).concat(right)
+            stack.list = stack.list.concat(tail)
+            pos+=nb
+        }
+    }
+    // enclose sequences of $test_item inside a $test_result()
+    var pos=0
+    while(true){
+        var test_pos = stack.find_next(pos,'id','$test_item')
+        if(test_pos===null){break}
+        var test_end = stack.find_next_matching(test_pos+1)
+        while(test_end<stack.list.length-1 && stack.list[test_end+1][0]=='operator'
+            &&(stack.list[test_end+1][1]=='&&' || stack.list[test_end+1][1]=='||')){
+            test_end = stack.find_next_matching(test_end+3)
+        }
+        stack.list.splice(test_end,0,['bracket',')'])
+        stack.list.splice(test_pos,0,['code','$test_expr'],['bracket','('])
+        pos = test_end
+   }
 
     var dobj = new Date()
     times['operators'] = dobj.getTime()-t0
-
-    // replace not expr by not(expr)
-    pos = stack.list.length-1
-    while(true){
-        var op = stack.find_previous(pos,"operator","not")
-        if(op==null){break}
-        ro = stack.atom_at(op+1)
-        seq = [['bracket','(']]
-        seq = seq.concat(ro.list())
-        seq.push(['bracket',')'])
-        stack.list = stack.list.slice(0,op+1).concat(seq).concat(stack.list.slice(ro.end+1,stack.length))
-        pos = op-1
-    }
-            
+    
     // simple replacements
     var js2py = {'pass':'void(0)'}
     for(key in js2py){
@@ -898,8 +961,8 @@ function py2js(src,context){
             var t_stack = new Stack(list)
             var targets = t_stack.split(',')
             document.line_num = pos2line[stack.list[assign][2]]
-            var seq = $Assign(targets,right,stack.list[assign][2])
-            tail = stack.list.slice(right.end+1,stack.list.length)
+            var seq = $multiple_assign(targets,right,stack.list[assign][2])
+            var tail = stack.list.slice(right.end+1,stack.list.length)
             stack.list = stack.list.slice(0,left.start).concat(seq).concat(tail)
             pos = left.start+seq.length-1
         } else if(left.type=='str' || left.type=='int' || left.type=='float'){
@@ -908,9 +971,15 @@ function py2js(src,context){
             $raise("SyntaxError","can't assign to literal")
         } else if(left.type=='qualified_id' || left.type=='slicing' || left.type=="function_call"){
             pos = assign-1
-        } else {            
+        } else {
             // simple assignment - change type of left operand for JS rendering
             left.list()[0][0]="assign_id"
+            // replace right argument by $single_assign(right)
+            var head = stack.list.slice(0,right.start)
+            var tail = stack.list.slice(right.end+1,stack.list.length)
+            seq = [['code','$assign'],['bracket','(']].concat(right.list())
+            seq = seq.concat([['bracket',')']])
+            stack.list = head.concat(seq).concat(tail)
             pos = assign-1
         }
     }
@@ -1045,7 +1114,12 @@ function brython(debug){
             var src = (elt.innerHTML || elt.textContent)
             js = py2js(src).to_js()
             if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
-            $run(js)
+            try{
+                $run(js)
+            }catch(err){
+                if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+                else{throw err}
+            }
         }
     }
 }

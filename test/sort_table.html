@@ -22,7 +22,7 @@ t0 = time.time()
 orders = {}
 
 def sort_by_col(cell,numeric=False):
-    log('sort by col')
+    log(cell.__class__)
     th_elt = cell.parent
     th_id = th_elt['id']
     if th_id not in orders:

@@ -33,7 +33,7 @@ function $tokenize(src){
     // complete list at http://www.javascripter.net/faq/reserved.htm
     var forbidden = $List2Dict("item")
 
-    var punctuation = {',':0,':':0,';':0}
+    var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
     var float_pattern = new RegExp("^\\d+\\.\\d*")
     var id_pattern = new RegExp("[\\$_a-zA-Z]\\w*")
@@ -122,35 +122,35 @@ function $tokenize(src){
                 else if(src.charAt(end)=="\\"){
                     if(raw){
                         zone += '\\\\'
-                        end += 1
+                        end++
                     } else {
                         if(src.charAt(end+1)=='\n'){
                             // explicit line joining inside strings
                             end += 2
-                            lnum += 1
+                            lnum++
                         } else {
                             zone+=src.charAt(end);escaped=true;end+=1
                         }
                     }
                 } else if(src.charAt(end)==car){
                     if(_type=="triple_string" && src.substr(end,3)!=car+car+car){
-                        end += 1
+                        end++
                     } else {
                         found = true
                         // end of string
-                        if(stack.length>0 && $last(stack)[0]=="string"){
-                            // implicit string concatenation
-                            $last(stack)[1]+=zone
-                        } else {
-                            stack.push(["str",zone+car,pos])
+                        if(stack.length>0 && $last(stack)[0]=="str"){
+                            // implicit string concatenation : insert a + sign
+                            stack.push(['operator','+',end])
                         }
+                        stack.push(["str",zone+car,pos])
                         pos = end+1
                         if(_type=="triple_string"){pos = end+3}
                         break
                     }
                 } else { 
                     zone += src.charAt(end)
-                    end += 1
+                    if(src.charAt(end)=='\n'){lnum++}
+                    end++
                 }
             }
             if(!found){

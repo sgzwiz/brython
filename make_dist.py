@@ -2,7 +2,7 @@
 import tokenize
 
 sources = ['py_classes','py2js','py_tokenizer','py_utils','py_ajax','py_dom','py_local_storage']
-
+ 
 res = ''
 src_size = 0
 for fname in sources:

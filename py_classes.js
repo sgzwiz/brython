@@ -8,6 +8,7 @@ function $raise(name,msg) {
     err = new Error(name+": "+msg)
     err.name = name
     err.message = name+": "+msg;
+    err.py_error = true
     throw err
 }
 
@@ -108,7 +109,6 @@ $DictClass.prototype.__delitem__ = function(arg){
             return
         }
     }
-    console.log($str(arg))
     $raise('KeyError',$str(arg))
 }
 
@@ -132,7 +132,7 @@ $DictClass.prototype.__eq__ = function(other){
     return True
 }
 
-$DictClass.prototype.__ne__ = function(other){return not(this.__eq__(other))}
+$DictClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
 
 $DictClass.prototype.__getitem__ = function(arg){
     // search if arg is in the keys
@@ -170,7 +170,7 @@ $DictClass.prototype.__next__ = function(){
 }
 
 $DictClass.prototype.__in__ = function(item){return item.__contains__(this)}
-$DictClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+$DictClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
 
 $DictClass.prototype.__contains__ = function(item){
     return list(this.$keys).__contains__(item)
@@ -281,7 +281,7 @@ var $augm_op_func = function(other){
     }
 }
 $augm_op_func += '' // source code
-var $ops = {'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv'}
+var $ops = {'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv','%=':'imod'}
 for($op in $ops){
     eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
 }
@@ -295,7 +295,7 @@ $FloatClass.prototype.__floordiv__ = function(other){
 }
 
 $FloatClass.prototype.__in__ = function(item){return item.__contains__(this)}
-$FloatClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+$FloatClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
 
 // comparison methods
 var $comp_func = function(other){
@@ -455,6 +455,11 @@ $IntegerClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
 $IntegerClass.prototype.__int__ = function(){return this}
 
+$IntegerClass.prototype.__mod__ = function(other){
+    if($isinstance(other,int)){return int(this.value%other.value)}
+    else{$UnsupportedOpType("%",int,other.__class__)}
+}
+
 $IntegerClass.prototype.__mul__ = function(other){
     if($isinstance(other,int)){return int(this.value*other.value)}
     else if($isinstance(other,float)) {return float(this.value*other.value)}
@@ -465,7 +470,7 @@ $IntegerClass.prototype.__mul__ = function(other){
     }else{$UnsupportedOpType("*",int,other.__class__)}
 }
 
-$IntegerClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+$IntegerClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
 
 $IntegerClass.prototype.__pow__ = function(other){
     if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
@@ -641,7 +646,7 @@ $ListClass.prototype.__eq__ = function(other){
     return False
 }
 
-$ListClass.prototype.__ne__ = function(other){return not(this.__eq__(other))}
+$ListClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
     
 $ListClass.prototype.__getitem__ = function(arg){
     if($isinstance(arg,int)){
@@ -712,7 +717,7 @@ $ListClass.prototype.__next__ = function(){
 }
 
 $ListClass.prototype.__in__ = function(item){return item.__contains__(this)}
-$ListClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+$ListClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
 
 $ListClass.prototype.__contains__ = function(item){
     for(var i=0;i<this.items.length;i++){
@@ -904,7 +909,7 @@ function next(obj){
     $raise('TypeError',"'"+$str(obj.__class__)+"' object is not iterable")
 }
 
-function not(obj){
+function $not(obj){
     if($bool(obj)){return False}else{return True}
 }
 
@@ -1022,7 +1027,7 @@ $SetClass.prototype.__eq__ = function(other){
     return False
 }
 
-$SetClass.prototype.__ne__ = function(other){return not(this.__eq__(other))}
+$SetClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
 
 $SetClass.prototype.__next__ = function(){
     if(this.iter==null){this.iter==0}
@@ -1036,7 +1041,7 @@ $SetClass.prototype.__next__ = function(){
 }
 
 $SetClass.prototype.__in__ = function(item){return item.__contains__(this)}
-$SetClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+$SetClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
 
 $SetClass.prototype.__contains__ = function(item){
     for(var i=0;i<this.items.length;i++){
@@ -1272,7 +1277,7 @@ $StringClass.prototype.__next__ = function(){
     }
 }
 
-$StringClass.prototype.__not_in__ = function(item){return not(item.__contains__(this))}
+$StringClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
 
 $StringClass.prototype.__or__ = function(other){
     if(this.value.length==0){return other}

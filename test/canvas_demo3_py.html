@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script src="brython.js"></script>
+<meta charset="utf-8">
+<meta name="author" content="Ben Joffe" />
+<meta name="HandheldFriendly" content="True">
+<meta name="MobileOptimized" content="320">
+<meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0, user-scalable=no" />
+<meta http-equiv="cleartype" content="on">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+<title>Ben Joffe | Canvascape</title>
+
+<link rel="alternate" type="application/rss+xml" title="BenJoffe.com - RSS 2.0 Feed" href="rss.xml">
+<link rel="stylesheet" type="text/css" href="canvas_demo3.css" />
+
+  <!--[if IE]><script type="text/javascript" src="/script/lib/excanvas.js"></script><![endif]-->
+      <link rel="stylesheet" type="text/css" href="canvas_demo3b.css" />
+
+<script type="text/python">
+
+"""**
+ * Copyright (c) 2009, Benjamin Joffe
+ * All rights reserved.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHOR AND CONTRIBUTORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *"""
+
+import math
+import time
+
+map = None
+canvas = None
+overlay = None
+pi=math.pi
+total=0
+samples=200
+
+arena=[
+    [1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,1],
+    [1,0,0,1,0,1,1,1,0,1],
+    [1,0,1,0,0,0,0,1,0,1],
+    [1,0,0,0,0,1,0,1,0,1],
+    [1,0,1,1,0,0,0,0,0,1],
+    [1,0,0,1,0,1,1,1,0,1],
+    [1,1,0,1,0,0,0,1,0,1],
+    [1,0,0,1,0,1,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1]
+]
+playerPos=[4,4] # x,y (from top left)
+playerDir=0.4 # theta, facing right=0=2pi
+playerPosZ=1
+key=[0,0,0,0,0] # left, right, up, down
+
+playerVelY=0
+face=[]
+
+def wallDistance(theta):
+    t0 = time.time()
+    global face
+    data=[]
+    face=[]
+    x = playerPos[0]
+    y = playerPos[1]
+    
+    atX=math.floor(x)
+    atY=math.floor(y)
+
+    thisRow=-1
+    thisSide=-1
+
+    lastHeight=0
+    nb = 0
+
+    for i in range(samples):
+        theta+=pi/(3*samples)+2*pi
+        theta%=2*pi
+
+        mapX = atX
+        mapY = atY
+
+        deltaX=1/math.cos(theta)
+        deltaY=1/math.sin(theta)
+
+        if deltaX>0:
+            stepX = 1
+            distX = (mapX + 1 - x) * deltaX
+        else:
+            stepX = -1
+            deltaX *= -1
+            distX = (x - mapX) * (deltaX)  
+
+        if deltaY>0:
+            stepY = 1
+            distY = (mapY + 1 - y) * deltaY
+        else:
+            stepY = -1
+            deltaY *= -1
+            distY = (y - mapY) * deltaY
+
+        for j in range(20):
+            nb+=1
+            if distX < distY:
+                mapX += stepX
+                if (mapX<=len(arena)) and (mapY<=len(arena[mapX])) and arena[mapX][mapY]:
+                    if thisRow!=mapX or thisSide!=0:
+                        if i>0:
+                            data.append(i)
+                            data.append(lastHeight)
+                        data.append(i)
+                        data.append(distX)
+                        thisSide=0
+                        thisRow=mapX
+                        face.append(1+stepX)
+                    lastHeight=distX
+                    break
+                distX += deltaX
+            else:
+                mapY += stepY
+                if (mapX<=len(arena)) and (mapY<=len(arena[mapX])) and arena[mapX][mapY]:
+                    if thisRow!=mapY or thisSide!=1:
+                        if i>0:
+                            data.append(i)
+                            data.append(lastHeight)
+                        data.append(i)
+                        data.append(distY)
+                        thisSide=1
+                        thisRow=mapY
+                        face.append(2+stepY)
+                    lastHeight=distY
+                    break
+                distY += deltaY
+    data.append(i)
+    data.append(lastHeight)
+    log(time.time()-t0)
+    log(nb)
+    return data
+
+def drawCanvas():
+    c11,c12 = 0,0
+    canvas.clearRect(0,0,400, 300)
+
+    theta = playerDir-pi/6
+
+    wall=wallDistance(theta)
+
+    map.beginPath()
+    map.clearRect(0,0,80,80)
+    map.fillStyle="#3366CC"
+    map.arc(playerPos[0]*8, playerPos[1]*8, 3, 0, 2*pi, True)
+    map.fill()
+    map.beginPath()
+    map.moveTo(8*playerPos[0], 8*playerPos[1])
+
+    for i in range(0,len(wall),4):
+
+        theta1=playerDir-pi/6 + pi*wall[i]/(3*samples)
+        theta2=playerDir-pi/6 + pi*wall[i+2]/(3*samples)
+        
+        fix1 = math.cos(theta1-playerDir)
+        fix2 = math.cos(theta2-playerDir)
+
+        h=2-playerPosZ
+
+        wallH1=100/(wall[i+1]*fix1)
+        wallH2=100/(wall[i+3]*fix2)
+
+        tl=[wall[i]*2, 150-wallH1*h]
+        tr=[wall[i+2]*2, 150-wallH2*h]
+        br=[wall[i+2]*2, tr[1]+wallH2*2]
+        bl=[wall[i]*2, tl[1]+wallH1*2]
+
+        shade1=math.floor(wallH1*2+20)
+        if shade1>255:
+            shade1=255
+        shade2=math.floor(wallH2*2+20)
+        if shade2>255:
+            shade2=255
+
+        linGrad = canvas.createLinearGradient(tl[0],0,tr[0],0)
+        c11,c12 = 0,0
+        if face[i//4]%2==0:
+            c11,c12 = shade1,shade2
+        c21,c22 = 0,0
+        if face[i//4]==1:
+            c21,c22 = shade1,shade2
+        c31,c32 = 0,0
+        if face[i//4]==2:
+            c31,c32 = shade1,shade2
+        linGrad.addColorStop(0, 'rgba(%s,%s,%s,1.0)' %(c11,c21,c31))
+        linGrad.addColorStop(1, 'rgba(%s,%s,%s,1.0)' %(c12,c22,c32))
+
+        canvas.beginPath()
+        canvas.moveTo(tl[0], tl[1])
+        canvas.lineTo(tr[0], tr[1])
+        canvas.lineTo(br[0], br[1])
+        canvas.lineTo(bl[0], bl[1])
+        canvas.fillStyle = linGrad
+        canvas.fill()
+        map.lineTo(playerPos[0]*8+math.cos(theta1)*(wall[i+1])*8, 
+            playerPos[1]*8+math.sin(theta1)*(wall[i+1])*8)
+        map.lineTo(playerPos[0]*8+math.cos(theta2)*(wall[i+3])*8, 
+            playerPos[1]*8+math.sin(theta2)*(wall[i+3])*8)
+
+    map.fillStyle="#FF0000"
+    map.fill()
+
+def nearWall(x,y):
+    if not isinstance(x,int):
+        x=playerPos[0]
+    if not isinstance(y,int):
+        y=playerPos[1]
+    for i in [-0.1,0.1]:
+        xx=math.floor(x+i)
+        for j in [-0.1,0.1]:
+            yy=math.floor(y+j)
+            if arena[xx][yy]:
+                return True
+    return False
+
+xOff = 0
+yOff = 0
+def wobbleGun():
+    global xOff,yOff
+    mag=playerVelY
+    xOff = 10+math.cos(total/6.23)*mag*90
+    yOff = 10+math.cos(total/5)*mag*90
+    overlay.style.backgroundPosition = "%spx %spx" %(int(xOff),int(yOff))
+
+jumpCycle=0
+
+def shoot():
+    canvas.save()
+    canvas.strokeStyle = "#FFFF00"
+    canvas.beginPath()
+    
+    canvas.moveTo(190+xOff, 140+yOff)
+    canvas.lineTo(250+xOff, 200+yOff)
+    canvas.closePath()
+    canvas.stroke()
+    canvas.restore()
+    time.set_timeout(drawCanvas,100)
+
+def update():
+    global total,jumpCycle
+    total+=1
+
+    change=False
+
+    if jumpCycle:
+        jumpCycle -= 1
+        change=True
+        playerPosZ = 1 + jumpCycle*(20-jumpCycle)/110
+    elif key[4]:
+        jumpCycle=20
+    
+    if key[0]:
+        if not key[1]:
+            playerDir-=0.07 # left
+            change=True
+    elif key[1]:
+        playerDir +=0.07 # right
+        change=True
+
+    if change:
+        playerDir+=2*math.pi
+        playerDir%=2*math.pi
+        doc["sky"].style.backgroundPosition="%spx 0" %math.floor(1-playerDir/(2*math.pi)*2400)
+
+    if key[2] and not key[3]:
+        if playerVelY<0.1:
+            playerVelY += 0.02
+    elif key[3] and not key[2]:
+        if playerVelY>-0.1:
+            playerVelY -= 0.02
+    else:
+        if playerVelY<-0.02:
+            playerVelY += 0.015
+        elif playerVelY>0.02:
+            playerVelY -= 0.015
+        else:
+            playerVelY=0
+    
+    if playerVelY!=0:
+        oldX=playerPos[0]
+        oldY=playerPos[1]
+        newX=oldX+math.cos(playerDir)*playerVelY
+        newY=oldY+math.sin(playerDir)*playerVelY
+
+        if not nearWall(newX, oldY):
+            playerPos[0]=newX
+            oldX=newX
+            change=True
+        if not nearWall(oldX, newY):
+            playerPos[1]=newY
+            change=True
+    
+    if playerVelY:
+        wobbleGun()
+    if change:
+        drawCanvas()
+
+def changeKey(which, to):
+    if which==65 or which==37: # left
+        key[0]=to
+    elif which==87 or which==38: # up
+        key[2]=to
+    elif which==68 or which==39: # right
+        key[1]=to
+    elif which==83 or which==40: # down
+        key[3]=to
+    elif which==32: # space bar
+        key[4]=to
+    elif which==17: # ctrl
+        key[5]=to
+    elif which==66: # b
+        if to:
+            shoot()
+
+def key_down(e):
+    if not e:
+        e = win.event
+    changeKey(e.keyCode,1)
+    e.preventDefault()
+    e.stopPropagation()
+
+def key_up(e):
+    if not e:
+        e = win.event
+    changeKey(e.keyCode, 0)
+    e.preventDefault()
+    e.stopPropagation()
+    
+doc.onkeydown = key_down
+doc.onkeyup = key_up
+
+def initUnderMap():
+    underMap=doc["underMap"].getContext("2d")
+    underMap.fillStyle="#FFF"
+    underMap.fillRect(0,0, 200, 200)
+    underMap.fillStyle="#444"
+    for i in range(len(arena)):
+        for j in range(len(arena[i])):
+            if arena[i][j]:
+                underMap.fillRect(i*8, j*8, 8, 8)
+
+def init():
+    global canvas,overlay,map
+    ele = doc["map"]
+    if not ele.getContext:
+      alert('An error occured creating a Canvas 2D context. '
+          'This may be because you are using an old browser, if not please contact me '
+          'and I\'ll see if I can fix the error.')
+      return    
+    map=ele.getContext("2d")
+    canvas=doc["canvas"].getContext("2d")
+    overlay=doc["overlay"]
+    doc["sky"].style.backgroundPosition="%spx 0" %math.floor(-playerDir/(2*math.pi)*2400)
+    drawCanvas()
+    initUnderMap()
+    time.set_interval(update, 35)
+
+init()    
+</script>
+  </head>
+<body onLoad="brython()">
+<div id="benjoffe">
+  <h1>Ben Joffe</h1>
+  
+  <div id="content">
+    
+      <h2>Canvascape - "3D Walker"</h2>
+    
+    <div id="app">
+      <canvas id="underMap" width="80" height="80"></canvas>
+      <canvas id="map" width="80" height="80"></canvas>
+      <a id="code" href="/script/canvascape/main.js">Source</a>
+    
+      <div id="holder" style="clear:both;">
+          <div id="sky"></div>
+          <div id="floor"></div>
+          <canvas id="canvas" width="400" height="300"></canvas>
+          <div id="overlay"></div>
+      </div>
+    
+      <div id="suppl">
+        <p>Use the arrow keys to walk around the map. Space bar = jump. B = Shoot.</p>
+        <p>This is a demo I created in 2005 to demonstrate the capability of Canvas. See also: <a href="canvascape/textures">textured version</a>.</p>
+      </div>
+      
+    </div>
+  
+  </div>
+  <div id="foot">
+    <p>&copy; 2012 Ben Joffe</p>
+  </div>
+</div>
+
+
+</body></html>
+
+
