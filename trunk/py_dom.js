@@ -383,7 +383,7 @@ $TagClass.prototype.__iadd__ = function(other){
     } else {this.children.push(other.elt)}
 }
 
-$TagClass.prototype.__ne__ = function(other){return not(this.__eq__(other))}
+$TagClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
 
 $TagClass.prototype.__radd__ = function(other){ // add to a string
     var res = $AbstractTag() // abstract tag

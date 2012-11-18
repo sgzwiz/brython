@@ -27,6 +27,28 @@ function $JS2Py(src){
     }else{return src}
 }
 
+function $assign(expr){
+    // used for simple assignments : target = expr
+    // if expr is a simple built-in type, return a clone, *not* the same object !
+    // this is to avoid bad side effects like "a=0 ; x=a ; x++"
+    // causing a to become 1, since a and x are the same object
+    if($isinstance(expr,list(int,float,str))){return $JS2Py(expr.value)}
+    else{return expr}
+}
+
+function $test_item(expr){
+    // used to evaluate expressions with "and" or "or"
+    // returns a Javascript boolean (true or false) and stores
+    // the evaluation in a global variable $test_result
+    document.$test_result = expr
+    return $bool(expr)
+}
+
+function $test_expr(){
+    // returns the last evaluated item
+    return document.$test_result
+}
+
 // define a function __eq__ for functions to allow test on Python classes
 // such as object.__class__ == SomeClass
 Function.prototype.__eq__ = function(other){
@@ -219,9 +241,17 @@ Stack.prototype.raw_atom_at = function(pos){
         return atom
     }
     var dict1 = $List2Dict('id','assign_id','str','int','float')
-    if(this.list[pos][0] in dict1){
+    var $valid_kws=$List2Dict("True","False","None")
+    if(this.list[pos][0] in dict1 || 
+        (this.list[pos][0]=="keyword" && this.list[pos][1] in $valid_kws) ||
+        (this.list[pos][0]=="bracket" && 
+            (this.list[pos][1]=="(" || this.list[pos][1]=='['))){
         atom.type = this.list[pos][0]
         end = pos
+        if(this.list[pos][0]=='bracket'){
+            atom.type="tuple"
+            end=this.find_next_matching(pos)
+        }
         while(end<this.list.length-1){
             var item = this.list[end+1]
             if(item[0] in dict1 && atom.type=="qualified_id"){
@@ -293,11 +323,15 @@ Stack.prototype.atom_before = function(pos,implicit_tuple){
         atom.start = pos-1
         // find position before atom
         var atom_parts=$List2Dict("id","assign_id","str",'int','float',"point","qualifier")
+        var $valid_kws=$List2Dict("True","False","None")
         var closing = $List2Dict(')',']')
         while(true){
             if(atom.start==-1){break}
             var item = this.list[atom.start]
             if(item[0] in atom_parts){atom.start--;continue}
+            else if(item[0]=="keyword" && item[1] in $valid_kws){
+                atom.start--;continue
+            }
             else if(item[0]=="bracket" && item[1] in closing){
                 atom.start = this.find_previous_matching(atom.start)-1
                 continue
@@ -389,7 +423,7 @@ Stack.prototype.find_block = function(pos){
                 stop = nl+1
             }
             return [closing_pos,stop,kw_indent]
-        }
+        }else{return null}
     }
 
 Stack.prototype.to_js = function(){
