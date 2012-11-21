@@ -21,7 +21,6 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
         if(!$isinstance($arg,$Kw)){
             if(i<$required.length){
                 eval($required[i]+"=$PyVar")
-                console.log('set '+$required[i]+' from '+$arg+' to '+$PyVar)
                 $ns[$fname][$required[i]]=$PyVar
             } else if(i<$required.length+$def_names.length) {
                 $ns[$fname][$def_names[i-$required.length]]=$PyVar
@@ -782,7 +781,8 @@ function py2js(src,context){
         seq = seq.concat(ro.list())
         seq.push(['bracket',')'])
         stack.list[op]=["id","$not",stack.list[op][2]]
-        stack.list = stack.list.slice(0,op+1).concat(seq).concat(stack.list.slice(ro.end+1,stack.length))
+        var tail = stack.list.slice(ro.end+1,stack.list.length)
+        stack.list = stack.list.slice(0,op+1).concat(seq).concat(tail)
         pos = op-1
     }
                 
@@ -1072,7 +1072,7 @@ function py2js(src,context){
             if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
             tail = stack.list.slice(ro.end+1,stack.list.length)
             var seq = [['id','__setattr__'],['bracket','('],
-                ['str',"'"+q_name+"'"],['delimiter',',']]
+                ['code',"'"+q_name+"'"],['delimiter',',']]
             seq = seq.concat(ro.list()).concat([['bracket',')']])
             stack.list = stack.list.slice(0,q_pos).concat(seq).concat(tail)
         }else{ // get attribute if its name doesnt start with __
@@ -1087,7 +1087,7 @@ function py2js(src,context){
             var q_name = stack.list[q_pos][1]
             if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
             stack.list.splice(q_pos,1,['id',func],['bracket','('],
-                ['str',"'"+q_name+"'"],['bracket',')'])
+                ['code',"'"+q_name+"'"],['bracket',')'])
             if(func=='__delattr__'){ // remove 'del'
                 stack.list.splice(x.start-1,1)
             }
@@ -1116,7 +1116,7 @@ function brython(debug){
             if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
             try{
                 $run(js)
-            }catch(err){
+            }catch(err){$raise('ExecutionError',err.message)
                 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
                 else{throw err}
             }

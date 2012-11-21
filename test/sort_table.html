@@ -149,6 +149,7 @@ t = TBODY()
 title = TR()
 link = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
 link_num = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this,true)")
+link1 = link.clone()
 title <= TH('Pays'+link)+TH('Capitale'+link.clone())+TH('Superficie'+link_num)+TH('Population'+link_num.clone())
 t <= title
 t2 = time.time()

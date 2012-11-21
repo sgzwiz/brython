@@ -334,23 +334,29 @@ function float(value){
     } else {$raise('ValueError',"Could not convert to float(): '"+$str(value)+"'")}
 }
 
-function getattr(obj,attr,_default){
-    if(!$isinstance(attr,str)){$raise('TypeError',"getattr(): attribute name must be string "+$str(attr))}
-    if(attr.value in obj){
-        var res = obj[attr.value]
+// this trick is necessary to set "this" to the instance inside functions
+// found at http://yehudakatz.com/2011/08/11/understanding-javascript-function-invocation-and-this/
+function $bind(func, thisValue) {
+    return function() {return func.apply(thisValue, arguments)}
+}
+
+function $getattr(obj,attr,_default){
+    if(attr in obj){
+        var res = obj[attr]
         if(typeof res==="function"){
-            // this trick is necessary to set "this" to the instance inside functions
-            // found at http://yehudakatz.com/2011/08/11/understanding-javascript-function-invocation-and-this/
-            var bind = function(func, thisValue) {
-                return function() {return func.apply(thisValue, arguments)}
-            }
-            res = bind(res, obj)
+            res = $bind(res, obj)
         }
         return $JS2Py(res)
     }
     else if(_default !==undefined){return _default}
     else{$raise('AttributeError',
-        "'"+$str(obj.__class__)+"' object has no attribute '"+attr.value+"'")}
+        "'"+$str(obj.__class__)+"' object has no attribute '"+attr+"'")}
+}
+
+function getattr(obj,attr,_default){
+    if(!$isinstance(attr,str)){$raise('TypeError',
+        "getattr(): attribute name must be string "+$str(attr))}
+    return $getattr(obj.value,attr,_default)
 }
 
 function hasattr(obj,attr){
@@ -360,10 +366,9 @@ function hasattr(obj,attr){
 
 function $ModuleClass(module){
     // module namespace is in $ns[module]
-    this.__getattr__ = function(attr){
-        return $ns[module][attr.value]
-    }
+    this.__getattr__ = function(attr){return $ns[module][attr]}
 }
+
 function Import(){
 
     var js_modules = $List2Dict('time','datetime','math','random')
@@ -419,7 +424,7 @@ function Import(){
             eval(stack.to_js())
             eval(fake_name+'()') // running the function will create the namespace
             eval(module+'=new $ModuleClass("'+fake_name+'")')
-            for(attr in $ns['_']){eval(module+'.'+attr+"=$ns[fake_name][attr]")}
+            for(attr in $ns[fake_name]){eval(module+'.'+attr+"=$ns[fake_name][attr]")}
         }
     }
 }
@@ -478,7 +483,7 @@ $IntegerClass.prototype.__pow__ = function(other){
 }
 
 $IntegerClass.prototype.__setattr__ = function(attr,value){$raise('AttributeError',
-    "'int' object has no attribute "+attr.value+"'")}
+    "'int' object has no attribute "+attr+"'")}
 
 $IntegerClass.prototype.__str__ = function(){return str(this.value)}
 
@@ -574,7 +579,7 @@ function $ListClass(items){
     this.items = items // JavaScript array
 }
 
-$ListClass.prototype.__getattr__ = function(attr){return getattr(this,attr)}
+$ListClass.prototype.__getattr__ = function(attr){return $getattr(this,attr)}
 
 $ListClass.prototype.__len__ = function(){return int(this.items.length)}
     
@@ -875,8 +880,8 @@ function $extreme(args,op){ // used by min() and max()
         while(true){
             try{
                 var x = next(arg)
-                if(res!==null){alert($str(func(x))+op+$str(func(res))+'?'+$bool(getattr(func(x),op)(func(res))))}
-                if(res===null || $bool(getattr(func(x),op)(func(res)))){res = x}
+                if(res!==null){alert($str(func(x))+op+$str(func(res))+'?'+$bool($getattr(func(x),op)(func(res))))}
+                if(res===null || $bool($getattr(func(x),op)(func(res)))){res = x}
             }catch(err){
                 if(err.name=="StopIteration"){return res}
                 throw err
@@ -886,7 +891,7 @@ function $extreme(args,op){ // used by min() and max()
         var res = null
         for(var i=0;i<=last_i;i++){
             var x = args[i]
-            if(res===null || $bool(getattr(func(x),str(op))(func(res)))){res = x}
+            if(res===null || $bool($getattr(func(x),op)(func(res)))){res = x}
         }
         return res
     }
@@ -916,11 +921,11 @@ function $not(obj){
 function $ObjectClass(){
 }
 $ObjectClass.prototype.__getattr__ = function(attr){
-    if(attr.value in this){return this[attr.value]}
-    else{$raise('AttributeError',"object has no attribute '"+attr.value+"'")}
+    if(attr in this){return this[attr]}
+    else{$raise('AttributeError',"object has no attribute '"+attr+"'")}
 }
 $ObjectClass.prototype.__delattr__ = function(attr){eval('delete this.'+attr.value)}
-$ObjectClass.prototype.__setattr__ = function(attr,value){this[attr.value]=value}
+$ObjectClass.prototype.__setattr__ = function(attr,value){this[attr]=value}
 
 function object(){
     return new $ObjectClass()
@@ -1081,6 +1086,7 @@ function set(){
         $raise('TypeError',"set expected at most 1 argument, got "+arguments.length)
     }
 }
+function $setattr(obj,attr,value){obj[attr]=value}
 
 function setattr(obj,attr,value){
     if(!$isinstance(attr,str)){$raise('TypeError',"setattr(): attribute name must be string")}
@@ -1121,7 +1127,7 @@ $StringClass.prototype.__float__ = function(){
         else{return float($float)}
     }
 
-$StringClass.prototype.__getattr__ = function(attr){return getattr(this,attr)}
+$StringClass.prototype.__getattr__ = function(attr){return $getattr(this,attr)}
 
 $StringClass.prototype.__getitem__ = function(arg){
         if($isinstance(arg,int)){
@@ -1291,7 +1297,7 @@ $StringClass.prototype.__repr__ = function(){
     return str(res)
 }
 
-$StringClass.prototype.__setattr__ = function(attr,value){setattr(this,attr,value)}
+$StringClass.prototype.__setattr__ = function(attr,value){$setattr(this,attr,value)}
 
 $StringClass.prototype.__str__ = function(){return this}
 

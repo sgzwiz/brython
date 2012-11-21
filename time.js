@@ -1,6 +1,6 @@
 function $TimeClass(){
     
-    this.__getattr__ = function(attr){return getattr(this,attr)}
+    this.__getattr__ = function(attr){return this[attr]}
 
     this.clear_interval = function(){window.clearInterval()}
     

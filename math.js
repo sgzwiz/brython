@@ -1,5 +1,5 @@
 math = {
-    __getattr__ : function(attr){return this[attr.value]},
+    __getattr__ : function(attr){return this[attr]},
     cos : function(x){return float(Math.cos(x.value))},
     floor:function(x){return int(Math.floor(x.value))},
     pi : float(Math.PI),
