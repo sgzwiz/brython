@@ -3,9 +3,8 @@
 function $XmlHttpClass(obj){
     this.__class__ = 'XMLHttpRequest'
     this.__getattr__ = function(attr){
-        if('get_'+attr.value in this){return this['get_'+attr.value]()}
-        else if(attr.value in obj){return $JS2Py(obj[attr.value])}
-        return getattr(obj,attr)
+        if('get_'+attr in this){return this['get_'+attr]()}
+        else{return $getattr(obj,attr)}
     }
     
     this.get_text = function(){return str(obj.responseText)}
@@ -39,9 +38,9 @@ function $AjaxClass(){
         }
     }
 
-    this.__getattr__ = function(attr){return getattr(this,attr)}
+    this.__getattr__ = function(attr){return $getattr(this,attr)}
     
-    this.__setattr__ = function(attr,value){setattr(this,attr,value)}
+    this.__setattr__ = function(attr,value){$setattr(this,attr,value)}
 
     this.open = function(method,url,async){
         $xmlhttp.open(method.value,url.value,$bool(async));

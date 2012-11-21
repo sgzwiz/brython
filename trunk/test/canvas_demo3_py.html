@@ -50,6 +50,9 @@ map = None
 canvas = None
 overlay = None
 pi=math.pi
+floor=math.floor
+sin=math.sin
+cos=math.cos
 total=0
 samples=200
 
@@ -81,8 +84,8 @@ def wallDistance(theta):
     x = playerPos[0]
     y = playerPos[1]
     
-    atX=math.floor(x)
-    atY=math.floor(y)
+    atX=floor(x)
+    atY=floor(y)
 
     thisRow=-1
     thisSide=-1
@@ -97,8 +100,8 @@ def wallDistance(theta):
         mapX = atX
         mapY = atY
 
-        deltaX=1/math.cos(theta)
-        deltaY=1/math.sin(theta)
+        deltaX=1/cos(theta)
+        deltaY=1/sin(theta)
 
         if deltaX>0:
             stepX = 1
@@ -120,7 +123,7 @@ def wallDistance(theta):
             nb+=1
             if distX < distY:
                 mapX += stepX
-                if (mapX<=len(arena)) and (mapY<=len(arena[mapX])) and arena[mapX][mapY]:
+                if arena[mapX][mapY]:
                     if thisRow!=mapX or thisSide!=0:
                         if i>0:
                             data.append(i)
@@ -135,7 +138,7 @@ def wallDistance(theta):
                 distX += deltaX
             else:
                 mapY += stepY
-                if (mapX<=len(arena)) and (mapY<=len(arena[mapX])) and arena[mapX][mapY]:
+                if arena[mapX][mapY]:
                     if thisRow!=mapY or thisSide!=1:
                         if i>0:
                             data.append(i)

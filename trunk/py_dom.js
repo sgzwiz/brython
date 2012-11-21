@@ -40,46 +40,46 @@ function $mouseCoords(ev){
     var res = object()
     res.x = int(posx)
     res.y = int(posy)
+    res.__getattr__ = function(attr){return this[attr]}
     return res
 }
 
 // DOM classes
 
-function $StyleClass(parent){
+function $StyleClass(parent){this.parent = parent}
 
-    this.__getattr__ = function(attr){
-        var value = eval('parent.elt.style.'+attr.value)
-        if(value===undefined){$raise('AttributeError',"object has no attribute "+attr.value)}
-        return $JS2Py(value)
-    }
-
-    this.__getitem__ = function(attr){
-        var value = parent.elt.style[attr.value]
-        if(value===undefined){$raise('KeyError',attr.value)}
-        return $JS2Py(value)
-    }
-
-    this.__setattr__ = function(attr,value){eval('parent.elt.style.'+attr.value+'= value.value')}
-
-    this.__setitem__ = function(attr,value){parent.elt.style[attr.value]=value.value}
-
+$StyleClass.prototype.__getattr__ = function(attr){
+    var value = eval('parent.elt.style.'+attr)
+    if(value===undefined){$raise('AttributeError',"object has no attribute "+attr)}
+    return $JS2Py(value)
 }
+
+$StyleClass.prototype.__getitem__ = function(attr){
+    var value = parent.elt.style[attr.value]
+    if(value===undefined){$raise('KeyError',attr.value)}
+    return $JS2Py(value)
+}
+
+$StyleClass.prototype.__setattr__ = function(attr,value){eval('parent.elt.style.'+attr+'= value.value')}
+
+$StyleClass.prototype = function(attr,value){parent.elt.style[attr.value]=value.value}
 
 function $MouseEvent(ev){
     this.event = ev
+    this.__class__ = "event"
 }
 $MouseEvent.prototype.__getattr__ = function(attr){
-    if(attr.value=="mouse"){return $mouseCoords(this.event)}
-    if(attr.value=="data"){return new $Clipboard(this.event.dataTransfer)}
-    return getattr(this.event,attr)
+    if(attr=="mouse"){return $mouseCoords(this.event)}
+    if(attr=="data"){return new $Clipboard(this.event.dataTransfer)}
+    return $getattr(this.event,attr)
 }
 
 function $DomWrapper(js_dom){this.value=js_dom}
 
 $DomWrapper.prototype.__getattr__ = function(attr){
-    if(attr.value in this.value){
-        var obj = this.value,obj_attr = this.value[attr.value]
-        if(typeof this.value[attr.value]=='function'){
+    if(attr in this.value){
+        var obj = this.value,obj_attr = this.value[attr]
+        if(typeof this.value[attr]=='function'){
             return function(){
                 var args = []
                 for(var i=0;i<arguments.length;i++){args.push(arguments[i].value)}
@@ -89,15 +89,15 @@ $DomWrapper.prototype.__getattr__ = function(attr){
                 else{return $JS2Py(res)}
             }
         }else{
-            return $JS2Py(this.value[attr.value])
+            return $JS2Py(this.value[attr])
         }
     }else{
-        $raise('AttributeError','object has no attribute '+attr.value)
+        $raise('AttributeError','object has no attribute '+attr)
     }
 }
 
 $DomWrapper.prototype.__setattr__ = function(attr,value){
-    this.value[attr.value]=value.value
+    this.value[attr]=value.value
 }
 
 function $Clipboard(data){ // drag and drop dataTransfer
@@ -110,7 +110,7 @@ $Clipboard.prototype.__setitem__ = function(name,value){
     this.data.setData(name.value,value.value)
 }
 $Clipboard.prototype.__setattr__ = function(attr,value){
-    eval("this.data."+attr.value+"=value.value")
+    eval("this.data."+attr+"=value.value")
 }
 function $DomObject(obj){
     this.obj=obj
@@ -123,11 +123,11 @@ $DomObject.prototype.__getattr__ = function(attr){
 function $OptionsClass(parent){ // parent is a SELECT tag
 
     this.__getattr__ = function(attr){
-        if('get_'+attr.value in this){return eval('this.get_'+attr.value)}
-        if(attr.value in parent.elt.options){
-            var obj = eval('parent.elt.options.'+attr.value)
+        if('get_'+attr in this){return eval('this.get_'+attr)}
+        if(attr in parent.elt.options){
+            var obj = eval('parent.elt.options.'+attr)
             if((typeof obj)=='function'){
-                $raise('AttributeError',"'options' object has no attribute '"+attr.value+'"')
+                $raise('AttributeError',"'options' object has no attribute '"+attr+'"')
             }
             return $JS2Py(obj)
         }
@@ -143,7 +143,7 @@ function $OptionsClass(parent){ // parent is a SELECT tag
     this.__len__ = function() {return int(parent.elt.options.length)}
 
     this.__setattr__ = function(attr,value){
-        eval('parent.elt.options.'+attr.value+'= $str(value)')
+        eval('parent.elt.options.'+attr+'= $str(value)')
     }
 
     this.__setitem__ = function(attr,value){
@@ -208,7 +208,7 @@ function $Document(){
     }
 
     this.__setattr__ = function(attr,other){
-        document[attr.value]=other
+        document[attr]=other
     }
 
     this.insert_before = function(other,ref_elt){
@@ -220,7 +220,7 @@ function $Document(){
 doc = new $Document()
 
 win = { 
-    __getattr__ : function(attr){return getattr(window,attr)}
+    __getattr__ : function(attr){return $getattr(window,attr)}
 }
 
 function $DomElement(elt){
@@ -270,7 +270,6 @@ $AbstractTag.prototype.clone = function(){
     return res
 }
 
-
 function $AbstractTag(){
     return new $AbstractTagClass()
 }
@@ -300,7 +299,7 @@ function $TagClass(_class,args){
         this.name = str(_class).value
         eval("this.__class__ =_class")
         this.elt = document.createElement(this.name)
-        this.elt.$parent = this
+        this.elt.parent = this
     }
     if(args!=undefined && args.length>0){
         $start = 0
@@ -364,9 +363,8 @@ $TagClass.prototype.__eq__ = function(other){
 }
 
 $TagClass.prototype.__getattr__ = function(attr){
-    if('get_'+attr.value in this){return this['get_'+attr.value]()}
-    else if(attr.value in this.elt){return $JS2Py(this.elt[attr.value])}
-    return getattr(this,attr)
+    if('get_'+attr in this){return this['get_'+attr]()}
+    else{return $getattr(this.elt,attr)}
 }
 
 $TagClass.prototype.__getitem__ = function(key){
@@ -393,24 +391,25 @@ $TagClass.prototype.__radd__ = function(other){ // add to a string
 }
 
 $TagClass.prototype.__setattr__ = function(attr,value){
-    if(attr.value in $events){eval('this.elt.'+attr.value.toLowerCase()+'=value')}
-    else if('set_'+attr.value in this){return this['set_'+attr.value](value)}
-    else if(attr.value in this.elt){this.elt[attr.value]=value.value}
-    else{setattr(this,attr,value)}
+    if(attr in $events){eval('this.elt.'+attr.toLowerCase()+'=value')}
+    else if('set_'+attr in this){return this['set_'+attr](value)}
+    else if(attr in this.elt){this.elt[attr]=value.value}
+    else{$setattr(this,attr,value)}
 }
     
 $TagClass.prototype.__setitem__ = function(key,value){
     this.elt.setAttribute($str(key),$str(value))
 }
     
-$TagClass.prototype.clone = function(){
+$TagClass.prototype.get_clone = function(){
     res = new $TagClass(this.name)
     res.elt = this.elt.cloneNode(true)
     // copy events
     for(var evt in $events){    
         if(this.elt[evt]){res.elt[evt]=this.elt[evt]}
     }
-    return res
+    var func = function(){return res}
+    return func
 }
 
 $TagClass.prototype.get_getContext = function(){ // for CANVAS tag

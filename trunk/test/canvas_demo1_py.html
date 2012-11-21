@@ -77,14 +77,15 @@ import random
 import time
 
 def C():
-    e.globalCompositeOperation="source-over";
-    e.fillStyle="rgba(8,8,12,0.65)";
-    e.fillRect(0,0,f,p);
-    e.globalCompositeOperation="lighter";
-    x=q-u;
-    y=r-v;
-    u=q;
-    v=r;
+    log('enter C')
+    e.globalCompositeOperation="source-over"
+    e.fillStyle="rgba(8,8,12,0.65)"
+    e.fillRect(0,0,f,p)
+    e.globalCompositeOperation="lighter"
+    x=q-u
+    y=r-v
+    u=q
+    v=r
     d=0.86*f
     l=0.125*f
     m=0.5*f
@@ -122,9 +123,10 @@ def C():
         if 0.1>k:
             b*=3*random.random()
         c=0.45*g
-        c=max(min(c,3.5),0.4);
-        i+=a;
-        j+=b;
+        log('ok')
+        c=max(min(c,3.5),0.4)
+        i+=a
+        j+=b
         if i>f:
             i=f
             a*=-1
@@ -144,7 +146,7 @@ def C():
         e.fillStyle=h.color
         e.beginPath()
         e.arc(i,j,c,0,D,True)
-        e.closePath();
+        e.closePath()
         e.fill()
 
 def E(d):
@@ -196,8 +198,10 @@ if o.getContext:
         l.a=34*math.cos(d)*random.random()
         l.b=34*math.sin(d)*random.random()
         A.append(l)
-    q=u=0.5*f
-    r=v=0.5*p
+    q=0.5*f
+    u=q
+    r=0.5*p
+    v=r
     doc.onmousedown=F
     doc.onmouseup=G
     doc.onmousemove=E
