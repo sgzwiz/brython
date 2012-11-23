@@ -566,7 +566,7 @@ function py2js(src,context){
             // replace by Javascript keyword
             stack.list[kw_pos][1] = kws[kw]
             // replace : by {
-            stack.list[block[0]][1]='{'
+            stack.list[block[0]]=['bracket','{']
             var end_pos = stack.list[block[1]][2]
 
             tail = stack.list.slice(block[1],stack.list.length)
@@ -1093,6 +1093,17 @@ function py2js(src,context){
             }
         }
         pos = q_pos-1
+    }
+
+    // add a try/except clause in functions, for traceback
+    var pos = 0
+    while(true){
+        var func_pos = stack.find_next(pos,'keyword','function')
+        if(func_pos===null){break}
+        var br_pos = stack.find_next_at_same_level(func_pos,'bracket','{')
+        var end_pos = stack.find_next_matching(br_pos)
+        var block = new Stack(stack.list.slice(br_pos+1,end_pos))
+        pos = func_pos+1
     }
 
     var dobj = new Date()

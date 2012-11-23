@@ -376,6 +376,7 @@ def init():
     map=ele.getContext("2d")
     canvas=doc["canvas"].getContext("2d")
     overlay=doc["overlay"]
+    log("style %s" %doc["sky"].style)
     doc["sky"].style.backgroundPosition="%spx 0" %math.floor(-playerDir/(2*math.pi)*2400)
     drawCanvas()
     initUnderMap()

@@ -46,27 +46,9 @@ function $mouseCoords(ev){
 
 // DOM classes
 
-function $StyleClass(parent){this.parent = parent}
-
-$StyleClass.prototype.__getattr__ = function(attr){
-    var value = eval('parent.elt.style.'+attr)
-    if(value===undefined){$raise('AttributeError',"object has no attribute "+attr)}
-    return $JS2Py(value)
-}
-
-$StyleClass.prototype.__getitem__ = function(attr){
-    var value = parent.elt.style[attr.value]
-    if(value===undefined){$raise('KeyError',attr.value)}
-    return $JS2Py(value)
-}
-
-$StyleClass.prototype.__setattr__ = function(attr,value){eval('parent.elt.style.'+attr+'= value.value')}
-
-$StyleClass.prototype = function(attr,value){parent.elt.style[attr.value]=value.value}
-
 function $MouseEvent(ev){
     this.event = ev
-    this.__class__ = "event"
+    this.__class__ = "MouseEvent"
 }
 $MouseEvent.prototype.__getattr__ = function(attr){
     if(attr=="mouse"){return $mouseCoords(this.event)}
@@ -442,7 +424,7 @@ $TagClass.prototype.get_reset = function(){ // for FORM
 }
 
 $TagClass.prototype.get_style = function(){
-    return new $StyleClass(this)
+    return new $DomWrapper(this.elt.style)
 }
     
 $TagClass.prototype.set_style = function(style){ // style is a dict
