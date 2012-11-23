@@ -140,14 +140,14 @@ Stack.prototype.find_next_at_same_level = function(){
         for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
     }
     while(true){
-        if(this.list[pos][0]=="bracket" 
+        if(this.list[pos][0]==_type){
+            if(values==null){return pos}
+            else if(this.list[pos][1] in values){return pos}
+        }else if(this.list[pos][0]=="bracket" 
             && this.list[pos][1] in $OpeningBrackets){
             // opening bracket
             pos = this.find_next_matching(pos)
-        } else if(this.list[pos][0]==_type){
-            if(values==null){return pos}
-            else if(this.list[pos][1] in values){return pos}
-        }
+        } 
         pos++
         if (pos>this.list.length-1){return null}
     }

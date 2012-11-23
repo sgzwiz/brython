@@ -298,23 +298,27 @@ else if($isinstance(value,str)&& !isNaN(parseFloat(value.value))){
 return new $FloatClass(parseFloat(value.value))
 }else{$raise('ValueError',"Could not convert to float(): '"+$str(value)+"'")}
 }
-function getattr(obj,attr,_default){
-if(!$isinstance(attr,str)){$raise('TypeError',"getattr(): attribute name must be string "+$str(attr))}
-if(attr.value in obj){
-var res=obj[attr.value]
-if(typeof res==="function"){
 
 
-var bind=function(func, thisValue){
+function $bind(func, thisValue){
 return function(){return func.apply(thisValue, arguments)}
 }
-res=bind(res, obj)
+function $getattr(obj,attr,_default){
+if(attr in obj){
+var res=obj[attr]
+if(typeof res==="function"){
+res=$bind(res, obj)
 }
 return $JS2Py(res)
 }
 else if(_default !==undefined){return _default}
 else{$raise('AttributeError',
-"'"+$str(obj.__class__)+"' object has no attribute '"+attr.value+"'")}
+"'"+$str(obj.__class__)+"' object has no attribute '"+attr+"'")}
+}
+function getattr(obj,attr,_default){
+if(!$isinstance(attr,str)){$raise('TypeError',
+"getattr(): attribute name must be string "+$str(attr))}
+return $getattr(obj.value,attr,_default)
 }
 function hasattr(obj,attr){
 try{getattr(obj,attr);return True}
@@ -322,9 +326,7 @@ catch(err){return False}
 }
 function $ModuleClass(module){
 
-this.__getattr__=function(attr){
-return $ns[module][attr.value]
-}
+this.__getattr__=function(attr){return $ns[module][attr]}
 }
 function Import(){
 var js_modules=$List2Dict('time','datetime','math','random')
@@ -379,7 +381,7 @@ var stack=py2js(res,module)
 eval(stack.to_js())
 eval(fake_name+'()')
 eval(module+'=new $ModuleClass("'+fake_name+'")')
-for(attr in $ns['_']){eval(module+'.'+attr+"=$ns[fake_name][attr]")}
+for(attr in $ns[fake_name]){eval(module+'.'+attr+"=$ns[fake_name][attr]")}
 }
 }
 }
@@ -425,7 +427,7 @@ if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.va
 else{$UnsupportedOpType("//",int,other.__class__)}
 }
 $IntegerClass.prototype.__setattr__=function(attr,value){$raise('AttributeError',
-"'int' object has no attribute "+attr.value+"'")}
+"'int' object has no attribute "+attr+"'")}
 $IntegerClass.prototype.__str__=function(){return str(this.value)}
 $IntegerClass.prototype.__sub__=function(other){
 if($isinstance(other,int)){return int(this.value-other.value)}
@@ -508,7 +510,7 @@ this.iter=null
 this.__class__=list
 this.items=items 
 }
-$ListClass.prototype.__getattr__=function(attr){return getattr(this,attr)}
+$ListClass.prototype.__getattr__=function(attr){return $getattr(this,attr)}
 $ListClass.prototype.__len__=function(){return int(this.items.length)}
 $ListClass.prototype.__str__=function(){
 var res="[",i=null
@@ -784,8 +786,8 @@ var res=null
 while(true){
 try{
 var x=next(arg)
-if(res!==null){alert($str(func(x))+op+$str(func(res))+'?'+$bool(getattr(func(x),op)(func(res))))}
-if(res===null || $bool(getattr(func(x),op)(func(res)))){res=x}
+if(res!==null){alert($str(func(x))+op+$str(func(res))+'?'+$bool($getattr(func(x),op)(func(res))))}
+if(res===null || $bool($getattr(func(x),op)(func(res)))){res=x}
 }catch(err){
 if(err.name=="StopIteration"){return res}
 throw err
@@ -795,7 +797,7 @@ throw err
 var res=null
 for(var i=0;i<=last_i;i++){
 var x=args[i]
-if(res===null || $bool(getattr(func(x),str(op))(func(res)))){res=x}
+if(res===null || $bool($getattr(func(x),op)(func(res)))){res=x}
 }
 return res
 }
@@ -820,11 +822,11 @@ if($bool(obj)){return False}else{return True}
 function $ObjectClass(){
 }
 $ObjectClass.prototype.__getattr__=function(attr){
-if(attr.value in this){return this[attr.value]}
-else{$raise('AttributeError',"object has no attribute '"+attr.value+"'")}
+if(attr in this){return this[attr]}
+else{$raise('AttributeError',"object has no attribute '"+attr+"'")}
 }
 $ObjectClass.prototype.__delattr__=function(attr){eval('delete this.'+attr.value)}
-$ObjectClass.prototype.__setattr__=function(attr,value){this[attr.value]=value}
+$ObjectClass.prototype.__setattr__=function(attr,value){this[attr]=value}
 function object(){
 return new $ObjectClass()
 }
@@ -966,6 +968,7 @@ $raise('TypeError',"'"+$str(args[0].__class__)+"' object is not iterable")
 $raise('TypeError',"set expected at most 1 argument, got "+arguments.length)
 }
 }
+function $setattr(obj,attr,value){obj[attr]=value}
 function setattr(obj,attr,value){
 if(!$isinstance(attr,str)){$raise('TypeError',"setattr(): attribute name must be string")}
 obj[attr.value]=value
@@ -998,7 +1001,7 @@ if($float==NaN){$raise('ValueError',
 "could not convert string to float(): '"+this.value+"'")}
 else{return float($float)}
 }
-$StringClass.prototype.__getattr__=function(attr){return getattr(this,attr)}
+$StringClass.prototype.__getattr__=function(attr){return $getattr(this,attr)}
 $StringClass.prototype.__getitem__=function(arg){
 if($isinstance(arg,int)){
 var pos=arg.value
@@ -1152,7 +1155,7 @@ res +=this.value.replace('\n','\\\n')
 res +="'"
 return str(res)
 }
-$StringClass.prototype.__setattr__=function(attr,value){setattr(this,attr,value)}
+$StringClass.prototype.__setattr__=function(attr,value){$setattr(this,attr,value)}
 $StringClass.prototype.__str__=function(){return this}
 
 var $comp_func=function(other){
@@ -2030,7 +2033,7 @@ var multiline=(s.find_next(0,'newline')!=null)
 
 stack.list[kw_pos][1]=kws[kw]
 
-stack.list[block[0]][1]='{'
+stack.list[block[0]]=['bracket','{']
 var end_pos=stack.list[block[1]][2]
 tail=stack.list.slice(block[1],stack.list.length)
 if(kw in has_parenth){
@@ -2241,7 +2244,8 @@ seq=[['bracket','(']]
 seq=seq.concat(ro.list())
 seq.push(['bracket',')'])
 stack.list[op]=["id","$not",stack.list[op][2]]
-stack.list=stack.list.slice(0,op+1).concat(seq).concat(stack.list.slice(ro.end+1,stack.length))
+var tail=stack.list.slice(ro.end+1,stack.list.length)
+stack.list=stack.list.slice(0,op+1).concat(seq).concat(tail)
 pos=op-1
 }
 
@@ -2517,7 +2521,7 @@ var q_name=stack.list[q_pos][1]
 if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
 tail=stack.list.slice(ro.end+1,stack.list.length)
 var seq=[['id','__setattr__'],['bracket','('],
-['str',"'"+q_name+"'"],['delimiter',',']]
+['code',"'"+q_name+"'"],['delimiter',',']]
 seq=seq.concat(ro.list()).concat([['bracket',')']])
 stack.list=stack.list.slice(0,q_pos).concat(seq).concat(tail)
 }else{
@@ -2532,12 +2536,22 @@ var func='__delattr__'
 var q_name=stack.list[q_pos][1]
 if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
 stack.list.splice(q_pos,1,['id',func],['bracket','('],
-['str',"'"+q_name+"'"],['bracket',')'])
+['code',"'"+q_name+"'"],['bracket',')'])
 if(func=='__delattr__'){
 stack.list.splice(x.start-1,1)
 }
 }
 pos=q_pos-1
+}
+
+var pos=0
+while(true){
+var func_pos=stack.find_next(pos,'keyword','function')
+if(func_pos===null){break}
+var br_pos=stack.find_next_at_same_level(func_pos,'bracket','{')
+var end_pos=stack.find_next_matching(br_pos)
+var block=new Stack(stack.list.slice(br_pos+1,end_pos))
+pos=func_pos+1
 }
 var dobj=new Date()
 times['total']=dobj.getTime()-t0
@@ -2558,7 +2572,7 @@ js=py2js(src).to_js()
 if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
 try{
 $run(js)
-}catch(err){
+}catch(err){$raise('ExecutionError',err.message)
 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
 else{throw err}
 }
@@ -2873,6 +2887,8 @@ try{if(src.constructor==DragEvent){return new $MouseEvent(src)}}
 catch(err){void(0)}
 try{if(src.constructor==MouseEvent){return new $MouseEvent(src)}}
 catch(err){void(0)}
+try{if(src.constructor==KeyboardEvent){return new $DomWrapper(src)}}
+catch(err){void(0)}
 if(src.__class__!==undefined){return src}
 return new $DomObject(src)
 }
@@ -2979,13 +2995,13 @@ values={}
 for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
 }
 while(true){
-if(this.list[pos][0]=="bracket" 
+if(this.list[pos][0]==_type){
+if(values==null){return pos}
+else if(this.list[pos][1]in values){return pos}
+}else if(this.list[pos][0]=="bracket" 
 && this.list[pos][1]in $OpeningBrackets){
 
 pos=this.find_next_matching(pos)
-}else if(this.list[pos][0]==_type){
-if(values==null){return pos}
-else if(this.list[pos][1]in values){return pos}
 }
 pos++
 if(pos>this.list.length-1){return null}
@@ -3298,9 +3314,8 @@ alert(ch)
 function $XmlHttpClass(obj){
 this.__class__='XMLHttpRequest'
 this.__getattr__=function(attr){
-if('get_'+attr.value in this){return this['get_'+attr.value]()}
-else if(attr.value in obj){return $JS2Py(obj[attr.value])}
-return getattr(obj,attr)
+if('get_'+attr in this){return this['get_'+attr]()}
+else{return $getattr(obj,attr)}
 }
 this.get_text=function(){return str(obj.responseText)}
 this.get_xml=function(){alert(obj.responseXML);return $DomElement(obj.responseXML)}
@@ -3328,8 +3343,8 @@ if(timer !==null){window.clearTimeout(timer)}
 req.on_complete(obj)
 }
 }
-this.__getattr__=function(attr){return getattr(this,attr)}
-this.__setattr__=function(attr,value){setattr(this,attr,value)}
+this.__getattr__=function(attr){return $getattr(this,attr)}
+this.__setattr__=function(attr,value){$setattr(this,attr,value)}
 this.open=function(method,url,async){
 $xmlhttp.open(method.value,url.value,$bool(async))
 }
@@ -3396,36 +3411,24 @@ posy=ev.clientY + document.body.scrollTop
 var res=object()
 res.x=int(posx)
 res.y=int(posy)
+res.__getattr__=function(attr){return this[attr]}
 return res
 }
 
-function $StyleClass(parent){
-this.__getattr__=function(attr){
-var value=eval('parent.elt.style.'+attr.value)
-if(value===undefined){$raise('AttributeError',"object has no attribute "+attr.value)}
-return $JS2Py(value)
-}
-this.__getitem__=function(attr){
-var value=parent.elt.style[attr.value]
-if(value===undefined){$raise('KeyError',attr.value)}
-return $JS2Py(value)
-}
-this.__setattr__=function(attr,value){eval('parent.elt.style.'+attr.value+'= value.value')}
-this.__setitem__=function(attr,value){parent.elt.style[attr.value]=value.value}
-}
 function $MouseEvent(ev){
 this.event=ev
+this.__class__="MouseEvent"
 }
 $MouseEvent.prototype.__getattr__=function(attr){
-if(attr.value=="mouse"){return $mouseCoords(this.event)}
-if(attr.value=="data"){return new $Clipboard(this.event.dataTransfer)}
-return getattr(this.event,attr)
+if(attr=="mouse"){return $mouseCoords(this.event)}
+if(attr=="data"){return new $Clipboard(this.event.dataTransfer)}
+return $getattr(this.event,attr)
 }
 function $DomWrapper(js_dom){this.value=js_dom}
 $DomWrapper.prototype.__getattr__=function(attr){
-if(attr.value in this.value){
-var obj=this.value,obj_attr=this.value[attr.value]
-if(typeof this.value[attr.value]=='function'){
+if(attr in this.value){
+var obj=this.value,obj_attr=this.value[attr]
+if(typeof this.value[attr]=='function'){
 return function(){
 var args=[]
 for(var i=0;i<arguments.length;i++){args.push(arguments[i].value)}
@@ -3435,14 +3438,14 @@ else if(res===undefined){return None}
 else{return $JS2Py(res)}
 }
 }else{
-return $JS2Py(this.value[attr.value])
+return $JS2Py(this.value[attr])
 }
 }else{
-$raise('AttributeError','object has no attribute '+attr.value)
+$raise('AttributeError','object has no attribute '+attr)
 }
 }
 $DomWrapper.prototype.__setattr__=function(attr,value){
-this.value[attr.value]=value.value
+this.value[attr]=value.value
 }
 function $Clipboard(data){
 this.data=data
@@ -3454,7 +3457,7 @@ $Clipboard.prototype.__setitem__=function(name,value){
 this.data.setData(name.value,value.value)
 }
 $Clipboard.prototype.__setattr__=function(attr,value){
-eval("this.data."+attr.value+"=value.value")
+eval("this.data."+attr+"=value.value")
 }
 function $DomObject(obj){
 this.obj=obj
@@ -3465,11 +3468,11 @@ return getattr(this.obj,attr)
 }
 function $OptionsClass(parent){
 this.__getattr__=function(attr){
-if('get_'+attr.value in this){return eval('this.get_'+attr.value)}
-if(attr.value in parent.elt.options){
-var obj=eval('parent.elt.options.'+attr.value)
+if('get_'+attr in this){return eval('this.get_'+attr)}
+if(attr in parent.elt.options){
+var obj=eval('parent.elt.options.'+attr)
 if((typeof obj)=='function'){
-$raise('AttributeError',"'options' object has no attribute '"+attr.value+'"')
+$raise('AttributeError',"'options' object has no attribute '"+attr+'"')
 }
 return $JS2Py(obj)
 }
@@ -3482,7 +3485,7 @@ parent.elt.options.remove(arg.value)
 }
 this.__len__=function(){return int(parent.elt.options.length)}
 this.__setattr__=function(attr,value){
-eval('parent.elt.options.'+attr.value+'= $str(value)')
+eval('parent.elt.options.'+attr+'= $str(value)')
 }
 this.__setitem__=function(attr,value){
 parent.elt.options[attr.value]=$JS2Py(value)
@@ -3534,7 +3537,7 @@ document.body.appendChild(txt)
 }else{document.body.appendChild(other.elt)}
 }
 this.__setattr__=function(attr,other){
-document[attr.value]=other
+document[attr]=other
 }
 this.insert_before=function(other,ref_elt){
 document.insertBefore(other.elt,ref_elt.elt)
@@ -3542,7 +3545,7 @@ document.insertBefore(other.elt,ref_elt.elt)
 }
 doc=new $Document()
 win={
-__getattr__ : function(attr){return getattr(window,attr)}
+__getattr__ : function(attr){return $getattr(window,attr)}
 }
 function $DomElement(elt){
 var i=null
@@ -3613,7 +3616,7 @@ if(_class!==undefined){
 this.name=str(_class).value
 eval("this.__class__ =_class")
 this.elt=document.createElement(this.name)
-this.elt.$parent=this
+this.elt.parent=this
 }
 if(args!=undefined && args.length>0){
 $start=0
@@ -3674,9 +3677,8 @@ if(!('getAttribute' in other.elt)){return False}
 return $bool_conv(this.elt.getAttribute('id')==other.elt.getAttribute('id'))
 }
 $TagClass.prototype.__getattr__=function(attr){
-if('get_'+attr.value in this){return this['get_'+attr.value]()}
-else if(attr.value in this.elt){return $JS2Py(this.elt[attr.value])}
-return getattr(this,attr)
+if('get_'+attr in this){return this['get_'+attr]()}
+else{return $getattr(this.elt,attr)}
 }
 $TagClass.prototype.__getitem__=function(key){
 return $JS2Py(this.elt[key.value])
@@ -3698,22 +3700,23 @@ res.children=[txt,this.elt]
 return res 
 }
 $TagClass.prototype.__setattr__=function(attr,value){
-if(attr.value in $events){eval('this.elt.'+attr.value.toLowerCase()+'=value')}
-else if('set_'+attr.value in this){return this['set_'+attr.value](value)}
-else if(attr.value in this.elt){this.elt[attr.value]=value.value}
-else{setattr(this,attr,value)}
+if(attr in $events){eval('this.elt.'+attr.toLowerCase()+'=value')}
+else if('set_'+attr in this){return this['set_'+attr](value)}
+else if(attr in this.elt){this.elt[attr]=value.value}
+else{$setattr(this,attr,value)}
 }
 $TagClass.prototype.__setitem__=function(key,value){
 this.elt.setAttribute($str(key),$str(value))
 }
-$TagClass.prototype.clone=function(){
+$TagClass.prototype.get_clone=function(){
 res=new $TagClass(this.name)
 res.elt=this.elt.cloneNode(true)
 
 for(var evt in $events){
 if(this.elt[evt]){res.elt[evt]=this.elt[evt]}
 }
-return res
+var func=function(){return res}
+return func
 }
 $TagClass.prototype.get_getContext=function(){
 if(!('getContext' in this.elt)){$raise('AttributeError',
@@ -3740,7 +3743,7 @@ var $obj=this.elt
 return function(){$obj.reset()}
 }
 $TagClass.prototype.get_style=function(){
-return new $StyleClass(this)
+return new $DomWrapper(this.elt.style)
 }
 $TagClass.prototype.set_style=function(style){
 for(var i=0;i<style.$keys.length;i++){
