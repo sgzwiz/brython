@@ -14,8 +14,6 @@
 <link rel="alternate" type="application/rss+xml" title="BenJoffe.com - RSS 2.0 Feed" href="rss.xml">
 <link rel="stylesheet" type="text/css" href="canvas_demo3.css" />
 
-  <!--[if IE]><script type="text/javascript" src="/script/lib/excanvas.js"></script><![endif]-->
-      <link rel="stylesheet" type="text/css" href="canvas_demo3b.css" />
 
 <script type="text/python">
 
@@ -49,6 +47,7 @@ import time
 map = None
 canvas = None
 overlay = None
+mpos = None # mouse position
 pi=math.pi
 floor=math.floor
 sin=math.sin
@@ -77,7 +76,6 @@ playerVelY=0
 face=[]
 
 def wallDistance(theta):
-    t0 = time.time()
     global face
     data=[]
     face=[]
@@ -91,7 +89,6 @@ def wallDistance(theta):
     thisSide=-1
 
     lastHeight=0
-    nb = 0
 
     for i in range(samples):
         theta+=pi/(3*samples)+2*pi
@@ -120,7 +117,6 @@ def wallDistance(theta):
             distY = (y - mapY) * deltaY
 
         for j in range(20):
-            nb+=1
             if distX < distY:
                 mapX += stepX
                 if arena[mapX][mapY]:
@@ -153,8 +149,6 @@ def wallDistance(theta):
                 distY += deltaY
     data.append(i)
     data.append(lastHeight)
-    log(time.time()-t0)
-    log(nb)
     return data
 
 def drawCanvas():
@@ -178,8 +172,8 @@ def drawCanvas():
         theta1=playerDir-pi/6 + pi*wall[i]/(3*samples)
         theta2=playerDir-pi/6 + pi*wall[i+2]/(3*samples)
         
-        fix1 = math.cos(theta1-playerDir)
-        fix2 = math.cos(theta2-playerDir)
+        fix1 = cos(theta1-playerDir)
+        fix2 = cos(theta2-playerDir)
 
         h=2-playerPosZ
 
@@ -191,10 +185,10 @@ def drawCanvas():
         br=[wall[i+2]*2, tr[1]+wallH2*2]
         bl=[wall[i]*2, tl[1]+wallH1*2]
 
-        shade1=math.floor(wallH1*2+20)
+        shade1=floor(wallH1*2+20)
         if shade1>255:
             shade1=255
-        shade2=math.floor(wallH2*2+20)
+        shade2=floor(wallH2*2+20)
         if shade2>255:
             shade2=255
 
@@ -218,23 +212,23 @@ def drawCanvas():
         canvas.lineTo(bl[0], bl[1])
         canvas.fillStyle = linGrad
         canvas.fill()
-        map.lineTo(playerPos[0]*8+math.cos(theta1)*(wall[i+1])*8, 
-            playerPos[1]*8+math.sin(theta1)*(wall[i+1])*8)
-        map.lineTo(playerPos[0]*8+math.cos(theta2)*(wall[i+3])*8, 
-            playerPos[1]*8+math.sin(theta2)*(wall[i+3])*8)
+        map.lineTo(playerPos[0]*8+cos(theta1)*(wall[i+1])*8, 
+            playerPos[1]*8+sin(theta1)*(wall[i+1])*8)
+        map.lineTo(playerPos[0]*8+cos(theta2)*(wall[i+3])*8, 
+            playerPos[1]*8+sin(theta2)*(wall[i+3])*8)
 
     map.fillStyle="#FF0000"
     map.fill()
 
+nbnw = 0
 def nearWall(x,y):
-    if not isinstance(x,int):
-        x=playerPos[0]
-    if not isinstance(y,int):
-        y=playerPos[1]
+    # check if point (x,y) is near a wall
+    global nbnw
+    nbnw += 1
     for i in [-0.1,0.1]:
-        xx=math.floor(x+i)
+        xx=floor(x+i)
         for j in [-0.1,0.1]:
-            yy=math.floor(y+j)
+            yy=floor(y+j)
             if arena[xx][yy]:
                 return True
     return False
@@ -244,8 +238,8 @@ yOff = 0
 def wobbleGun():
     global xOff,yOff
     mag=playerVelY
-    xOff = 10+math.cos(total/6.23)*mag*90
-    yOff = 10+math.cos(total/5)*mag*90
+    xOff = 10+cos(total/6.23)*mag*90
+    yOff = 10+cos(total/5)*mag*90
     overlay.style.backgroundPosition = "%spx %spx" %(int(xOff),int(yOff))
 
 jumpCycle=0
@@ -265,7 +259,6 @@ def shoot():
 def update():
     global total,jumpCycle
     total+=1
-
     change=False
 
     if jumpCycle:
@@ -284,9 +277,9 @@ def update():
         change=True
 
     if change:
-        playerDir+=2*math.pi
-        playerDir%=2*math.pi
-        doc["sky"].style.backgroundPosition="%spx 0" %math.floor(1-playerDir/(2*math.pi)*2400)
+        playerDir+=2*pi
+        playerDir%=2*pi
+        doc["sky"].style.backgroundPosition="%spx 0" %floor(1-playerDir/(2*pi)*2400)
 
     if key[2] and not key[3]:
         if playerVelY<0.1:
@@ -305,12 +298,11 @@ def update():
     if playerVelY!=0:
         oldX=playerPos[0]
         oldY=playerPos[1]
-        newX=oldX+math.cos(playerDir)*playerVelY
-        newY=oldY+math.sin(playerDir)*playerVelY
+        newX=oldX+cos(playerDir)*playerVelY
+        newY=oldY+sin(playerDir)*playerVelY
 
         if not nearWall(newX, oldY):
             playerPos[0]=newX
-            oldX=newX
             change=True
         if not nearWall(oldX, newY):
             playerPos[1]=newY
@@ -332,16 +324,12 @@ def changeKey(which, to):
         key[3]=to
     elif which==32: # space bar
         key[4]=to
-    elif which==17: # ctrl
-        key[5]=to
-    elif which==66: # b
-        if to:
-            shoot()
 
 def key_down(e):
     if not e:
         e = win.event
     changeKey(e.keyCode,1)
+    update()
     e.preventDefault()
     e.stopPropagation()
 
@@ -351,9 +339,38 @@ def key_up(e):
     changeKey(e.keyCode, 0)
     e.preventDefault()
     e.stopPropagation()
+
+def mouse_up():
+    global key,mpos
+    key = [0,0,0,0,0]
+    mpos = None
+
+def mouse_down(e):
+    global mpos
+    mpos = [e.x,e.y]
     
+def mouse_move(e):
+    global mpos
+    if mpos==None:
+        return
+    x,y = mpos
+    mpos = [e.x,e.y]
+    if x==e.x:
+        if e.y-y>0:
+            key[3] = 1 # down
+        elif e.y-y<0:
+            key[2] = 1 # up
+    elif y==e.y:
+        if e.x-x>0:    
+            key[1] = 1 # right
+        else:
+            key[0] = 1 # left
+        
 doc.onkeydown = key_down
 doc.onkeyup = key_up
+doc.onmousedown = mouse_down
+doc.onmousemove = mouse_move
+doc.onmouseup = mouse_up
 
 def initUnderMap():
     underMap=doc["underMap"].getContext("2d")
@@ -366,18 +383,16 @@ def initUnderMap():
                 underMap.fillRect(i*8, j*8, 8, 8)
 
 def init():
-    global canvas,overlay,map
+    global canvas,overlay,map,mpos
     ele = doc["map"]
     if not ele.getContext:
       alert('An error occured creating a Canvas 2D context. '
-          'This may be because you are using an old browser, if not please contact me '
-          'and I\'ll see if I can fix the error.')
+          'This may be because you are using an old browser')
       return    
     map=ele.getContext("2d")
     canvas=doc["canvas"].getContext("2d")
     overlay=doc["overlay"]
-    log("style %s" %doc["sky"].style)
-    doc["sky"].style.backgroundPosition="%spx 0" %math.floor(-playerDir/(2*math.pi)*2400)
+    doc["sky"].style.backgroundPosition="%spx 0" %floor(-playerDir/(2*pi)*2400)
     drawCanvas()
     initUnderMap()
     time.set_interval(update, 35)
@@ -387,18 +402,16 @@ init()
   </head>
 <body onLoad="brython()">
 <div id="benjoffe">
-  <h1>Ben Joffe</h1>
   
   <div id="content">
     
-      <h2>Canvascape - "3D Walker"</h2>
+      <h1>Canvascape - "3D Walker"</h1>
     
     <div id="app">
       <canvas id="underMap" width="80" height="80"></canvas>
       <canvas id="map" width="80" height="80"></canvas>
-      <a id="code" href="/script/canvascape/main.js">Source</a>
     
-      <div id="holder" style="clear:both;">
+      <div id="holder">
           <div id="sky"></div>
           <div id="floor"></div>
           <canvas id="canvas" width="400" height="300"></canvas>
@@ -406,8 +419,9 @@ init()
       </div>
     
       <div id="suppl">
-        <p>Use the arrow keys to walk around the map. Space bar = jump. B = Shoot.</p>
-        <p>This is a demo I created in 2005 to demonstrate the capability of Canvas. See also: <a href="canvascape/textures">textured version</a>.</p>
+        Use the arrow keys to walk around the map. Space bar = jump</p>
+        <p><a href="http://www.benjoffe.com/code/demos/canvascape">Original JavaScript demo</a> by Ben Joffe</p>
+        
       </div>
       
     </div>
