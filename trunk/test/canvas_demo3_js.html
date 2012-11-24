@@ -131,7 +131,6 @@ function wallDistance(theta){
         
 
         for (var j=0; j<20; j++) {
-            nb++
             if (distX < distY) {
                 mapX += stepX;
                 if (arena[mapX][mapY]) {
@@ -224,7 +223,6 @@ function drawCanvas(){
         var shade2=Math.floor(wallH2*2+20); if (shade2>255) shade2=255;
 
         linGrad = canvas.createLinearGradient(tl[0],0,tr[0],0);
-        console.log('rgba('+(face[i/4]%2==0 ? shade1 : 0)+','+(face[i/4]==1 ? shade1 : 0)+','+(face[i/4]==2 ? 0 : shade1)+',1.0)')
         linGrad.addColorStop(0, 'rgba('+(face[i/4]%2==0 ? shade1 : 0)+','+(face[i/4]==1 ? shade1 : 0)+','+(face[i/4]==2 ? 0 : shade1)+',1.0)');
         linGrad.addColorStop(1, 'rgba('+(face[i/4]%2==0 ? shade2 : 0)+','+(face[i/4]==1 ? shade2 : 0)+','+(face[i/4]==2 ? 0 : shade2)+',1.0)');
 
@@ -333,7 +331,6 @@ function update(){
         else playerVelY=0;
     }
     
-    
     if (playerVelY!=0) {
 
         var oldX=playerPos[0];;
@@ -343,11 +340,13 @@ function update(){
 
         if (!nearWall(newX, oldY)) {
             playerPos[0]=newX;
+            console.log('change x')
             oldX=newX;
             change=true;
         }
         if (!nearWall(oldX, newY)) {
             playerPos[1]=newY;
+            console.log('change y')
             change=true;
         }
 
