@@ -1606,28 +1606,26 @@ function zip(){
 function $TrueClass(){
     this.__class__ = "True"
     this.value = true
-    this.__str__ = function(){return str('True')}
     this.__bool__ = function(){return True}
-    this.__and__ = function(other){return bool(other)}
-    this.__or__ = function(other){return True}
+    this.__eq__ = function(other){return $bool(other)}
+    this.__str__ = function(){return str('True')}
 }
 True = new $TrueClass()
 
 function $FalseClass(){
     this.__class__ = "False"
     this.value = false
-    this.__str__ = function(){return str('False')}
     this.__bool__ = function(){return False}
-    this.__and__ = function(other){return False}
-    this.__or__ = function(other){return bool(other)}
+    this.__eq__ = function(other){return $not($bool(other))}
+    this.__str__ = function(){return str('False')}
 }
 False = new $FalseClass()
 
 function $NoneClass(){
     this.__class__ = "None"
-    this.__and__ = function(other){return False}
+    this.value = null
     this.__bool__ = function(){return False}
-    this.__or__ = function(other){return other}
+    this.__eq__ = function(other){return $bool_conv(other.__class__=="None")}
     this.__str__ = function(){return str('None')}
 }
 None = new $NoneClass()

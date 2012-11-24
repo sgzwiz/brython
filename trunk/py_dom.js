@@ -227,24 +227,24 @@ function $AbstractTagClass(){
     this.__class__ = $AbstractTag
     this.children = []
 }
-$AbstractTag.prototype.appendChild = function(child){    
+$AbstractTagClass.prototype.appendChild = function(child){    
     this.children.push(child)
 }
 
-$AbstractTag.prototype.__add__ = function(other){
+$AbstractTagClass.prototype.__add__ = function(other){
     if($isinstance(other,$AbstractTag)){
         this.children = this.children.concat(other.children)
     } else {this.children.push(other.elt)}
     return this
 }        
 
-$AbstractTag.prototype.__iadd__ = function(other){
+$AbstractTagClass.prototype.__iadd__ = function(other){
     if($isinstance(other,$AbstractTag)){
         this.children = this.children.concat(other.children)
     } else {this.children.push(other.elt)}
 }        
 
-$AbstractTag.prototype.clone = function(){
+$AbstractTagClass.prototype.clone = function(){
     var res = $AbstractTag(), $i=0
     for($i=0;$i<this.children.length;$i++){
         res.children.push(this.children[$i].cloneNode(true))

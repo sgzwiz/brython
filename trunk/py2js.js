@@ -809,9 +809,9 @@ function py2js(src,context){
         var op_sign = operator[0]
         var auth_lo_types = operator[1]
         var py_op = '__'+$operators[op_sign]+'__'
-        pos = stack.list.length-1
+        pos = 0
         while(true){
-            var op = stack.find_previous(pos,"operator",op_sign)
+            var op = stack.find_next(pos,"operator",op_sign)
             if(op==null){break}
             // left operand
             var lo = stack.atom_before(op,false)
@@ -862,7 +862,7 @@ function py2js(src,context){
             // insert new sequence
             stack.list = stack.list.slice(0,lo.start).concat(sequence).concat(tail)
             // set position for next search
-            pos = op-1
+            pos = op+1
         }
     }
     
