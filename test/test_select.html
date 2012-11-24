@@ -44,7 +44,7 @@ tb = TBODY()
 up_down_left = BUTTON('\u2191',onClick="up(left)")
 up_down_left += BR()+BUTTON('\u2193',onClick="down(left)")
 
-left = SELECT(size=10)
+left = SELECT(size=10,style={'width':100})
 
 for i,_item in enumerate(items):
     option = OPTION(_item,value=i,width=40,Id='opt%s' %i,selected=i==1)
@@ -54,7 +54,7 @@ for i,_item in enumerate(items):
 buttons = BUTTON('>',onClick="swap(left,right)")
 buttons += BR()+BUTTON('<',onClick="swap(right,left)")
 
-right = SELECT(size=10)
+right = SELECT(size=10,style={'width':100})
 
 up_down_right = BUTTON('\u2191',onClick="up(right)")
 up_down_right += BR()+BUTTON('\u2193',onClick="down(right)")

@@ -75,9 +75,11 @@ width:98%;
 import math
 import random
 import time
+rand = random.random
+sqrt = math.sqrt
+floor = math.floor
 
 def C():
-    log('enter C')
     e.globalCompositeOperation="source-over"
     e.fillStyle="rgba(8,8,12,0.65)"
     e.fillRect(0,0,f,p)
@@ -97,20 +99,20 @@ def C():
         b=h.b
         c=i-q
         k=j-r
-        g=math.sqrt(c*c+k*k) or 0.001
+        g=sqrt(c*c+k*k) or 0.001
         c=c/g
         k=k/g
         if w and g<m:
             dfg = 9
             s=14*(1-g/m)
-            a=a+(c*s+0.5-random.random())
-            b=b+(k*s+0.5-random.random())
+            a=a+(c*s+0.5-rand())
+            b=b+(k*s+0.5-rand())
         if g<d:
             s=0.0014*(1-g/d)*f
             a-=c*s
             b-=k*s
         if g<l:
-            c=2.6E-4*(1-g/l)*f
+            c=2.6e-4*(1-g/l)*f
             a+=x*c
             b+=y*c
         a*=B
@@ -119,11 +121,10 @@ def C():
         k=abs(b)
         g=0.5*(c+k)
         if 0.1>c:
-            a*=3*random.random()
+            a*=3*rand()
         if 0.1>k:
-            b*=3*random.random()
+            b*=3*rand()
         c=0.45*g
-        log('ok')
         c=max(min(c,3.5),0.4)
         i+=a
         j+=b
@@ -153,9 +154,8 @@ def E(d):
     global q,r
     if not d:
         d=window.event
-    q=d.clientX-m.offsetLeft-n.offsetLeft
-    r=d.clientY-m.offsetTop-n.offsetTop
-    log('%s %s %s %s' %(d.clientX,m.offsetLeft,n.offsetLeft,q))
+    q=d.x-m.offsetLeft-n.offsetLeft
+    r=d.y-m.offsetTop-n.offsetTop
 
 def F():
     global w
@@ -169,8 +169,8 @@ def G():
 
 def H():
     self = object()
-    self.color="rgb(%s,%s,%s)" %(math.floor(255*random.random()),math.floor(255*random.random()),
-        math.floor(255*random.random()))
+    self.color="rgb(%s,%s,%s)" %(floor(255*rand()),floor(255*rand()),
+        floor(255*rand()))
     self.b=self.a=self.x=self.y=0
     self.size=1
     return self
@@ -178,7 +178,7 @@ def H():
 D=2*math.pi
 f=1000
 p=560
-z=60
+z=20
 B=0.96
 A=[]
 
@@ -189,14 +189,15 @@ q=None
 r=None
 if o.getContext:
     m=doc["outer"]
+    log(m.offsetLeft)
     n=doc["canvasContainer"]
     e=o.getContext("2d")
     for d in range(z,0,-1):
         l= H()
         l.x=0.5*f
         l.y=0.5*p
-        l.a=34*math.cos(d)*random.random()
-        l.b=34*math.sin(d)*random.random()
+        l.a=34*math.cos(d)*rand()
+        l.b=34*math.sin(d)*rand()
         A.append(l)
     q=0.5*f
     u=q
@@ -205,21 +206,11 @@ if o.getContext:
     doc.onmousedown=F
     doc.onmouseup=G
     doc.onmousemove=E
-    time.set_interval(C,33)
+    time.set_interval(C,133)
     doc["output"].innerHTML='hgk666hg'
 else:
     doc["output"].innerHTML="Sorry, needs a recent version of Chrome, Firefox, Opera, Safari, or Internet Explorer 9."
 </script>
 
-<script type="text/javascript">
-var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
-document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
-</script>
-<script type="text/javascript">
-try {
-var pageTracker = _gat._getTracker("UA-11054609-1");
-pageTracker._trackPageview();
-} catch(err) {}
-</script>
   </body>
 </html>
