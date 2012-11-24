@@ -35,7 +35,7 @@ function $tokenize(src){
 
     var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
-    var float_pattern = new RegExp("^\\d+\\.\\d*")
+    var float_pattern = new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
     var id_pattern = new RegExp("[\\$_a-zA-Z]\\w*")
     
     var stack = new Array()
@@ -200,8 +200,10 @@ function $tokenize(src){
         if(car.search(/\d/)>-1){
             // digit
             var res = float_pattern.exec(src.substr(pos))
-            if(res){stack.push(["float",eval(res[0]),pos])}
-            else{
+            if(res){
+                if(res[0].search('e')>-1){stack.push(["float",res[0],pos])}
+                else{stack.push(["float",eval(res[0]),pos])}
+            }else{
                 res = int_pattern.exec(src.substr(pos))
                 stack.push(["int",eval(res[0]),pos])
             }
