@@ -787,7 +787,7 @@ function py2js(src,context){
     }
                 
     // operators with authorized left operand types
-    var ops_order = ["**","*","/","//","%","+","-",
+    var ops_order = ["**","*","/","//","%","-","+",
         "<","<=",">",">=","!=","==",
         "+=","-=","*=","/=","//=","%=","**=",
         "not_in","in","is_not"]
