@@ -1551,9 +1551,9 @@ function str(arg){
     } catch(err) {
         if(arg.constructor==Function){
             var src = arg+'' // coerce to string
-            pattern = new RegExp("function (.*?)\\(")
+            pattern = new RegExp("function (.*?)")
             var res = pattern.exec(src)
-            value = res[1]
+            value = res[1] || '<anonymous function>'
         } else {
             value = arg.toString()
         }
