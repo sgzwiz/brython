@@ -31,7 +31,7 @@ function $tokenize(src){
         "as","yield")
     // causes errors for some browsers
     // complete list at http://www.javascripter.net/faq/reserved.htm
-    var forbidden = $List2Dict("item")
+    var forbidden = $List2Dict("item","status")
 
     var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
