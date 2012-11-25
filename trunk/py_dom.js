@@ -158,8 +158,13 @@ function $Document(){
 
     this.elt = document
     this.mouse = null
+    this.__class__ = "Document"
     
-    this.__getattr__ = function(attr){return getattr(this.elt,attr)}
+    this.__contains__ = function(attr){return $bool_conv(attr in document)}
+    this.__getattr__ = function(attr){
+        if(attr in document){return $getattr(this.elt,attr)}
+        else{$raise('AttributeError','doc object has no attribute '+attr)}
+    }
 
     this.__getitem__ = function(key){
         if($isinstance(key,str)){
@@ -495,7 +500,12 @@ $TagClass.prototype.make_draggable = function(target){
     }
 }
 
-$TagClass.prototype.set_html = function(value){this.elt.innerHTML=$str(value)}
+$TagClass.prototype.set_html = function(arg){this.elt.innerHTML=$str(arg)}
+
+$TagClass.prototype.set_text = function(arg){
+    this.elt.innerText=$str(arg)
+    this.elt.textContent=$str(arg)
+}
 
 $TagClass.prototype.set_value = function(value){this.elt.value = $str(value)}
 
