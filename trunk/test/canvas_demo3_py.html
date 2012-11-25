@@ -325,11 +325,18 @@ def changeKey(which, to):
     elif which==32: # space bar
         key[4]=to
 
+def stop():
+    global key
+    key = [0,0,0,0,0]
+    
+def move(x):
+    changeKey(x,1)
+    time.set_timeout(stop,50)
+    
 def key_down(e):
     if not e:
         e = win.event
     changeKey(e.keyCode,1)
-    update()
     e.preventDefault()
     e.stopPropagation()
 
@@ -340,14 +347,18 @@ def key_up(e):
     e.preventDefault()
     e.stopPropagation()
 
-def mouse_up():
+def mouse_up(e):
     global key,mpos
     key = [0,0,0,0,0]
     mpos = None
+    e.preventDefault()
+    e.stopPropagation()
 
 def mouse_down(e):
     global mpos
     mpos = [e.x,e.y]
+    e.preventDefault()
+    e.stopPropagation()
     
 def mouse_move(e):
     global mpos
@@ -365,12 +376,17 @@ def mouse_move(e):
             key[1] = 1 # right
         else:
             key[0] = 1 # left
+    e.preventDefault()
+    e.stopPropagation()
         
 doc.onkeydown = key_down
 doc.onkeyup = key_up
 doc.onmousedown = mouse_down
+#doc.ontouchdown = mouse_down
 doc.onmousemove = mouse_move
+#doc.ontouchmove = mouse_move
 doc.onmouseup = mouse_up
+doc.ontouchup = mouse_up
 
 def initUnderMap():
     underMap=doc["underMap"].getContext("2d")
@@ -421,7 +437,11 @@ init()
       <div id="suppl">
         Use the arrow keys to walk around the map. Space bar = jump</p>
         <p><a href="http://www.benjoffe.com/code/demos/canvascape">Original JavaScript demo</a> by Ben Joffe</p>
-        
+        <p><table><tr><td colspan=2 style="text-align:center"><button onclick="javascript:return move(87)">&uarr;</button></td></tr>
+        <tr><td><button onclick="javascript:return move(65)">&larr;</button></td>
+        <td><button onclick="javascript:return move(68)">&rarr;</button></td></tr>
+        <tr><td colspan=2 style="text-align:center"><button onclick="javascript:return move(83)">&darr;</button></td></tr>
+        </table>
       </div>
       
     </div>
