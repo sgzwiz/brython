@@ -1,0 +1,14 @@
+<html>
+<head>
+<script src="/brython.js"></script>
+</head>
+<body onLoad="brython()">
+<img src="../brython.png">
+<script type="text/python">
+def echo():
+    alert("Hello %s !" %doc["zone"].value)
+</script>
+<p>Your name is : <input id="zone"><button onclick="echo()">clic !</button>
+</body>
+</html>
+
