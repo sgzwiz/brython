@@ -10,11 +10,6 @@ tt { font-size:15px;
     color:#A33;
 }
 
-table.transforms{
-    border-width: 1px;
-    border-style: solid;
-    border-color: red;
-}
 td{
     vertical-align: top;
     padding: 5px;
