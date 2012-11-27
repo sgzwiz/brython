@@ -176,14 +176,14 @@ function $tokenize(src){
                         $raise('SyntaxError',"Unsupported Python keyword '"+name+"'")                    
                     }
                     stack.push(["keyword",name,pos-name.length])
-                } else if(name in forbidden) {
-                    document.line_num = pos2line[pos]
-                    $raise('SyntaxError',"Forbidden name '"+name+"' : might conflict with Javascript variables")                    
                 } else if(name in $operators) { // and, or
                     stack.push(["operator",name,pos-name.length])
                 } else if(stack.length>1 && $last(stack)[0]=="point"
                     && (stack[stack.length-2][0] in $List2Dict('id','qualifier','bracket'))) {
                     stack.push(["qualifier",name,pos-name.length])
+                } else if(name in forbidden) {
+                    document.line_num = pos2line[pos]
+                    $raise('SyntaxError',"Forbidden name '"+name+"' : might conflict with Javascript variables")                    
                 } else {
                     stack.push(["id",name,pos-name.length])
                 }
