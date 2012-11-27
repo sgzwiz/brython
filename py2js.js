@@ -302,7 +302,7 @@ function py2js(src,context){
                     var elts = arg.split("=")
                     if(elts.length>1){
                         // argument with default value
-                        defaults[elts[0].list[0][1]]=elts[1].list[0][1]
+                        defaults[elts[0].list[0][1]]=elts[1].to_js()
                         has_defaults = true
                         // remove argument
                         if(i==0){
