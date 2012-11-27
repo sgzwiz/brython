@@ -354,8 +354,9 @@ $TagClass.prototype.__getitem__ = function(key){
 }
     
 $TagClass.prototype.__iadd__ = function(other){
+    console.log('iadd '+$isinstance(other,$AbstractTag))
     this.__class__ = $AbstractTag // change to abstract tag
-    this.children = [this.elt]
+    if(!('children' in this)){this.children = [this.elt]}
     if($isinstance(other,$AbstractTag)){
         for(var $i=0;$i<other.children.length;$i++){
         this.children.push(other.children[$i])
