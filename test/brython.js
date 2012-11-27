@@ -1779,7 +1779,7 @@ if(op==null){
 var elts=arg.split("=")
 if(elts.length>1){
 
-defaults[elts[0].list[0][1]]=elts[1].list[0][1]
+defaults[elts[0].list[0][1]]=elts[1].to_js()
 has_defaults=true
 
 if(i==0){
@@ -2749,14 +2749,14 @@ document.line_num=pos2line[pos]
 $raise('SyntaxError',"Unsupported Python keyword '"+name+"'")
 }
 stack.push(["keyword",name,pos-name.length])
-}else if(name in forbidden){
-document.line_num=pos2line[pos]
-$raise('SyntaxError',"Forbidden name '"+name+"' : might conflict with Javascript variables")
 }else if(name in $operators){
 stack.push(["operator",name,pos-name.length])
 }else if(stack.length>1 && $last(stack)[0]=="point"
 &&(stack[stack.length-2][0]in $List2Dict('id','qualifier','bracket'))){
 stack.push(["qualifier",name,pos-name.length])
+}else if(name in forbidden){
+document.line_num=pos2line[pos]
+$raise('SyntaxError',"Forbidden name '"+name+"' : might conflict with Javascript variables")
 }else{
 stack.push(["id",name,pos-name.length])
 }
@@ -3684,8 +3684,9 @@ $TagClass.prototype.__getitem__=function(key){
 return $JS2Py(this.elt[key.value])
 }
 $TagClass.prototype.__iadd__=function(other){
+console.log('iadd '+$isinstance(other,$AbstractTag))
 this.__class__=$AbstractTag 
-this.children=[this.elt]
+if(!('children' in this)){this.children=[this.elt]}
 if($isinstance(other,$AbstractTag)){
 for(var $i=0;$i<other.children.length;$i++){
 this.children.push(other.children[$i])

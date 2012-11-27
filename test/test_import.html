@@ -7,12 +7,11 @@
 <body onLoad="brython()">
 
 <script type="text/python">
-import import_test
-doc <= import_test.valude
-doc <= BR()
-doc <= import_test.func('azerty')
-import time
-doc <= BR()+time.time()
+import sidebar
+menu_items = [('Introduction','index.html'),
+    ('Syntaxe','index.html#syntax'),
+    ('Documents HTML','implem.html')]
+doc <= sidebar.menu('Brython',menu_items)
 </script>
 </body>
 </html>
