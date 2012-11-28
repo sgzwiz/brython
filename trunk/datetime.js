@@ -1,9 +1,16 @@
-function $Date(year,month,day){
-    this.$dt = new $DateTime(year,month,day)
+function $Date(args){
+
+    if(args.length>3){$raise('TypeError',"Too many arguments - required 3, got "+args.length)}
+
+    var obj = new $DateTime(args)
+    this.year = obj.year
+    this.month = obj.month
+    this.day = obj.day
+    this.$dt = obj
     
     this.__class__ = datetime.date
 
-    this.__getattr__ = function(attr){return getattr(this,attr)}
+    this.__getattr__ = function(attr){return $getattr(this,attr)}
     
     this.__str__ = function(){
         return str(this.year.value+'-'+this.month.value+'-'+this.day.value)
@@ -96,7 +103,7 @@ function $datetime(year,month,day,hour,minute,second,microsecond){
 
 datetime = {
     __getattr__ : function(attr){return this[attr]},
-    date : $date,
+    date : function(){return new $Date(arguments)},
     datetime : function(){return new $DateTime(arguments)}
 }
 
@@ -108,6 +115,17 @@ datetime.datetime.__getattr__= function(attr){
                 int(obj.getDate()),int(obj.getHours()),int(obj.getMinutes()),
                 int(obj.getSeconds()),int(obj.getMilliseconds()*1000)]
             return new $DateTime(args)}
+    }
+    $raise('AttributeError','datetime.datetime has no attribute '+attr)
+}
+
+datetime.date.__getattr__= function(attr){
+    if(attr=='today'){
+        return function(){
+            var obj = new Date()
+            var args = [int(obj.getFullYear()),int(obj.getMonth()+1),
+                int(obj.getDate())]
+            return new $Date(args)}
     }
     $raise('AttributeError','datetime.datetime has no attribute '+attr)
 }
