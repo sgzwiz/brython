@@ -134,6 +134,10 @@ $DictClass.prototype.__eq__ = function(other){
 
 $DictClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
 
+$DictClass.prototype.__getattr__ = function(attr){
+    return $getattr(this,attr)
+}
+
 $DictClass.prototype.__getitem__ = function(arg){
     // search if arg is in the keys
     for(var i=0;i<this.$keys.length;i++){
@@ -177,6 +181,7 @@ $DictClass.prototype.__contains__ = function(item){
 }
 
 $DictClass.prototype.items = function(){return new $DictIterator(this.$keys,this.$values)}
+
 $DictClass.prototype.keys = function(){
     var res = list()
     for(var i=0;i<this.$keys.length;i++){res.append(this.$keys[i])}
@@ -205,6 +210,7 @@ function $DictIterator(keys,values){
 }    
 
 function dict(){
+    if(arguments.length==0){return new $DictClass([],[])}
     var arg_iter=arguments[0],i=0
     var keys=[],values=[]
     while(true){
