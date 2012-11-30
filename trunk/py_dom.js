@@ -215,7 +215,7 @@ function $DomElement(elt){
     if(elt_name===undefined && elt.nodeName=="#document"){ // document
         obj.__class__ = $Document
     }else{
-        obj.__class__ = eval(elt_name)
+        obj.__class__ = eval(elt_name.toUpperCase())
     }
     obj.elt = elt
     return obj
@@ -273,13 +273,13 @@ $events = $List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'onrowsinserted','onscroll','onsearch','onselect','onselectionchange',
 'onselectstart','onstart','onstop','onsubmit','onunload')
 
-function $TagClass(_class,args){
+function $TagClass(class_name,args){
     // represents an HTML tag
     var $i = null
     var $obj = this
-    if(_class!==undefined){
-        this.name = str(_class).value
-        eval("this.__class__ =_class")
+    if(class_name!==undefined){
+        this.name = class_name
+        eval("this.__class__ ="+class_name)
         this.elt = document.createElement(this.name)
         this.elt.parent = this
     }
@@ -326,7 +326,6 @@ function $TagClass(_class,args){
     if('elt' in this && !this.elt.getAttribute('id')){
         this.elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
     }
-
 }
 $TagClass.prototype.__add__ = function(other){
     var res = $AbstractTag() // abstract tag
@@ -354,7 +353,6 @@ $TagClass.prototype.__getitem__ = function(key){
 }
     
 $TagClass.prototype.__iadd__ = function(other){
-    console.log('iadd '+$isinstance(other,$AbstractTag))
     this.__class__ = $AbstractTag // change to abstract tag
     if(!('children' in this)){this.children = [this.elt]}
     if($isinstance(other,$AbstractTag)){
@@ -514,11 +512,7 @@ $TagClass.prototype.__le__ = function(other){
     } else {this.elt.appendChild(other.elt)}
 }
 
-function A(){
-    var $args = [],$i=0
-    for($i=0;$i<arguments.length;$i++){$args.push(arguments[$i])}
-    return new $TagClass(A,$args)
-}
+function A(){return new $TagClass('A',arguments)}
 
 var $src = A+'' // source of function A
 $tags = ['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
