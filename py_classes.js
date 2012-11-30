@@ -205,12 +205,17 @@ function $DictIterator(keys,values){
 }    
 
 function dict(){
-    var args=new Array(),i=0
-    for(i=0;i<arguments.length;i++){args.push(arguments[i])}
+    var arg_iter=arguments[0],i=0
     var keys=[],values=[]
-    for(i=0;i<args.length;i++){
-        keys.push(args[i].items[0])
-        values.push(args[i].items[1])
+    while(true){
+        try{
+            arg = next(arg_iter)
+            keys.push(arg.items[0])
+            values.push(arg.items[1])
+        }catch(err){
+            if(err.name=="StopIteration"){break}
+            else{throw err}
+        }
     }
     return new $DictClass(keys,values)
 }
@@ -1553,7 +1558,7 @@ function str(arg){
             var src = arg+'' // coerce to string
             pattern = new RegExp("function (.*?)\\(")
             var res = pattern.exec(src)
-            value = res[1]
+            value = '<function '+res[1]+'>'
         } else {
             value = arg.toString()
         }

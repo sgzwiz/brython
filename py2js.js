@@ -198,7 +198,8 @@ function py2js(src,context){
                     // split elements
                     var args = new Stack(stack.list.slice(br_elt+1,end))
                     if(args.list.length>0){
-                        sequence = [['id','dict'],['bracket','(']]
+                        sequence = [['id','dict'],['bracket','('],
+                            ['id','list'],['bracket','(']]
                         var kvs = args.split(',') // array of Stack instances
                         for(var ikv=0;ikv<kvs.length;ikv++){
                             var kv = kvs[ikv]
@@ -225,6 +226,7 @@ function py2js(src,context){
                             sequence.push(['delimiter',',',br_pos])
                         }
                         sequence.pop() // remove last comma
+                        sequence.push(['bracket',')']) // close list of (key,value) lists
                     }
                     sequence.push(['bracket',')',stack.list[end][2]])
                 }else if(pyType=='tuple'){
