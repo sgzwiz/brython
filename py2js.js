@@ -199,7 +199,7 @@ function py2js(src,context){
                     var args = new Stack(stack.list.slice(br_elt+1,end))
                     if(args.list.length>0){
                         sequence = [['id','dict'],['bracket','('],
-                            ['id','list'],['bracket','(']]
+                            ['id','$list'],['bracket','(']]
                         var kvs = args.split(',') // array of Stack instances
                         for(var ikv=0;ikv<kvs.length;ikv++){
                             var kv = kvs[ikv]
@@ -954,11 +954,12 @@ function py2js(src,context){
         if(assign==null){break}
         var left = stack.atom_before(assign,true)
         var right = stack.atom_at(assign+1,true)
-        if(left.type=="tuple" || left.type=="implicit_tuple"){
+        if(left.type=="tuple" || 
+            (left.type=="function_call" && left.list()[0][1]=="tuple")){
             // for multiple assignments
             var list = left.list()
-            if(list[0][0]=="bracket"){
-                list = list.slice(1,list.length-1)
+            if(list[0].match(["id","tuple"])){
+                list = list.slice(2,list.length-1)
             }
             var t_stack = new Stack(list)
             var targets = t_stack.split(',')
