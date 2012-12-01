@@ -117,6 +117,9 @@ if(!test){return False}
 return True
 }
 $DictClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
+$DictClass.prototype.__getattr__=function(attr){
+return $getattr(this,attr)
+}
 $DictClass.prototype.__getitem__=function(arg){
 
 for(var i=0;i<this.$keys.length;i++){
@@ -181,21 +184,32 @@ $raise('StopIteration')
 }
 }
 function dict(){
-var args=new Array(),i=0
-for(i=0;i<arguments.length;i++){args.push(arguments[i])}
+if(arguments.length==0){return new $DictClass([],[])}
+var arg_iter=iter(arguments[0]),i=0
 var keys=[],values=[]
-for(i=0;i<args.length;i++){
-keys.push(args[i].items[0])
-values.push(args[i].items[1])
+while(true){
+try{
+arg=next(arg_iter)
+keys.push(arg.items[0])
+values.push(arg.items[1])
+}catch(err){
+if(err.name=="StopIteration"){break}
+else{throw err}
+}
 }
 return new $DictClass(keys,values)
 }
 function $EnumerateClass(iterator){
-this.iterator=iterator
+this.iterator=iter(iterator)
 this.count=-1
 this.__next__=function(){
 this.count +=1
+try{
 return list(int(this.count),this.iterator.__next__())
+}catch(err){
+if(err.name=="StopIteration"){this.count=-1;this.iterator.iter=null}
+throw err
+}
 }
 }
 function enumerate(iterator){
@@ -1389,7 +1403,7 @@ if(arg.constructor==Function){
 var src=arg+'' 
 pattern=new RegExp("function (.*?)\\(")
 var res=pattern.exec(src)
-value=res[1]
+value='<function '+res[1]+'>'
 }else{
 value=arg.toString()
 }
@@ -1418,10 +1432,14 @@ return obj
 function $ZipClass(args){
 this.args=args
 this.__next__=function(){
+if(this.iter===null){
+this.iter=0
+for(var i=0;i<this.args.length;i++){this.args[i].iter=0}
+}
 var $res=list(),i=0
 for(var i=0;i<this.args.length;i++){
 z=this.args[i].__next__()
-if(z===undefined){$raise('StopIteration')}
+if(z===undefined){this.iter=null;$raise('StopIteration')}
 $res.append(z)
 }
 return $res
@@ -1677,7 +1695,8 @@ if(pyType=='dict'){
 
 var args=new Stack(stack.list.slice(br_elt+1,end))
 if(args.list.length>0){
-sequence=[['id','dict'],['bracket','(']]
+sequence=[['id','dict'],['bracket','('],
+['id','$list'],['bracket','(']]
 var kvs=args.split(',')
 for(var ikv=0;ikv<kvs.length;ikv++){
 var kv=kvs[ikv]
@@ -1704,6 +1723,7 @@ sequence.push(['bracket',')'])
 sequence.push(['delimiter',',',br_pos])
 }
 sequence.pop()
+sequence.push(['bracket',')'])
 }
 sequence.push(['bracket',')',stack.list[end][2]])
 }else if(pyType=='tuple'){
@@ -1779,7 +1799,7 @@ if(op==null){
 var elts=arg.split("=")
 if(elts.length>1){
 
-defaults[elts[0].list[0][1]]=elts[1].list[0][1]
+defaults[elts[0].list[0][1]]=elts[1].to_js()
 has_defaults=true
 
 if(i==0){
@@ -2404,11 +2424,12 @@ var assign=stack.find_previous(pos,"assign","=")
 if(assign==null){break}
 var left=stack.atom_before(assign,true)
 var right=stack.atom_at(assign+1,true)
-if(left.type=="tuple" || left.type=="implicit_tuple"){
+if(left.type=="tuple" || 
+(left.type=="function_call" && left.list()[0][1]=="tuple")){
 
 var list=left.list()
-if(list[0][0]=="bracket"){
-list=list.slice(1,list.length-1)
+if(list[0].match(["id","tuple"])){
+list=list.slice(2,list.length-1)
 }
 var t_stack=new Stack(list)
 var targets=t_stack.split(',')
@@ -2563,7 +2584,7 @@ eval(js)
 function brython(debug){
 var elts=document.getElementsByTagName("script")
 for($i=0;$i<elts.length;$i++){
-elt=elts[$i]
+var elt=elts[$i]
 if(elt.type=="text/python"){
 var src=(elt.innerHTML || elt.textContent)
 js=py2js(src).to_js()
@@ -2607,7 +2628,14 @@ var unsupported=$List2Dict("class","is","from","nonlocal","with",
 "as","yield")
 
 
-var forbidden=$List2Dict("item","status")
+var forbidden=$List2Dict('item','var',
+'closed','defaultStatus','document','frames',
+'history','innerHeight','innerWidth','length',
+'location','name','navigator','opener',
+'outerHeight','outerWidth','pageXOffset','pageYOffset',
+'parent','screen','screenLeft','screenTop',
+'screenX','screenY','self','status',
+'top')
 var punctuation={',':0,':':0}
 var int_pattern=new RegExp("^\\d+")
 var float_pattern=new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
@@ -2749,14 +2777,14 @@ document.line_num=pos2line[pos]
 $raise('SyntaxError',"Unsupported Python keyword '"+name+"'")
 }
 stack.push(["keyword",name,pos-name.length])
-}else if(name in forbidden){
-document.line_num=pos2line[pos]
-$raise('SyntaxError',"Forbidden name '"+name+"' : might conflict with Javascript variables")
 }else if(name in $operators){
 stack.push(["operator",name,pos-name.length])
 }else if(stack.length>1 && $last(stack)[0]=="point"
 &&(stack[stack.length-2][0]in $List2Dict('id','qualifier','bracket'))){
 stack.push(["qualifier",name,pos-name.length])
+}else if(name in forbidden){
+document.line_num=pos2line[pos]
+$raise('SyntaxError',"Forbidden name '"+name+"' : might conflict with Javascript variables")
 }else{
 stack.push(["id",name,pos-name.length])
 }
@@ -2854,7 +2882,7 @@ continue
 if(car=='\\' && src.charAt(pos+1)=='\n'){
 lnum++;pos+=2;continue
 }
-if(car!=' '){$raise('SyntaxError','unknown token '+car)}
+if(car!=' '){$raise('SyntaxError','unknown token ['+car+']')}
 pos +=1
 }
 if(br_stack.length!=0){
@@ -3393,7 +3421,7 @@ e=e.offsetParent
 }
 left +=e.offsetLeft
 top +=e.offsetTop
-return{x:left, y:top, width:width, height:height}
+return{left:left, top:top, width:width, height:height}
 }
 function $mouseCoords(ev){
 var posx=0
@@ -3412,6 +3440,7 @@ var res=object()
 res.x=int(posx)
 res.y=int(posy)
 res.__getattr__=function(attr){return this[attr]}
+res.__class__="MouseCoords"
 return res
 }
 
@@ -3462,6 +3491,7 @@ eval("this.data."+attr+"=value.value")
 function $DomObject(obj){
 this.obj=obj
 this.type=obj.constructor.toString()
+console.log('dom object '+obj)
 }
 $DomObject.prototype.__getattr__=function(attr){
 return getattr(this.obj,attr)
@@ -3509,6 +3539,21 @@ function log(data){try{console.log($str(data))}catch(err){void(0)}}
 function $Document(){
 this.elt=document
 this.mouse=null
+this.__delitem__=function(key){
+if($isinstance(key,str)){
+var res=document.getElementById(key.value)
+if(res){res.parentNode.removeChild(res)}
+else{$raise("KeyError",str(key))}
+}else{
+try{
+var elts=document.getElementsByTagName(key.name),res=list()
+for(var $i=0;$i<elts.length;$i++){res.append($DomElement(elts[$i]))}
+return res
+}catch(err){
+$raise("KeyError",str(key))
+}
+}
+}
 this.__getattr__=function(attr){return getattr(this.elt,attr)}
 this.__getitem__=function(key){
 if($isinstance(key,str)){
@@ -3557,7 +3602,7 @@ var obj=new $TagClass()
 if(elt_name===undefined && elt.nodeName=="#document"){
 obj.__class__=$Document
 }else{
-obj.__class__=eval(elt_name)
+obj.__class__=eval(elt_name.toUpperCase())
 }
 obj.elt=elt
 return obj
@@ -3608,13 +3653,13 @@ $events=$List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'onresizeend','onresizestart','onrowenter','onrowexit','onrowsdelete',
 'onrowsinserted','onscroll','onsearch','onselect','onselectionchange',
 'onselectstart','onstart','onstop','onsubmit','onunload')
-function $TagClass(_class,args){
+function $TagClass(class_name,args){
 
 var $i=null
 var $obj=this
-if(_class!==undefined){
-this.name=str(_class).value
-eval("this.__class__ =_class")
+if(class_name!==undefined){
+this.name=class_name
+eval("this.__class__ ="+class_name)
 this.elt=document.createElement(this.name)
 this.elt.parent=this
 }
@@ -3681,11 +3726,11 @@ if('get_'+attr in this){return this['get_'+attr]()}
 else{return $getattr(this.elt,attr)}
 }
 $TagClass.prototype.__getitem__=function(key){
-return $JS2Py(this.elt[key.value])
+return $DomElement(this.elt.childNodes[key.value])
 }
 $TagClass.prototype.__iadd__=function(other){
 this.__class__=$AbstractTag 
-this.children=[this.elt]
+if(!('children' in this)){this.children=[this.elt]}
 if($isinstance(other,$AbstractTag)){
 for(var $i=0;$i<other.children.length;$i++){
 this.children.push(other.children[$i])
@@ -3706,7 +3751,7 @@ else if(attr in this.elt){this.elt[attr]=value.value}
 else{$setattr(this,attr,value)}
 }
 $TagClass.prototype.__setitem__=function(key,value){
-this.elt.setAttribute($str(key),$str(value))
+this.elt.childNodes[key.value]=value
 }
 $TagClass.prototype.get_clone=function(){
 res=new $TagClass(this.name)
@@ -3730,6 +3775,12 @@ else{return None}
 }
 $TagClass.prototype.get_options=function(){
 return new $OptionsClass(this)
+}
+$TagClass.prototype.get_left=function(){
+return int($getPosition(this.elt)["left"])
+}
+$TagClass.prototype.get_top=function(){
+return int($getPosition(this.elt)["top"])
 }
 $TagClass.prototype.get_children=function(){
 var res=list()
@@ -3821,11 +3872,7 @@ this.elt.appendChild(other.children[$i])
 }
 }else{this.elt.appendChild(other.elt)}
 }
-function A(){
-var $args=[],$i=0
-for($i=0;$i<arguments.length;$i++){$args.push(arguments[$i])}
-return new $TagClass(A,$args)
-}
+function A(){return new $TagClass('A',arguments)}
 var $src=A+'' 
 $tags=['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
 'B', 'BDO', 'BIG', 'BLOCKQUOTE', 'BUTTON',
@@ -3854,6 +3901,115 @@ $tags=$tags.concat(['ARTICLE','ASIDE','FIGURE','FOOTER','HEADER','NAV',
 for($i=0;$i<$tags.length;$i++){
 $code=$src.replace(/A/gm,$tags[$i])
 eval($code)
+}
+SVG={
+__getattr__:function(attr){console.log('get attribute '+attr+' '+this[attr]);return this[attr]}
+}
+$svgNS="http://www.w3.org/2000/svg"
+$xlinkNS="http://www.w3.org/1999/xlink"
+function $SVGTagClass(_class,args){
+
+console.log('svg tag '+_class)
+var $i=null
+var $obj=this
+if(_class!==undefined){
+this.name=str(_class).value
+eval("this.__class__ =_class")
+this.elt=document.createElementNS($svgNS,this.name)
+this.elt.parent=this
+}
+if(args!=undefined && args.length>0){
+$start=0
+$first=args[0]
+
+if(!$isinstance($first,$Kw)){
+$start=1
+if($isinstance($first,str)){
+txt=document.createTextNode($first.value)
+this.elt.appendChild(txt)
+}else if($isinstance($first,int)|| $isinstance($first,float)){
+txt=document.createTextNode($first.value.toString())
+this.elt.appendChild(txt)
+}else if($isinstance($first,$AbstractTag)){
+for($i=0;$i<$first.children.length;$i++){
+this.elt.appendChild($first.children[$i])
+}
+}else{
+try{this.elt.appendChild($first.elt)}
+catch(err){$raise('ValueError','wrong element '+$first.elt)}
+}
+}
+
+for($i=$start;$i<args.length;$i++){
+
+$arg=args[$i]
+if($isinstance($arg,$Kw)){
+if($arg.name.toLowerCase()in $events){
+eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
+}else if($arg.name.toLowerCase()=="style"){
+this.set_style($arg.value)
+}else{
+if($arg.value.value!==false){
+
+this.elt.setAttributeNS(null,$arg.name.toLowerCase(),$arg.value.value)
+}
+}
+}
+}
+}
+
+if('elt' in this && !this.elt.getAttribute('id')){
+this.elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
+}
+}
+$SVGTagClass.prototype.__add__=$TagClass.prototype.__add__
+$SVGTagClass.prototype.__eq__=$TagClass.prototype.__eq__
+$SVGTagClass.prototype.__getattr__=$TagClass.prototype.__getattr__
+$SVGTagClass.prototype.__getitem__=$TagClass.prototype.__getitem__
+$SVGTagClass.prototype.__iadd__=$TagClass.prototype.__iadd__
+$SVGTagClass.prototype.__ne__=$TagClass.prototype.__ne__
+$SVGTagClass.prototype.__radd__=$TagClass.prototype.__radd__
+$SVGTagClass.prototype.__setattr__=$TagClass.prototype.__setattr__
+$SVGTagClass.prototype.__setitem__=$TagClass.prototype.__setitem__
+
+var $svg_tags=['a',
+'altGlyph',
+'altGlyphDef',
+'altGlyphItem',
+'animate',
+'animateColor',
+'animateMotion',
+'animateTransform',
+'circle',
+'clipPath',
+'color_profile', 
+'cursor',
+'defs',
+'desc',
+'ellipse',
+'feBlend',
+'g',
+'image',
+'line',
+'linearGradient',
+'marker',
+'mask',
+'path',
+'pattern',
+'polygon',
+'polyline',
+'radialGradient',
+'rect',
+'stop',
+'svg',
+'text',
+'tref',
+'tspan',
+'use']
+for(var i=0;i<$svg_tags.length;i++){
+SVG[$svg_tags[i]]=function(){
+return $SVGTagClass($svg_tags[i],arguments)
+}
 }
 
 function $LocalStorageClass(){

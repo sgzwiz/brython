@@ -211,7 +211,7 @@ function $DictIterator(keys,values){
 
 function dict(){
     if(arguments.length==0){return new $DictClass([],[])}
-    var arg_iter=arguments[0],i=0
+    var arg_iter=iter(arguments[0]),i=0
     var keys=[],values=[]
     while(true){
         try{
@@ -227,11 +227,16 @@ function dict(){
 }
 
 function $EnumerateClass(iterator){
-    this.iterator = iterator
+    this.iterator = iter(iterator)
     this.count = -1
     this.__next__ = function(){
         this.count += 1
-        return list(int(this.count),this.iterator.__next__())
+        try{
+            return list(int(this.count),this.iterator.__next__())
+        }catch(err){
+            if(err.name=="StopIteration"){this.count=-1;this.iterator.iter=null}
+            throw err
+        }
     }
 }
 function enumerate(iterator){
@@ -1597,10 +1602,14 @@ function tuple(){
 function $ZipClass(args){
     this.args = args
     this.__next__ = function(){
+        if(this.iter===null){
+            this.iter=0
+            for(var i=0;i<this.args.length;i++){this.args[i].iter=0}
+        }
         var $res = list(),i=0
         for(var i=0;i<this.args.length;i++){
             z = this.args[i].__next__()
-            if(z===undefined){$raise('StopIteration')}
+            if(z===undefined){this.iter=null;$raise('StopIteration')}
             $res.append(z)
         }
         return $res

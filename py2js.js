@@ -1123,7 +1123,7 @@ function $run(js){
 function brython(debug){
     var elts = document.getElementsByTagName("script")
     for($i=0;$i<elts.length;$i++){
-        elt = elts[$i]
+        var elt = elts[$i]
         if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
             js = py2js(src).to_js()

@@ -1,8 +1,9 @@
 # script to compact all Brython scripts in a single one
 import tokenize
 
-sources = ['py_classes','py2js','py_tokenizer','py_utils','py_ajax','py_dom','py_local_storage']
- 
+sources = ['py_classes','py2js','py_tokenizer','py_utils','py_ajax','py_dom',
+    'py_svg','py_local_storage']
+
 res = ''
 src_size = 0
 for fname in sources:
@@ -49,9 +50,56 @@ for fname in sources:
             res += src[pos]
             pos += 1
 
-for dest in 'brython.js','test/brython.js':
+import datetime
+now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+for dest in 'brython.js','../dist/brython_%s.js' %now:
     out = open(dest,'w')
     out.write(res)
     out.close()
 
 print('size : originals %s compact %s gain %.2f' %(src_size,len(res),100*(src_size-len(res))/src_size))
+
+# zip file
+import os
+import tarfile
+dest_dir = os.path.join(os.getcwd(),'dist')
+if not os.path.exists(dest_dir):
+    os.mkdir(dest_dir)
+name = 'Brython-%s' %now
+dest_path = os.path.join(dest_dir,name)
+dist = tarfile.open(dest_path+'.gz',mode='w:gz')
+
+def is_valid(filename):
+    if filename.startswith('.'):
+        return False
+    for ext in ['bat','log','gz']:
+        if filename.lower().endswith('.%s' %ext):
+            return False
+    return True
+
+for path in os.listdir(os.getcwd()):
+    if not is_valid(path):
+        continue
+    abs_path = os.path.join(os.getcwd(),path)
+    if os.path.isdir(abs_path) and path=="dist":
+        continue
+    print('add',path)
+    dist.add(os.path.join(os.getcwd(),path),
+        arcname=os.path.join(name,path))
+"""
+for path in ['test','doc','cgi-bin']:
+    abs_path = os.path.join(os.getcwd(),path)
+    print('abs_path %s' %abs_path)
+    for (dirpath,dirnames,filenames) in os.walk(abs_path):
+        exclude = [ d for d in dirnames if d[0] in '._' ]
+        for d in exclude:
+            dirnames.remove(d)
+        for filename in filenames:
+            if not is_valid(filename):
+                continue
+            print('add',dirpath,filename)
+            print(os.path.join(name,dirpath,filename))
+            dist.add(os.path.join(dirpath,filename),
+                arcname=os.path.join(name,dirpath,filename))
+"""
+dist.close()
