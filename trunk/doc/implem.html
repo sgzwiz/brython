@@ -1,0 +1,212 @@
+<html>
+<head>
+<title>Brython</title>
+<link rel="stylesheet" href="brython.css">
+</head>
+<body>
+<h3>Organisation du paquetage en fichiers</h3>
+Le fichier <b>brython.js</b> est la compilation de plusieurs scripts :
+<ul>
+<li><b>py_tokenizer.js</b> : découpe le code source Python en jetons (tokens) : identifiants, littéraux, opérateurs, délimiteurs, etc
+<li><b>py2js.js</b> : opère la conversion entre les jetons et le code Javascript
+<li><b>py_utils.js</b> : fonctions utilitaires (manipulation des jetons, conversion de types entre Javascript et Python)
+<li><b>py_classes.js</b> : regroupe toutes les fonctions intégrées de Python, implémentées sous forme de fonctions Javascript
+<li><b>py_dom.js</b> : interaction avec le document HTML (DOM)
+<li><b>py_ajax.js</b> : implémentation d'Ajax
+<li><b>py_local_storage.js</b> : implémentation du stockage local HTML5
+</ul>
+<p>Dans le développement de Brython, on ne modifie que ces scripts élementaires. Le fichier <b>brython.js</b> est généré par le script <b>make_dist.py</b>
+
+<hr>
+
+<a name="conv"><h3>Traduction de la syntaxe Python en code Javascript</h3>
+
+<p>
+<table border=1>
+<tr>
+<th>Python</th>
+<th>Javascript</th>
+<th>Commentaires</th>
+</tr>
+
+<tr>
+<td><pre>x = 1
+y = 3.14
+z = "azerty"</td>
+<td><pre>x = int(1)
+y = float(3.14)
+z = str("azerty")</pre>
+</td>
+<td><tt>int, float, str</tt> sont des fonctions Javascript définies dans <b>py_classes.py</b></td>
+</tr>
+
+<tr>
+<td><pre>x = a</td>
+<td><pre>x = $assign(a)</pre>
+<td>On ne peut pas simplement conserver le signe = : quand la valeur de droite est un type intégré simple (entier, flottant, chaine de caractères), le signe = ferait pointer vers le même <i>objet</i> Javascript (pas un entier / flottant / chaine Javascript), d'où un effet de bord indésirable :
+
+<p><pre>
+a = 0
+x = a
+x+= 1
+log(a)
+>>1
+</pre>
+<p>La fonction $assign crée une copie de l'objet initial
+</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>x = foo.bar</td>
+<td><pre>x = $assign(foo.__getattr__('bar'))</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>foo.bar = x</td>
+<td><pre>foo.__setattr__('bar',x)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>x = foo[bar]</td>
+<td><pre>x = $assign(foo.__getitem__(bar))</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>foo[bar] = x</td>
+<td><pre>foo.__setitem__(bar,x)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>x+y</td>
+<td><pre>x.__add__(b)</pre>
+<td>même chose pour tous les opérateurs
+<br>indispensable pour implémenter des opérations comme 2*"a"</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>a and b</td>
+<td><pre>$test_expr($test_item(a)&&$test_item(b))</pre>
+<td>on conserve l'opérateur Javascript && pour ne pas évaluer b si a est faux
+<br><tt>$test_item</tt> retourne un booléen Javascript (true ou false) et stocke la valeur évaluée dans une variable globale ; <tt>$test_expr</tt> renvoie cette variable globale</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>for obj in iterable:
+    (...)</pre></td>
+<td><pre>$Iterable1 = iter(iterable)
+while(true){ 
+    try{ 
+        var $Next = next($Iterable1) 
+        obj = $Next
+        (...) 
+    }catch(err){ 
+        if(err.name=="StopIteration")
+            {break} 
+        else{throw err} 
+    } 
+}</pre>
+</td>
+<td>&nbsp;</td></tr>
+
+<tr>
+<td><pre>x,y = iterable</pre></td>
+<td><pre>var $var = iter(iterable)
+x = next($var)
+y = next($var)</pre>
+</td>
+<td>&nbsp;</td></tr>
+
+<tr>
+<td><pre>def foo(x,y=3,*args,**kw):
+   (...)
+</pre></td>
+<td><pre>function foo(x){
+    $ns["foo"]={}
+    $MakeArgs("foo",arguments,['x'],
+        {"y":3},"args","kw")
+    (...)
+}
+foo.__class__ = Function
+window.foo=foo; 
+</td>
+<td>&nbsp;</td></tr>
+
+</table>
+
+<p>
+<table border=1>
+<tr>
+<th>Javascript</th>
+<th>Python</th>
+<th>Commentaire</th>
+</tr>
+
+
+<tr>
+<td><pre>document</td>
+<td><pre>doc</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>document.getElementById(elt_id)</td>
+<td><pre>doc[elt_id]</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>document.getElementsByTagName('A')</td>
+<td><pre>doc[A]</pre>
+<td>renvoie une liste Python</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>setInterval(func,millisec)</td>
+<td><pre>import time
+time.set_interval(func,millisec)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>clearInterval(interval_id)</td>
+<td><pre>import time
+time.clear_interval(interval_id)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>setTimeOut(func,millisec)</td>
+<td><pre>import time
+time.set_timeout(func,millisec)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+</table>
+<hr>
+<a name="import"><h3>import</h3>
+L'importation est réalisée par des appels Ajax
+<p>Il y a deux types de modules importables :
+<ul>
+<li>des modules écrits en Javascript : <tt>time, datetime, math, random</tt> (dont seule une partie des méthodes est implémentée)
+<li>des modules écrits en Python, importables depuis le répertoire où se trouve le script appelant
+</ul>
+
+</body>
+</html>

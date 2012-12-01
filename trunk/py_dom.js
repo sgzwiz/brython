@@ -21,7 +21,7 @@ function $getPosition(e){
     left += e.offsetLeft;
     top  += e.offsetTop;
 
-    return {x:left, y:top, width:width, height:height};
+    return {left:left, top:top, width:width, height:height};
 }
 
 function $mouseCoords(ev){
@@ -41,6 +41,7 @@ function $mouseCoords(ev){
     res.x = int(posx)
     res.y = int(posy)
     res.__getattr__ = function(attr){return this[attr]}
+    res.__class__ = "MouseCoords"
     return res
 }
 
@@ -97,6 +98,7 @@ $Clipboard.prototype.__setattr__ = function(attr,value){
 function $DomObject(obj){
     this.obj=obj
     this.type = obj.constructor.toString()
+    console.log('dom object '+obj)
 }
 $DomObject.prototype.__getattr__ = function(attr){
     return getattr(this.obj,attr)
@@ -158,6 +160,22 @@ function $Document(){
 
     this.elt = document
     this.mouse = null
+
+    this.__delitem__ = function(key){
+        if($isinstance(key,str)){
+            var res = document.getElementById(key.value)
+            if(res){res.parentNode.removeChild(res)}
+            else{$raise("KeyError",str(key))}
+        }else{
+            try{
+                var elts=document.getElementsByTagName(key.name),res=list()
+                for(var $i=0;$i<elts.length;$i++){res.append($DomElement(elts[$i]))}
+                return res
+            }catch(err){
+                $raise("KeyError",str(key))
+            }
+        }
+    }
     
     this.__getattr__ = function(attr){return getattr(this.elt,attr)}
 
@@ -349,7 +367,7 @@ $TagClass.prototype.__getattr__ = function(attr){
 }
 
 $TagClass.prototype.__getitem__ = function(key){
-    return $JS2Py(this.elt[key.value])
+    return $DomElement(this.elt.childNodes[key.value])
 }
     
 $TagClass.prototype.__iadd__ = function(other){
@@ -379,7 +397,7 @@ $TagClass.prototype.__setattr__ = function(attr,value){
 }
     
 $TagClass.prototype.__setitem__ = function(key,value){
-    this.elt.setAttribute($str(key),$str(value))
+    this.elt.childNodes[key.value]=value
 }
     
 $TagClass.prototype.get_clone = function(){
@@ -407,6 +425,14 @@ $TagClass.prototype.get_parent = function(){
 
 $TagClass.prototype.get_options = function(){ // for SELECT tag
     return new $OptionsClass(this)
+}
+
+$TagClass.prototype.get_left = function(){
+    return int($getPosition(this.elt)["left"])
+}
+
+$TagClass.prototype.get_top = function(){
+    return int($getPosition(this.elt)["top"])
 }
 
 $TagClass.prototype.get_children = function(){
