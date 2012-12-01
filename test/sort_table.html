@@ -9,6 +9,7 @@ a.sort_link{margin-left:10px;text-decoration:none}
 <script src="../py_utils.js"></script>
 <script src="../py_classes.js"></script>
 <script src="../py_dom.js"></script>
+<script src="../py_svg.js"></script>
 <script src="../py2js.js"></script>
 <script src="../py_ajax.js"></script>
 
@@ -24,94 +25,38 @@ orders = {}
 doc <= IMG(src="../brython.png")
 
 def sort_by_col(cell,numeric=False):
-    log(cell.__class__)
-    th_elt = cell.parent
-    th_id = th_elt['id']
-    if th_id not in orders:
+    th_elt = cell.parent # TH cell
+    for i,th in enumerate(title.children):
+        if th==th_elt:
+            col_num = i
+            break
+    if col_num not in orders:
         if numeric:
-            orders[th_id]='down'
+            orders[col_num]='down'
         else:
-            orders[th_id]='up'
-    elif orders[th_id]=='up':
-        orders[th_id]='down'
+            orders[col_num]='up'
+    elif orders[col_num]=='up':
+        orders[col_num]='down'
     else:
-        orders[th_id]='up'
-    ascending = orders[th_id]
+        orders[col_num]='up'
+    ascending = orders[col_num]
 
-    tr_elt = th_elt.parent
-    rank = -1
-    for child in tr_elt.children:
-        if isinstance(child,TH):
-            rank += 1
-        if child == th_elt:
-            num = rank
-            break
+    def k_str(_item):
+        return _item.children[col_num].text
+    def k_int(_item):
+        return int(_item.children[col_num].text)
 
-    nb_val = 0
-    tb_elt = tr_elt.parent
-    lines = []
-    line_nums = []
-    col_values = []
+    if not numeric:
+        func = k_str
+    else:
+        func = k_int
 
-    for i,row in enumerate(tb_elt.children):
-        line = []
-        flag = False
-        if isinstance(row,TR) and row != tr_elt:
-            rank = -1
-            for cell in row.children:
-                if isinstance(cell,TD):
-                    flag = True
-                    rank += 1
-                    if rank==num:
-                        nb_val += 1
-                        if not numeric:
-                            val = cell.text
-                        else:
-                            val = float(cell.text)
-                        col_values.append(val)
-                    line.append(cell.html)
-            if flag: # only if row has TD cells : skip table header (TH)
-                lines.append(line) # list of values
-                line_nums.append(i) # rank in table children
-
-    deco = []
-    for i,col_value in enumerate(col_values):
-        deco.append([col_value,i])
-    deco1 = deco[:]
-
-    def _first(_item):
-        return _item[0]
-    
-    deco.sort(_first)
-
+    rows.sort(func)
     if ascending == 'down':
-        deco.reverse()
+        rows.reverse()
 
-    was_sorted = True
-    for x,y in zip(deco,deco1):
-        if x!=y:
-            was_sorted = False
-            break
-
-    if was_sorted:
-        # table was already sorted : do nothing
-        return
-
-    new_lines = []
-    for _item in deco:
-        new_lines.append(lines[_item[1]])
-
-    # replace by new lines
-    rank = 0
-    for line_num in line_nums:
-        row = tb_elt.children[line_num]
-        if isinstance(row,TR) and row != tr_elt:
-            k = 0
-            for cell in row.children:
-                if isinstance(cell,TD):
-                    cell.html = new_lines[rank][k]
-                    k += 1
-            rank += 1
+    for i in range(len(rows)):
+        t <= rows[i]
 
 lines = ['Allemagne','Berlin',357026,81.8,
 'Autriche','Vienne',83871,8.40,
@@ -141,38 +86,38 @@ lines = ['Allemagne','Berlin',357026,81.8,
 'Slovénie','Ljubljana',20273,2.05,
 'Suède','Stockholm',441369,9.41]
 
-t1 = time.time()
-#doc <= P('init %s' %(t1-t0)/1000)
-
 doc <= H2("Pays d'Europe")
 
 table = TABLE()
 t = TBODY()
 title = TR()
-link = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this)")
-link_num = A('\u2191\u2193',Class="sort_link",href="#",onClick="sort_by_col(this,true)")
+link = BUTTON('\u2191\u2193',onClick="sort_by_col(this)")
+link_num = BUTTON('\u2191\u2193',onClick="sort_by_col(this,true)")
 link1 = link.clone()
-title <= TH('Pays'+link)+TH('Capitale'+link.clone())+TH('Superficie'+link_num)+TH('Population'+link_num.clone())
+title <= TH('Pays'+link)
+title <= TH('Capitale'+link.clone())
+title <= TH('Superficie'+link_num)
+title <= TH('Population'+link_num.clone())
 t <= title
-t2 = time.time()
-times = []
+
+rows = []
 for i in range(len(lines)/4):
     row = TR()
-    for j in range(4):
+    for j in range(2):
         row <= TD(lines[4*i+j])
+    for j in range(2,4):
+        row <= TD(lines[4*i+j],style={"text-align":"right"})
+    rows.append(row)
+
+for row in rows:
     t <= row
 
 table <= t
-
-#doc <= P('construction table %s' %(time.time()-t1)/1000)
-
 doc <= table
 
 foot = P()+I('Ecrit en '+A('Brython',href="http://www.brython.info"))
 
 doc <= foot
-
-#doc <= P('temps total %s' %(time.time()-t0)/1000)
 
 </script>
 </body>
