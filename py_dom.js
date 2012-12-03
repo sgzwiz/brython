@@ -98,24 +98,26 @@ $Clipboard.prototype.__setattr__ = function(attr,value){
 function $DomObject(obj){
     this.obj=obj
     this.type = obj.constructor.toString()
-    console.log('dom object '+obj)
 }
 $DomObject.prototype.__getattr__ = function(attr){
     return getattr(this.obj,attr)
 }
 
 function $OptionsClass(parent){ // parent is a SELECT tag
-
+    this.parent = parent
+    
     this.__getattr__ = function(attr){
         if('get_'+attr in this){return eval('this.get_'+attr)}
-        if(attr in parent.elt.options){
-            var obj = eval('parent.elt.options.'+attr)
+        if(attr in this.parent.elt.options){
+            var obj = eval('this.parent.elt.options.'+attr)
             if((typeof obj)=='function'){
                 $raise('AttributeError',"'options' object has no attribute '"+attr+'"')
             }
             return $JS2Py(obj)
         }
     }
+    
+    this.__class__ = 'options'
 
     this.__getitem__ = function(arg){
         return $DomElement(parent.elt.options[arg.value])
