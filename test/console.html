@@ -7,15 +7,26 @@
 <script src="../py2js.js"></script>
 <script>
 var js=null
+
+has_ls = typeof(Storage)!=="undefined"
+function reset_src(){
+    if(has_ls){
+        var py_src = localStorage["py_src"]
+        if(py_src){document.getElementById("src").value=py_src}
+    }
+}
+    
 function to_js(){
     var src_elt = document.getElementById("src")
     var src = src_elt.value
+    if(has_ls){localStorage["py_src"]=src}
     stack = py2js(src)
     document.getElementById("src2js").value = stack.to_js()
 }
 function run(){
     js = document.getElementById("src2js").value
-    $run(js)
+    try{$run(js)}
+    catch(err){log(err.message)}
 }
 function report(){
     pycode = document.getElementById("src").value
@@ -25,7 +36,7 @@ function report(){
 }
 </script>
 </head>
-<body>
+<body onload="reset_src()">
 <img src="../brython.png"><p>
 
 <table>
