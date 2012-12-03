@@ -1,18 +1,17 @@
 SVG = {
-    __getattr__:function(attr){console.log('get attribute '+attr+' '+this[attr]);return this[attr]}
+    __getattr__:function(attr){return this[attr]}
 }
 
 $svgNS = "http://www.w3.org/2000/svg"
 $xlinkNS = "http://www.w3.org/1999/xlink"
 
-function $SVGTagClass(_class,args){
-    // represents an HTML tag
-    console.log('svg tag '+_class)
+function $SVGTagClass(tag_name,args){
+    // represents an SVG tag
     var $i = null
     var $obj = this
-    if(_class!==undefined){
-        this.name = str(_class).value
-        eval("this.__class__ =_class")
+    if(tag_name!==undefined){
+        this.name = tag_name
+        this.__class__ = SVG
         this.elt = document.createElementNS($svgNS,this.name)
         this.elt.parent = this
     }
@@ -42,6 +41,7 @@ function $SVGTagClass(_class,args){
             // keyword arguments
             $arg = args[$i]
             if($isinstance($arg,$Kw)){
+                console.log('keyword arg '+$arg.name+' '+$arg.value)
                 if($arg.name.toLowerCase() in $events){ // events
                     eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){
@@ -49,7 +49,7 @@ function $SVGTagClass(_class,args){
                 } else {
                     if($arg.value.value!==false){
                         // option.selected=false sets it to true :-)
-                        this.elt.setAttributeNS(null,$arg.name.toLowerCase(),$arg.value.value)
+                        this.elt.setAttributeNS(null,$arg.name.replace('_','-'),$arg.value.value)
                     }
                 }
             }
@@ -66,9 +66,16 @@ $SVGTagClass.prototype.__eq__ = $TagClass.prototype.__eq__
 $SVGTagClass.prototype.__getattr__ = $TagClass.prototype.__getattr__
 $SVGTagClass.prototype.__getitem__ = $TagClass.prototype.__getitem__
 $SVGTagClass.prototype.__iadd__ = $TagClass.prototype.__iadd__
+$SVGTagClass.prototype.__le__ = $TagClass.prototype.__le__
 $SVGTagClass.prototype.__ne__ = $TagClass.prototype.__ne__
 $SVGTagClass.prototype.__radd__ = $TagClass.prototype.__radd__
-$SVGTagClass.prototype.__setattr__ = $TagClass.prototype.__setattr__
+$SVGTagClass.prototype.__setattr__ = function(key,value){
+    if(key=="href"){
+        this.elt.setAttributeNS($xlinkNS,key.replace('_','-'),value.value)
+    }else{
+        this.elt.setAttributeNS(null,key.replace('_','-'),value.value)
+    }
+}
 $SVGTagClass.prototype.__setitem__ = $TagClass.prototype.__setitem__
 
 // SVG
@@ -106,8 +113,11 @@ var $svg_tags = ['a',
 'tref',
 'tspan',
 'use']
+
+$svg = function(){return new $SVGTagClass('X',arguments)}
+$svg += '' // source code
+
 for(var i=0;i<$svg_tags.length;i++){
-    SVG[$svg_tags[i]]=function(){
-        return $SVGTagClass($svg_tags[i],arguments)
-    }
+    var tag = $svg_tags[i]
+    eval('SVG.'+tag+'='+$svg.replace('X',tag))
 }

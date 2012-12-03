@@ -234,8 +234,10 @@ function $DomElement(elt){
     var obj = new $TagClass()
     if(elt_name===undefined && elt.nodeName=="#document"){ // document
         obj.__class__ = $Document
-    }else{
+    }else if(elt_name.toUpperCase() in $tags){
         obj.__class__ = eval(elt_name.toUpperCase())
+    }else if(elt_name in $svg_tags){
+        obj.__class__ = eval('SVG.'+elt_name)
     }
     obj.elt = elt
     return obj
