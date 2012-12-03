@@ -1,45 +1,44 @@
 
-function $resolve(name,scope){
-    if($ns[scope][name]!==undefined){return $ns[scope][name]}
-    else{
-        obj=eval(name)
-        if(obj===undefined){throw new NameError("name '"+name+"'is not defined")}
-        else{return obj}
-    }
-}
-
-function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
+function $MakeArgs($args,$required,$defaults,$other_args,$other_kw){
+    // builds a namespace from the arguments provided in $args
+    // in a function call like foo(x,y,z=1,*args,**kw) the parameters are
+    // $required : ['x','y']
+    // $defaults : {'z':int(1)}
+    // $other_args = 'args'
+    // $other_kw = 'kw'    
     var i=null
     var $PyVars = {}
     var $def_names = []
-    for(k in $defaults){$def_names.push(k);$ns[$fname][k]=$defaults[k]}
-    if($other_args != null){$ns[$fname][$other_args]=list()}
+    var $ns = {}
+    for(k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
+    if($other_args != null){$ns[$other_args]=list()}
     if($other_kw != null){$keys=list();$values=list()}
     for(i=0;i<$args.length;i++){
         $arg=$args[i]
         $PyVar=$JS2Py($arg)
-        if(!$isinstance($arg,$Kw)){
+        if(!$isinstance($arg,$Kw)){ // positional arguments
             if(i<$required.length){
                 eval($required[i]+"=$PyVar")
-                $ns[$fname][$required[i]]=$PyVar
+                $ns[$required[i]]=$PyVar
             } else if(i<$required.length+$def_names.length) {
-                $ns[$fname][$def_names[i-$required.length]]=$PyVar
+                $ns[$def_names[i-$required.length]]=$PyVar
             } else if($other_args!=null){
-                eval('$ns[$fname]["'+$other_args+'"].append($PyVar)')
+                eval('$ns["'+$other_args+'"].append($PyVar)')
             } else {
                 msg = $fname+"() takes "+$required.length+' positional arguments '
                 msg += 'but more were given'
                 throw TypeError(msg)
             }
-        } else{
+        } else{ // keyword arguments
             $PyVar = $arg.value
             if($arg.name in $PyVars){
                 throw new TypeError($fname+"() got multiple values for argument '"+$arg.name+"'")
-            } else if($arg.name==$required[i]){
-                eval($required[i]+"=$PyVar")
-                $ns[$fname][$required[i]]=$PyVar
+            } else if($required.indexOf($arg.name)>-1){
+                var ix = $required.indexOf($arg.name)
+                eval($required[ix]+"=$PyVar")
+                $ns[$required[ix]]=$PyVar
             } else if($arg.name in $defaults){
-                $ns[$fname][$arg.name]=$arg.value
+                $ns[$arg.name]=$arg.value
             } else if($other_kw!=null){
                 $keys.append(str($arg.name))
                 $values.append($PyVar)
@@ -49,11 +48,17 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
             if($arg.name in $defaults){delete $defaults[$arg.name]}
         }
     }
-    if($other_kw!=null){$ns[$fname][$other_kw]=dict($keys,$values)}
+    if($other_kw!=null){$ns[$other_kw]=dict($keys,$values)}
+    return $ns
 }
 
 function $multiple_assign(targets,right_expr,assign_pos){
     var i=0,target=null
+    // for local variables inside functions, insert "var"
+    for(var i=0;i<targets.list;i++){
+        var left = targets[i]
+        if(left.list[0][3]==="local"){left.list[0][1]="var "+left.list[0][1]}
+    }
     var rlist = right_expr.list()
     if(rlist[0][0]=="bracket"){rlist=rlist.slice(1,rlist.length-1)}
     var rs = new Stack(rlist)
@@ -64,12 +69,17 @@ function $multiple_assign(targets,right_expr,assign_pos){
         } else if(rs_items.length<targets.length){
             $raise("ValueError","Need more than "+rs_items.length+" values to unpack")
         } else {
-            var seq=[]
+            // right operands are evaluated first and stored in a temporary variable
+            var seq=[['code','var $temp=[];']]
+            for(i=0;i<targets.length;i++){
+                seq.push(['code','$temp.push'],['bracket','('])
+                seq = seq.concat(rs_items[i].list)
+                seq.push(['bracket',')'],['delimiter',';',assign_pos])
+            }
             for(i=0;i<targets.length;i++){
                 seq = seq.concat(targets[i].list)
-                seq.push(['assign','=',assign_pos])
-                seq = seq.concat(rs_items[i].list)
-                seq.push(['delimiter',';',assign_pos])
+                seq.push(['assign','=',assign_pos],
+                    ['code','$temp['+i+']'],['delimiter',';',assign_pos])
             }
         }        
     } else {
@@ -157,10 +167,6 @@ function py2js(src,context){
             pos = op_pos-2
         }
     }
-
-    // create variable $ns for namespace if it doesn't exist
-    stack.list.splice(0,0,['code','try{$ns}catch($err){$ns={0:{}}}',0],
-        ['newline','\n',0])
 
     // for each opening bracket, define after which token_types[,token values] 
     // they are *not* the start of a display
@@ -265,6 +271,9 @@ function py2js(src,context){
         if(def_pos==null){break}
         var func_token = stack.list[def_pos+1]
         var arg_start = stack.list[def_pos+2]
+        var indent = stack.indent(def_pos)+4
+        var f_indent = '\n'
+        while(indent>0){f_indent+=' ';indent--}
         document.line_num = pos2line[func_token[2]]
         if(!func_token[0]=='id'){$raise("SyntaxError","wrong type after def")}
         if(arg_start[0]!='bracket' || arg_start[1]!='('){$raise("SyntaxError","missing ( after function name")}
@@ -280,11 +289,11 @@ function py2js(src,context){
             var s = new Stack(stack.list.slice(def_pos+3,arg_end))
             var args = s.split(',') // list of stacks
             var required = []
-            var defaults = {}
+            var defaults = []
             var has_defaults = false
             var other_args = null
             var other_kw = null
-            for(i=args.length-1;i>=0;i--){
+            for(var i=args.length-1;i>=0;i--){
                 arg = args[i]
                 var op = null
                 if(arg.list[0][0]=="operator" && arg.list[1][0]=="arg_id"){
@@ -304,26 +313,25 @@ function py2js(src,context){
                     var elts = arg.split("=")
                     if(elts.length>1){
                         // argument with default value
-                        defaults[elts[0].list[0][1]]=elts[1].to_js()
+                        defaults.push([elts[0].list[0][1],elts[1].to_js()])
                         has_defaults = true
-                        // remove argument
-                        if(i==0){
-                            stack.list.splice(def_pos+3+arg.start,arg.end-arg.start+1)
-                        } else {
-                            stack.list.splice(def_pos+2+arg.start,arg.end-arg.start+2)
-                        }
-                    } else {
-                        // required positional argument
+                    } else {  // required positional argument
                         required.push(arg.list[0][1])
+                    }
+                    // remove argument
+                    if(i==0){
+                        stack.list.splice(def_pos+3+arg.start,arg.end-arg.start+1)
+                    } else {
+                        stack.list.splice(def_pos+2+arg.start,arg.end-arg.start+2)
                     }
                 }
             }
-            // insert code after end of function definition (next delimiter ':')
+             // insert code after end of function definition (next delimiter ':')
             var end_def = stack.find_next_at_same_level(def_pos,"delimiter",":")
             if(end_def==null){
                 $raise("SyntaxError","Unable to find definition end "+end_def)
             }
-            var arg_code = '"'+func_token[1]+'",arguments,'
+            var arg_code = 'arguments,'
             
             if(required.length==0){arg_code+='[],'}
             else{
@@ -337,7 +345,9 @@ function py2js(src,context){
 
             var def_code = '{'
             if(has_defaults){
-                for(x in defaults){def_code += '"'+x+'":'+defaults[x]+','}
+                for($idef=0;$idef<defaults.length;$idef++){
+                    def_code += '"'+defaults[$idef][0]+'":'+defaults[$idef][1]+','
+                }
                 def_code = def_code.substr(0,def_code.length-1)
             }
             def_code += '}'
@@ -346,9 +356,10 @@ function py2js(src,context){
             else{arg_code += '"'+other_args+'",'}
             if(other_kw==null){arg_code+="null"}
             else{arg_code += '"'+other_kw+'"'}
-            var fcode = "    $fname='"+func_token[1]+"'\n"
-            stack.list.splice(end_def+1,0,['code',"$MakeArgs("+arg_code+")",stack.list[end_def][2]])
-        }
+            var fcode = 'for($var in $ns){eval("var "+$var+"=$ns[$var]")}\n'
+            stack.list.splice(end_def+1,0,
+                ['code',"\n$ns=$MakeArgs("+arg_code+")\n"+fcode,stack.list[end_def][2]])
+       }
         pos = def_pos-1
     }
 
@@ -666,13 +677,12 @@ function py2js(src,context){
                     }
                     fbody.splice(global_pos,glob_list.length+1)
                 }
-                // create function namespace
-                fbody.splice(0,0,['code','$ns["'+func_name[1]+'"]={};',0])
                 seq = seq.concat(fbody)
-                // mark all non-global ids with function name
+                // mark local ids
+                // will be used in assignments to insert "var"
                 for(var i=0;i<seq.length;i++){
-                    if(seq[i][0]=="id" || seq[i][0]=="assign_id"){
-                        if(!(seq[i][1] in globals)){seq[i].push(func_name[1])}
+                    if(seq[i][0]=="id"){
+                        if(!(seq[i][1] in globals)){seq[i].push('local')}
                     }
                 }
                 stack.list = stack.list.slice(0,kw_pos+1)
@@ -683,10 +693,8 @@ function py2js(src,context){
                 if(parent==null){
                     code += 'window.'+fname+'='+fname+';'
                     module_level_functions.push(fname)
-                } else {
-                    code += '$ns["'+parent+'"]["'+fname+'"]='+fname+';'
                 }
-                tail.splice(0,0,['code',code])
+                tail.splice(0,0,['func_end',code])
             }else if(kw=="except"){
                 // error name is the next token
                 var var_name = stack.list[kw_pos+1]
@@ -975,8 +983,9 @@ function py2js(src,context){
         } else if(left.type=='qualified_id' || left.type=='slicing' || left.type=="function_call"){
             pos = assign-1
         } else {
-            // simple assignment - change type of left operand for JS rendering
-            left.list()[0][0]="assign_id"
+            // simple assignment
+            // for local variables inside functions, insert "var"
+            if(left.list()[0][3]==="local"){left.list()[0][1]="var "+left.list()[0][1]}
             // replace right argument by $single_assign(right)
             var head = stack.list.slice(0,right.start)
             var tail = stack.list.slice(right.end+1,stack.list.length)
