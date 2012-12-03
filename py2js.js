@@ -371,7 +371,8 @@ function py2js(src,context){
     while(true){
         var br_pos = stack.find_previous(pos,"bracket","(")
         if(br_pos==null){break}
-        if(stack.list[br_pos-1][0]=='id' && br_pos>1 && 
+        if((stack.list[br_pos-1][0]=='id' || stack.list[br_pos-1][0]=="qualifier")
+            && br_pos>1 && 
             !(stack.list[br_pos-2].match(["keyword",'def']))){
             var end_call = stack.find_next_matching(br_pos)
             var s = new Stack(stack.list.slice(br_pos+1,end_call))
