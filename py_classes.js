@@ -428,19 +428,35 @@ function Import(){
             try{eval(res)}catch(err){$raise('ImportError',err.message)}
         }else{
             // if module was found, res is set to the Python source code
-            // wrap it inside a def for name resolutions
-            lines = res.split('\n')
-            // random name for module
-            var fake_name = '_'+Math.random().toString(36).substr(2, 8)
-            new_lines = ['def '+fake_name+'():']
-            for(var j=0;j<lines.length;j++){new_lines.push(' '+lines[j])}
-            res = ''
-            for(var j=0;j<new_lines.length;j++){res += new_lines[j]+'\n'}
             var stack = py2js(res,module)
+            // insert module name as a JS object
+            stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
+            // search for module-level names
+            // functions
+            var $pos=0           
+            while(true){
+                var $mlname_pos = stack.find_next_at_same_level($pos,"keyword","function")
+                if($mlname_pos===null){break}
+                var $func_name = stack.list[$mlname_pos+1][1]
+                stack.list.splice($mlname_pos,2,['code',module+'.'+$func_name+"=function"])
+                // modify declaration at the end of function
+                var $fend = stack.find_next_at_same_level($mlname_pos,"func_end")
+                var $fend_code = stack.list[$fend][1]
+                $fend_code = module+'.'+$fend_code.substr(1)
+                $pv_pos = $fend_code.search(';')
+                $fend_code = ";"+$fend_code.substr(0,$pv_pos)
+                stack.list[$fend][1] = $fend_code
+                $pos = $mlname_pos+1
+            }
+            // variables
+            var $pos=0           
+            while(true){
+                var $mlname_pos = stack.find_next_at_same_level($pos,"assign_id")
+                if($mlname_pos===null){break}
+                stack.list[$mlname_pos][1]=module+'.'+stack.list[$mlname_pos][1]
+                $pos = $mlname_pos+1
+            }
             eval(stack.to_js())
-            eval(fake_name+'()') // running the function will create the namespace
-            eval(module+'=new $ModuleClass("'+fake_name+'")')
-            for(attr in $ns[fake_name]){eval(module+'.'+attr+"=$ns[fake_name][attr]")}
         }
     }
 }
