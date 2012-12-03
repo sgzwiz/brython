@@ -442,17 +442,7 @@ Stack.prototype.to_js = function(){
             if(x[0]=='str'){js += 'str('+x[1].replace(/\n/gm,'\\n')+')'}
             else if(x[0]=='int'){js += 'int('+x[1]+')'}
             else if(x[0]=='float'){js += 'float('+x[1]+')'}
-            else if(x[0]=="id"){
-                // resolve id name with scope
-                if(x[3]==undefined){js += x[1]}
-                else{js += '$resolve("'+x[1]+'","'+x[3]+'")'}
-            } else if(x[0]=="assign_id"){
-                // assignment inside a scope
-                if(x[3]==undefined){js += x[1]}
-                else{js += '$ns["'+x[3]+'"]["'+x[1]+'"]'}
-            } else {
-                js += x[1]
-            }
+            else{js += x[1]}
             if(i<this.list.length-1 && this.list[i+1][0] != "bracket"){
                 js += " "
             }
