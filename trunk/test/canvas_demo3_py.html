@@ -239,7 +239,9 @@ xOff = 0
 yOff = 0
 def wobbleGun():
     global xOff,yOff
+    log('wobble gun ')
     mag=playerVelY
+    log('ok')
     xOff = 10+cos(total/6.23)*mag*90
     yOff = 10+cos(total/5)*mag*90
     overlay.style.backgroundPosition = "%spx %spx" %(int(xOff),int(yOff))
@@ -259,7 +261,7 @@ def shoot():
     time.set_timeout(drawCanvas,100)
 
 def update():
-    global total,jumpCycle
+    global total,jumpCycle,playerVelY
     total+=1
     change=False
 
