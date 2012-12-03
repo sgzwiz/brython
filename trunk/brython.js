@@ -383,19 +383,35 @@ if(is_js){
 try{eval(res)}catch(err){$raise('ImportError',err.message)}
 }else{
 
-
-lines=res.split('\n')
-
-var fake_name='_'+Math.random().toString(36).substr(2, 8)
-new_lines=['def '+fake_name+'():']
-for(var j=0;j<lines.length;j++){new_lines.push(' '+lines[j])}
-res=''
-for(var j=0;j<new_lines.length;j++){res +=new_lines[j]+'\n'}
 var stack=py2js(res,module)
+
+stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
+
+
+var $pos=0 
+while(true){
+var $mlname_pos=stack.find_next_at_same_level($pos,"keyword","function")
+if($mlname_pos===null){break}
+var $func_name=stack.list[$mlname_pos+1][1]
+stack.list.splice($mlname_pos,2,['code',module+'.'+$func_name+"=function"])
+
+var $fend=stack.find_next_at_same_level($mlname_pos,"func_end")
+var $fend_code=stack.list[$fend][1]
+$fend_code=module+'.'+$fend_code.substr(1)
+$pv_pos=$fend_code.search(';')
+$fend_code=";"+$fend_code.substr(0,$pv_pos)
+stack.list[$fend][1]=$fend_code
+$pos=$mlname_pos+1
+}
+
+var $pos=0 
+while(true){
+var $mlname_pos=stack.find_next_at_same_level($pos,"assign_id")
+if($mlname_pos===null){break}
+stack.list[$mlname_pos][1]=module+'.'+stack.list[$mlname_pos][1]
+$pos=$mlname_pos+1
+}
 eval(stack.to_js())
-eval(fake_name+'()')
-eval(module+'=new $ModuleClass("'+fake_name+'")')
-for(attr in $ns[fake_name]){eval(module+'.'+attr+"=$ns[fake_name][attr]")}
 }
 }
 }
@@ -1507,20 +1523,19 @@ function $Kw(name,value){
 return new $KwClass(name,value)
 }
 
-function $resolve(name,scope){
-if($ns[scope][name]!==undefined){return $ns[scope][name]}
-else{
-obj=eval(name)
-if(obj===undefined){throw new NameError("name '"+name+"'is not defined")}
-else{return obj}
-}
-}
-function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
+function $MakeArgs($args,$required,$defaults,$other_args,$other_kw){
+
+
+
+
+
+
 var i=null
 var $PyVars={}
 var $def_names=[]
-for(k in $defaults){$def_names.push(k);$ns[$fname][k]=$defaults[k]}
-if($other_args !=null){$ns[$fname][$other_args]=list()}
+var $ns={}
+for(k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
+if($other_args !=null){$ns[$other_args]=list()}
 if($other_kw !=null){$keys=list();$values=list()}
 for(i=0;i<$args.length;i++){
 $arg=$args[i]
@@ -1528,11 +1543,11 @@ $PyVar=$JS2Py($arg)
 if(!$isinstance($arg,$Kw)){
 if(i<$required.length){
 eval($required[i]+"=$PyVar")
-$ns[$fname][$required[i]]=$PyVar
+$ns[$required[i]]=$PyVar
 }else if(i<$required.length+$def_names.length){
-$ns[$fname][$def_names[i-$required.length]]=$PyVar
+$ns[$def_names[i-$required.length]]=$PyVar
 }else if($other_args!=null){
-eval('$ns[$fname]["'+$other_args+'"].append($PyVar)')
+eval('$ns["'+$other_args+'"].append($PyVar)')
 }else{
 msg=$fname+"() takes "+$required.length+' positional arguments '
 msg +='but more were given'
@@ -1542,11 +1557,12 @@ throw TypeError(msg)
 $PyVar=$arg.value
 if($arg.name in $PyVars){
 throw new TypeError($fname+"() got multiple values for argument '"+$arg.name+"'")
-}else if($arg.name==$required[i]){
-eval($required[i]+"=$PyVar")
-$ns[$fname][$required[i]]=$PyVar
+}else if($required.indexOf($arg.name)>-1){
+var ix=$required.indexOf($arg.name)
+eval($required[ix]+"=$PyVar")
+$ns[$required[ix]]=$PyVar
 }else if($arg.name in $defaults){
-$ns[$fname][$arg.name]=$arg.value
+$ns[$arg.name]=$arg.value
 }else if($other_kw!=null){
 $keys.append(str($arg.name))
 $values.append($PyVar)
@@ -1556,10 +1572,16 @@ throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"
 if($arg.name in $defaults){delete $defaults[$arg.name]}
 }
 }
-if($other_kw!=null){$ns[$fname][$other_kw]=dict($keys,$values)}
+if($other_kw!=null){$ns[$other_kw]=dict($keys,$values)}
+return $ns
 }
 function $multiple_assign(targets,right_expr,assign_pos){
 var i=0,target=null
+
+for(var i=0;i<targets.list;i++){
+var left=targets[i]
+if(left.list[0][3]==="local"){left.list[0][1]="var "+left.list[0][1]}
+}
 var rlist=right_expr.list()
 if(rlist[0][0]=="bracket"){rlist=rlist.slice(1,rlist.length-1)}
 var rs=new Stack(rlist)
@@ -1570,12 +1592,17 @@ $raise("ValueError","Too many values to unpack (expected "+targets.length+")")
 }else if(rs_items.length<targets.length){
 $raise("ValueError","Need more than "+rs_items.length+" values to unpack")
 }else{
-var seq=[]
+
+var seq=[['code','var $temp=[];']]
+for(i=0;i<targets.length;i++){
+seq.push(['code','$temp.push'],['bracket','('])
+seq=seq.concat(rs_items[i].list)
+seq.push(['bracket',')'],['delimiter',';',assign_pos])
+}
 for(i=0;i<targets.length;i++){
 seq=seq.concat(targets[i].list)
-seq.push(['assign','=',assign_pos])
-seq=seq.concat(rs_items[i].list)
-seq.push(['delimiter',';',assign_pos])
+seq.push(['assign','=',assign_pos],
+['code','$temp['+i+']'],['delimiter',';',assign_pos])
 }
 }
 }else{
@@ -1656,9 +1683,6 @@ stack.list.splice(op_pos-1,2,['operator',seq[0]+'_'+seq[1],stack.list[op_pos][2]
 pos=op_pos-2
 }
 }
-
-stack.list.splice(0,0,['code','try{$ns}catch($err){$ns={0:{}}}',0],
-['newline','\n',0])
 
 
 var not_a_display={
@@ -1760,6 +1784,9 @@ var def_pos=stack.find_previous(pos,"keyword","def")
 if(def_pos==null){break}
 var func_token=stack.list[def_pos+1]
 var arg_start=stack.list[def_pos+2]
+var indent=stack.indent(def_pos)+4
+var f_indent='\n'
+while(indent>0){f_indent+=' ';indent--}
 document.line_num=pos2line[func_token[2]]
 if(!func_token[0]=='id'){$raise("SyntaxError","wrong type after def")}
 if(arg_start[0]!='bracket' || arg_start[1]!='('){$raise("SyntaxError","missing ( after function name")}
@@ -1775,11 +1802,11 @@ if(stack.list[i][0]=='id'){stack.list[i][0]='arg_id'}
 var s=new Stack(stack.list.slice(def_pos+3,arg_end))
 var args=s.split(',')
 var required=[]
-var defaults={}
+var defaults=[]
 var has_defaults=false
 var other_args=null
 var other_kw=null
-for(i=args.length-1;i>=0;i--){
+for(var i=args.length-1;i>=0;i--){
 arg=args[i]
 var op=null
 if(arg.list[0][0]=="operator" && arg.list[1][0]=="arg_id"){
@@ -1799,17 +1826,16 @@ if(op==null){
 var elts=arg.split("=")
 if(elts.length>1){
 
-defaults[elts[0].list[0][1]]=elts[1].to_js()
+defaults.push([elts[0].list[0][1],elts[1].to_js()])
 has_defaults=true
+}else{
+required.push(arg.list[0][1])
+}
 
 if(i==0){
 stack.list.splice(def_pos+3+arg.start,arg.end-arg.start+1)
 }else{
 stack.list.splice(def_pos+2+arg.start,arg.end-arg.start+2)
-}
-}else{
-
-required.push(arg.list[0][1])
 }
 }
 }
@@ -1818,7 +1844,7 @@ var end_def=stack.find_next_at_same_level(def_pos,"delimiter",":")
 if(end_def==null){
 $raise("SyntaxError","Unable to find definition end "+end_def)
 }
-var arg_code='"'+func_token[1]+'",arguments,'
+var arg_code='arguments,'
 if(required.length==0){arg_code+='[],'}
 else{
 arg_code +='['
@@ -1830,7 +1856,9 @@ arg_code=arg_code.substr(0,arg_code.length-1)+"],"
 }
 var def_code='{'
 if(has_defaults){
-for(x in defaults){def_code +='"'+x+'":'+defaults[x]+','}
+for($idef=0;$idef<defaults.length;$idef++){
+def_code +='"'+defaults[$idef][0]+'":'+defaults[$idef][1]+','
+}
 def_code=def_code.substr(0,def_code.length-1)
 }
 def_code +='}'
@@ -1839,8 +1867,9 @@ if(other_args==null){arg_code+="null,"}
 else{arg_code +='"'+other_args+'",'}
 if(other_kw==null){arg_code+="null"}
 else{arg_code +='"'+other_kw+'"'}
-var fcode="    $fname='"+func_token[1]+"'\n"
-stack.list.splice(end_def+1,0,['code',"$MakeArgs("+arg_code+")",stack.list[end_def][2]])
+var fcode='for($var in $ns){eval("var "+$var+"=$ns[$var]")}\n'
+stack.list.splice(end_def+1,0,
+['code',"\n$ns=$MakeArgs("+arg_code+")\n"+fcode,stack.list[end_def][2]])
 }
 pos=def_pos-1
 }
@@ -2148,13 +2177,12 @@ if(glob_list[i][0]=='id'){globals[glob_list[i][1]]=0}
 }
 fbody.splice(global_pos,glob_list.length+1)
 }
-
-fbody.splice(0,0,['code','$ns["'+func_name[1]+'"]={};',0])
 seq=seq.concat(fbody)
 
+
 for(var i=0;i<seq.length;i++){
-if(seq[i][0]=="id" || seq[i][0]=="assign_id"){
-if(!(seq[i][1]in globals)){seq[i].push(func_name[1])}
+if(seq[i][0]=="id"){
+if(!(seq[i][1]in globals)){seq[i].push('local')}
 }
 }
 stack.list=stack.list.slice(0,kw_pos+1)
@@ -2165,10 +2193,8 @@ var code=';'+fname+'.__class__ = Function;'
 if(parent==null){
 code +='window.'+fname+'='+fname+';'
 module_level_functions.push(fname)
-}else{
-code +='$ns["'+parent+'"]["'+fname+'"]='+fname+';'
 }
-tail.splice(0,0,['code',code])
+tail.splice(0,0,['func_end',code])
 }else if(kw=="except"){
 
 var var_name=stack.list[kw_pos+1]
@@ -2446,7 +2472,8 @@ $raise("SyntaxError","can't assign to literal")
 pos=assign-1
 }else{
 
-left.list()[0][0]="assign_id"
+
+if(left.list()[0][3]==="local"){left.list()[0][1]="var "+left.list()[0][1]}
 
 var head=stack.list.slice(0,right.start)
 var tail=stack.list.slice(right.end+1,stack.list.length)
@@ -3309,17 +3336,7 @@ for(j=0;j<x[1];j++){js +=" "}
 if(x[0]=='str'){js +='str('+x[1].replace(/\n/gm,'\\n')+')'}
 else if(x[0]=='int'){js +='int('+x[1]+')'}
 else if(x[0]=='float'){js +='float('+x[1]+')'}
-else if(x[0]=="id"){
-
-if(x[3]==undefined){js +=x[1]}
-else{js +='$resolve("'+x[1]+'","'+x[3]+'")'}
-}else if(x[0]=="assign_id"){
-
-if(x[3]==undefined){js +=x[1]}
-else{js +='$ns["'+x[3]+'"]["'+x[1]+'"]'}
-}else{
-js +=x[1]
-}
+else{js +=x[1]}
 if(i<this.list.length-1 && this.list[i+1][0]!="bracket"){
 js +=" "
 }
@@ -3491,22 +3508,23 @@ eval("this.data."+attr+"=value.value")
 function $DomObject(obj){
 this.obj=obj
 this.type=obj.constructor.toString()
-console.log('dom object '+obj)
 }
 $DomObject.prototype.__getattr__=function(attr){
 return getattr(this.obj,attr)
 }
 function $OptionsClass(parent){
+this.parent=parent
 this.__getattr__=function(attr){
 if('get_'+attr in this){return eval('this.get_'+attr)}
-if(attr in parent.elt.options){
-var obj=eval('parent.elt.options.'+attr)
+if(attr in this.parent.elt.options){
+var obj=eval('this.parent.elt.options.'+attr)
 if((typeof obj)=='function'){
 $raise('AttributeError',"'options' object has no attribute '"+attr+'"')
 }
 return $JS2Py(obj)
 }
 }
+this.__class__='options'
 this.__getitem__=function(arg){
 return $DomElement(parent.elt.options[arg.value])
 }
