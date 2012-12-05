@@ -5,7 +5,7 @@
 </head>
 <body>
 <h3>Organisation du paquetage en fichiers</h3>
-Le fichier <b>brython.js</b> est la compilation de plusieurs scripts :
+Le fichier <b>brython.js</b> est généré par compilation de plusieurs scripts :
 <ul>
 <li><b>py_tokenizer.js</b> : découpe le code source Python en jetons (tokens) : identifiants, littéraux, opérateurs, délimiteurs, etc
 <li><b>py2js.js</b> : opère la conversion entre les jetons et le code Javascript
@@ -14,6 +14,7 @@ Le fichier <b>brython.js</b> est la compilation de plusieurs scripts :
 <li><b>py_dom.js</b> : interaction avec le document HTML (DOM)
 <li><b>py_ajax.js</b> : implémentation d'Ajax
 <li><b>py_local_storage.js</b> : implémentation du stockage local HTML5
+<li><b>py_svg.py</b> : support de SVG (dessin vectoriel)
 </ul>
 <p>Dans le développement de Brython, on ne modifie que ces scripts élementaires. Le fichier <b>brython.js</b> est généré par le script <b>make_dist.py</b>
 
