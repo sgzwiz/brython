@@ -99,15 +99,16 @@ function $multiple_assign(targets,right_expr,assign_pos){
 
 $OpeningBrackets = $List2Dict('(','[','{')
 
-function py2js(src,context){
+function py2js(src,context,debug){
     // context is "main" for the main script, the module name if import
+    document.$debug = debug
     var i = 0
     src = src.replace(/\r\n/gm,'\n')
     while (src.length>0 && (src.charAt(0)=="\n" || src.charAt(0)=="\r")){
         src = src.substr(1)
     }
     if(src.charAt(src.length-1)!="\n"){src+='\n'}
-    if(context===undefined){context='__main__';document.$py_src={'__main__':src}}
+    if(!context){context='__main__';document.$py_src={'__main__':src}}
     else{document.$py_src[context] = src}
     document.$context = context
     
@@ -129,25 +130,26 @@ function py2js(src,context){
     
     var $err_num = 0
     // add a line number at the end of each line in source code
-    // used for traceback    
-    //stack.list.splice(0,0,['code','document.line_num=1',0],['newline','\n',0])
-    var pos = 0
-    var s_nl = 0
-    while(true){
-        var nl = stack.find_next(pos,'newline')
-        if(nl==null){break}
-        var indent_pos = stack.find_previous(nl,'indent')
-        if(!stack.list[indent_pos+1].match(['keyword','else']) &&
-            !stack.list[indent_pos+1].match(['keyword','elif']) &&
-            !stack.list[indent_pos+1].match(['keyword','except'])){
-            stack.list.splice(s_nl,0,stack.list[indent_pos],
-                ['code','document.line_num='+stack.list[nl][1],stack.list[nl][2]],
-                ['newline','\n'])
-            s_nl = nl+4
-            pos = nl+5
-        }else{
-            s_nl = nl+1
-            pos = nl+2
+    // used for traceback
+    if(debug){
+        var pos = 0
+        var s_nl = 0
+        while(true){
+            var nl = stack.find_next(pos,'newline')
+            if(nl==null){break}
+            var indent_pos = stack.find_previous(nl,'indent')
+            if(!stack.list[indent_pos+1].match(['keyword','else']) &&
+                !stack.list[indent_pos+1].match(['keyword','elif']) &&
+                !stack.list[indent_pos+1].match(['keyword','except'])){
+                stack.list.splice(s_nl,0,stack.list[indent_pos],
+                    ['code','document.line_num='+stack.list[nl][1],stack.list[nl][2]],
+                    ['newline','\n'])
+                s_nl = nl+4
+                pos = nl+5
+            }else{
+                s_nl = nl+1
+                pos = nl+2
+            }
         }
     }
     var dobj = new Date()
@@ -271,7 +273,8 @@ function py2js(src,context){
         if(def_pos==null){break}
         var func_token = stack.list[def_pos+1]
         var arg_start = stack.list[def_pos+2]
-        var indent = stack.indent(def_pos)+4
+        var indent_pos = stack.find_next(def_pos,'indent')
+        var indent = stack.list[indent_pos][1]
         var f_indent = '\n'
         while(indent>0){f_indent+=' ';indent--}
         document.line_num = pos2line[func_token[2]]
@@ -356,9 +359,9 @@ function py2js(src,context){
             else{arg_code += '"'+other_args+'",'}
             if(other_kw==null){arg_code+="null"}
             else{arg_code += '"'+other_kw+'"'}
-            var fcode = 'for($var in $ns){eval("var "+$var+"=$ns[$var]")}\n'
+            var fcode = f_indent+'for($var in $ns){eval("var "+$var+"=$ns[$var]")}'
             stack.list.splice(end_def+1,0,
-                ['code',"\n$ns=$MakeArgs("+arg_code+")\n"+fcode,stack.list[end_def][2]])
+                ['code',f_indent+"$ns=$MakeArgs("+arg_code+")"+fcode,stack.list[end_def][2]])
        }
         pos = def_pos-1
     }
@@ -431,7 +434,8 @@ function py2js(src,context){
         var op = stack.list[sign]
         if(sign>0 && 
             (stack.list[sign-1][0] in $List2Dict("delimiter","newline","indent","assign","operator") ||
-                stack.list[sign-1].match(["bracket","("]))){
+                (stack.list[sign-1][0]=="bracket" && ("({[".indexOf(stack.list[sign-1][1])>-1)))){
+            console.log('unary '+stack.list[sign-1])
             if(sign<stack.list.length-1){
                 var next = stack.list[sign+1]
                 if(next[0]=="int" || next[0]=="float") { // literal
@@ -688,11 +692,13 @@ function py2js(src,context){
                 }
                 stack.list = stack.list.slice(0,kw_pos+1)
                 stack.list = stack.list.concat(seq)
-                // set attribute __class__ of function
+                // make function visible at window level
                 var fname = stack.list[kw_pos+1][1]
-                var code = ';'+fname+'.__class__ = Function;'
+                var indent = stack.indent(kw_pos)
+                var f_indent = ''
+                while(indent>0){f_indent+=' ';indent--}
                 if(parent==null){
-                    code += 'window.'+fname+'='+fname+';'
+                    code = '\n'+f_indent+'window.'+fname+'='+fname
                     module_level_functions.push(fname)
                 }
                 tail.splice(0,0,['func_end',code])
@@ -1010,6 +1016,7 @@ function py2js(src,context){
         
         // create arguments for subscription or slicing
         var args = stack.list.slice(br_pos+1,end)
+        if(args.length==0){$raise('SyntaxError','invalid syntax')}
         var args1 = new Stack(args)
         var items = args1.split(":") // items are instances of Stack
         // replace : by ,
@@ -1136,8 +1143,8 @@ function brython(debug){
         var elt = elts[$i]
         if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
-            js = py2js(src).to_js()
-            if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
+            js = py2js(src,null,debug).to_js()
+            if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
             try{
                 $run(js)
             }catch(err){$raise('ExecutionError',err.message)
