@@ -429,7 +429,7 @@ function Import(){
             try{eval(res)}catch(err){$raise('ImportError',err.message)}
         }else{
             // if module was found, res is set to the Python source code
-            var stack = py2js(res,module)
+            var stack = $py2js(res,module)
             // insert module name as a JS object
             stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
             // search for module-level names
@@ -780,6 +780,19 @@ $ListClass.prototype.count = function(elt){
         if($bool(this.items[i].__eq__(elt))){res++}
     }
     return int(res)
+}
+
+$ListClass.prototype.extend = function(other){
+    if(arguments.length!=1){$raise('TypeError',
+        "extend() takes exactly one argument ("+arguments.length+" given)")}
+    var other = iter(other)
+    while(true){
+        try{this.items.push(next(other))}
+        catch(err){
+            if(err.name=="StopIteration"){break}
+            else{throw err}
+        }
+    }
 }
 
 $ListClass.prototype.index = function(elt){

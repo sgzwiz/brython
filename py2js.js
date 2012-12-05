@@ -99,7 +99,7 @@ function $multiple_assign(targets,right_expr,assign_pos){
 
 $OpeningBrackets = $List2Dict('(','[','{')
 
-function py2js(src,context,debug){
+function $py2js(src,context,debug){
     // context is "main" for the main script, the module name if import
     document.$debug = debug
     var i = 0
@@ -435,7 +435,6 @@ function py2js(src,context,debug){
         if(sign>0 && 
             (stack.list[sign-1][0] in $List2Dict("delimiter","newline","indent","assign","operator") ||
                 (stack.list[sign-1][0]=="bracket" && ("({[".indexOf(stack.list[sign-1][1])>-1)))){
-            console.log('unary '+stack.list[sign-1])
             if(sign<stack.list.length-1){
                 var next = stack.list[sign+1]
                 if(next[0]=="int" || next[0]=="float") { // literal
@@ -1143,7 +1142,7 @@ function brython(debug){
         var elt = elts[$i]
         if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
-            js = py2js(src,null,debug).to_js()
+            js = $py2js(src,null,debug).to_js()
             if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
             try{
                 $run(js)
