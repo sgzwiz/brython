@@ -1,6 +1,7 @@
 
 function $raise(name,msg){
 
+if(document.$debug==0){return}
 if(msg===undefined){msg=''}
 var lines=document.$py_src[document.$context].split('\n')
 msg +='\nLine '+document.line_num+'\n'+lines[document.line_num-1]
@@ -238,11 +239,11 @@ function $FloatClass(value){
 this.value=value
 this.__class__=float
 }
-$FloatClass.prototype.__or__=function(other){
-if(this.value){return this}
-else{return other}
+$FloatClass.prototype.__str__=function(){
+var res=this.value+'' 
+if(res.indexOf('.')==-1){res+='.0'}
+return str(res)
 }
-$FloatClass.prototype.__str__=function(){return str(this.value)}
 $FloatClass.prototype.__int__=function(){return int(parseInt(this.value))}
 $FloatClass.prototype.__float__=function(){return this}
 var $op_func=function(other){
@@ -343,7 +344,7 @@ function $ModuleClass(module){
 this.__getattr__=function(attr){return $ns[module][attr]}
 }
 function Import(){
-var js_modules=$List2Dict('time','datetime','math','random')
+var js_modules=$List2Dict('time','datetime','math','random','sys')
 var calling={'line':document.line_num,'context':document.$context}
 for(var i=0;i<arguments.length;i++){
 module=arguments[i]
@@ -449,6 +450,10 @@ else if($isinstance(other,str)){
 var res='',i=0
 for(i=0;i<this.value;i++){res+=other.value}
 return str(res)
+}else if($isinstance(other,list)){
+var res=other.items
+for(i=0;i<this.value-1;i++){res=res.concat(other.items)}
+return list(res)
 }else{$UnsupportedOpType("*",int,other.__class__)}
 }
 $IntegerClass.prototype.__not_in__=function(item){return $not(item.__contains__(this))}
@@ -540,20 +545,15 @@ this.iter=null
 this.__class__=list
 this.items=items 
 }
-$ListClass.prototype.__getattr__=function(attr){return $getattr(this,attr)}
-$ListClass.prototype.__len__=function(){return int(this.items.length)}
-$ListClass.prototype.__str__=function(){
-var res="[",i=null
-for(i=0;i<this.items.length;i++){
-var x=this.items[i]
-if($isinstance(x,str)){res +=x.__repr__().value}
-else{res +=x.__str__().value}
-if(i<this.items.length-1){res +=','}
-}
-return str(res+']')
-}
 $ListClass.prototype.__add__=function(other){
 return list(this.items.concat(other.items))
+}
+$ListClass.prototype.__contains__=function(item){
+for(var i=0;i<this.items.length;i++){
+try{if(this.items[i].__eq__(item)===True){return True}
+}catch(err){void(0)}
+}
+return False
 }
 $ListClass.prototype.__delitem__=function(arg){
 if($isinstance(arg,int)){
@@ -605,7 +605,7 @@ return True
 }
 return False
 }
-$ListClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
+$ListClass.prototype.__getattr__=function(attr){return $getattr(this,attr)}
 $ListClass.prototype.__getitem__=function(arg){
 if($isinstance(arg,int)){
 var pos=arg.value
@@ -616,8 +616,8 @@ else{$raise('IndexError','list index out of range')}
 var start=arg.start || int(0)
 var stop=arg.stop || this.__len__()
 var step=arg.step || int(1)
-if(start.value<0){start=int(this.__len__()+start.value)}
-if(stop.value<0){stop=int(this.__len__()+stop.value)}
+if(start.value<0){start=int(this.items.length+start.value)}
+if(stop.value<0){stop=int(this.items.length+stop.value)}
 var res=list(),i=null
 if(step.value>0){
 if(stop.value<=start.value){return res}
@@ -640,27 +640,9 @@ return res
 $raise('TypeError','list indices must be integer, not '+$str(arg.__class__))
 }
 }
-$ListClass.prototype.__setitem__=function(arg,value){
-if($isinstance(arg,int)){
-var pos=arg.value
-if(arg.value<0){pos=this.items.length+pos}
-if(pos>=0 && pos<this.items.length){this.items[pos]=value}
-else{$raise('IndexError','list index out of range')}
-}else if($isinstance(arg,slice)){
-var start=arg.start || $Integer(0)
-var stop=arg.stop || this.__len__()
-var step=arg.step || $Integer(1)
-if(start.value<0){start=$Integer(this.__len__()+start.value)}
-if(stop.value<0){stop=$Integer(this.__len__()+stop.value)}
-var res=new Array(),i=null
-for(i=start.value;i<stop.value;i+=step.value){
-res.push(this.items[i])
-}
-return res
-}else{
-$raise('TypeError','list indices must be integer, not '+$str(arg.__class__))
-}
-}
+$ListClass.prototype.__in__=function(item){return item.__contains__(this)}
+$ListClass.prototype.__len__=function(){return int(this.items.length)}
+$ListClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
 $ListClass.prototype.__next__=function(){
 if(this.iter===null){this.iter=0}
 if(this.iter<this.items.length){
@@ -671,14 +653,40 @@ this.iter=null
 $raise('StopIteration')
 }
 }
-$ListClass.prototype.__in__=function(item){return item.__contains__(this)}
 $ListClass.prototype.__not_in__=function(item){return $not(item.__contains__(this))}
-$ListClass.prototype.__contains__=function(item){
-for(var i=0;i<this.items.length;i++){
-try{if(this.items[i].__eq__(item)===True){return True}
-}catch(err){void(0)}
+$ListClass.prototype.__setitem__=function(arg,value){
+if($isinstance(arg,int)){
+var pos=arg.value
+if(arg.value<0){pos=this.items.length+pos}
+if(pos>=0 && pos<this.items.length){this.items[pos]=value}
+else{$raise('IndexError','list index out of range')}
+}else if($isinstance(arg,slice)){
+var start=arg.start || int(0)
+if(arg.stop===null){stop=this.__len__()}else{stop=arg.stop}
+var step=arg.step || int(1)
+if(start.value<0){start=int(this.items.length+start.value)}
+if(stop.value<0){stop=int(this.items.length+stop.value)}
+this.items.splice(start.value,stop.value-start.value)
+
+
+var $temp=[]
+for(var i=0;i<value.items.length;i++){$temp.push(value.items[i])}
+for(var i=value.items.length-1;i>=0;i--){
+this.items.splice(start.value,0,$temp[i])
 }
-return False
+}else{
+$raise('TypeError','list indices must be integer, not '+$str(arg.__class__))
+}
+}
+$ListClass.prototype.__str__=function(){
+var res="[",i=null
+for(i=0;i<this.items.length;i++){
+var x=this.items[i]
+if($isinstance(x,str)){res +=x.__repr__().value}
+else{res +=x.__str__().value}
+if(i<this.items.length-1){res +=','}
+}
+return str(res+']')
 }
 $ListClass.prototype.append=function(item){this.items.push(item)}
 $ListClass.prototype.count=function(elt){
@@ -855,7 +863,7 @@ $ObjectClass.prototype.__getattr__=function(attr){
 if(attr in this){return this[attr]}
 else{$raise('AttributeError',"object has no attribute '"+attr+"'")}
 }
-$ObjectClass.prototype.__delattr__=function(attr){eval('delete this.'+attr.value)}
+$ObjectClass.prototype.__delattr__=function(attr){delete this[attr]}
 $ObjectClass.prototype.__setattr__=function(attr,value){this[attr]=value}
 function object(){
 return new $ObjectClass()
@@ -1039,11 +1047,13 @@ if(arg.value<0){pos=this.value.length+pos}
 if(pos>=0 && pos<this.value.length){return str(this.value.charAt(pos))}
 else{$raise('IndexError','string index out of range')}
 }else if($isinstance(arg,slice)){
+console.log('slice string')
 var start=arg.start || int(0)
-var stop=arg.stop || this.__len__()
+if(arg.stop===null){stop=this.__len__}else{stop=arg.stop}
 var step=arg.step || int(1)
-if(start.value<0){start=int(this.__len__()+start.value)}
-if(stop.value<0){stop=int(this.__len__()+stop.value)}
+console.log('start '+start.value+' stop '+stop.value+' step '+step.value)
+if(start.value<0){start=int(this.value.length+start.value)}
+if(stop.value<0){stop=int(this.value.length+stop.value);console.log('change stop to '+stop.value)}
 var res='',i=null
 if(step.value>0){
 if(stop.value<=start.value){return str('')}
@@ -1186,6 +1196,8 @@ res +="'"
 return str(res)
 }
 $StringClass.prototype.__setattr__=function(attr,value){$setattr(this,attr,value)}
+$StringClass.prototype.__setitem__=function(attr,value){
+$raise('TypeError',"'str' object does not support item assignment")}
 $StringClass.prototype.__str__=function(){return this}
 
 var $comp_func=function(other){
@@ -1620,15 +1632,16 @@ seq.push(['assign','='],['code','next($var)'],['delimiter',';'])
 return seq
 }
 $OpeningBrackets=$List2Dict('(','[','{')
-function py2js(src,context){
+function py2js(src,context,debug){
 
+document.$debug=debug
 var i=0
 src=src.replace(/\r\n/gm,'\n')
 while(src.length>0 &&(src.charAt(0)=="\n" || src.charAt(0)=="\r")){
 src=src.substr(1)
 }
 if(src.charAt(src.length-1)!="\n"){src+='\n'}
-if(context===undefined){context='__main__';document.$py_src={'__main__':src}}
+if(!context){context='__main__';document.$py_src={'__main__':src}}
 else{document.$py_src[context]=src}
 document.$context=context
 
@@ -1647,7 +1660,7 @@ stack=new Stack(tokens)
 var $err_num=0
 
 
-
+if(debug){
 var pos=0
 var s_nl=0
 while(true){
@@ -1665,6 +1678,7 @@ pos=nl+5
 }else{
 s_nl=nl+1
 pos=nl+2
+}
 }
 }
 var dobj=new Date()
@@ -1784,7 +1798,8 @@ var def_pos=stack.find_previous(pos,"keyword","def")
 if(def_pos==null){break}
 var func_token=stack.list[def_pos+1]
 var arg_start=stack.list[def_pos+2]
-var indent=stack.indent(def_pos)+4
+var indent_pos=stack.find_next(def_pos,'indent')
+var indent=stack.list[indent_pos][1]
 var f_indent='\n'
 while(indent>0){f_indent+=' ';indent--}
 document.line_num=pos2line[func_token[2]]
@@ -1867,9 +1882,9 @@ if(other_args==null){arg_code+="null,"}
 else{arg_code +='"'+other_args+'",'}
 if(other_kw==null){arg_code+="null"}
 else{arg_code +='"'+other_kw+'"'}
-var fcode='for($var in $ns){eval("var "+$var+"=$ns[$var]")}\n'
+var fcode=f_indent+'for($var in $ns){eval("var "+$var+"=$ns[$var]")}'
 stack.list.splice(end_def+1,0,
-['code',"\n$ns=$MakeArgs("+arg_code+")\n"+fcode,stack.list[end_def][2]])
+['code',f_indent+"$ns=$MakeArgs("+arg_code+")"+fcode,stack.list[end_def][2]])
 }
 pos=def_pos-1
 }
@@ -1880,7 +1895,8 @@ pos=stack.list.length-1
 while(true){
 var br_pos=stack.find_previous(pos,"bracket","(")
 if(br_pos==null){break}
-if(stack.list[br_pos-1][0]=='id' && br_pos>1 && 
+if((stack.list[br_pos-1][0]=='id' || stack.list[br_pos-1][0]=="qualifier")
+&& br_pos>1 && 
 !(stack.list[br_pos-2].match(["keyword",'def']))){
 var end_call=stack.find_next_matching(br_pos)
 var s=new Stack(stack.list.slice(br_pos+1,end_call))
@@ -1937,7 +1953,8 @@ if(sign==null){break}
 var op=stack.list[sign]
 if(sign>0 && 
 (stack.list[sign-1][0]in $List2Dict("delimiter","newline","indent","assign","operator")||
-stack.list[sign-1].match(["bracket","("]))){
+(stack.list[sign-1][0]=="bracket" &&("({[".indexOf(stack.list[sign-1][1])>-1)))){
+console.log('unary '+stack.list[sign-1])
 if(sign<stack.list.length-1){
 var next=stack.list[sign+1]
 if(next[0]=="int" || next[0]=="float"){
@@ -2189,9 +2206,11 @@ stack.list=stack.list.slice(0,kw_pos+1)
 stack.list=stack.list.concat(seq)
 
 var fname=stack.list[kw_pos+1][1]
-var code=';'+fname+'.__class__ = Function;'
+var indent=stack.indent(kw_pos)
+var f_indent=''
+while(indent>0){f_indent+=' ';indent--}
 if(parent==null){
-code +='window.'+fname+'='+fname+';'
+code='\n'+f_indent+'window.'+fname+'='+fname
 module_level_functions.push(fname)
 }
 tail.splice(0,0,['func_end',code])
@@ -2494,6 +2513,7 @@ src_pos=stack.list[br_pos][2]
 var end=stack.find_next_matching(br_pos)
 
 var args=stack.list.slice(br_pos+1,end)
+if(args.length==0){$raise('SyntaxError','invalid syntax')}
 var args1=new Stack(args)
 var items=args1.split(":")
 
@@ -2614,8 +2634,8 @@ for($i=0;$i<elts.length;$i++){
 var elt=elts[$i]
 if(elt.type=="text/python"){
 var src=(elt.innerHTML || elt.textContent)
-js=py2js(src).to_js()
-if(debug){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
+js=py2js(src,null,debug).to_js()
+if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
 try{
 $run(js)
 }catch(err){$raise('ExecutionError',err.message)
@@ -2954,7 +2974,9 @@ function $assign(expr){
 
 
 
-if($isinstance(expr,list(int,float,str))){return $JS2Py(expr.value)}
+if($isinstance(expr,int)){return int(expr.value)}
+else if($isinstance(expr,float)){return float(expr.value)}
+else if($isinstance(expr,str)){return str(expr.value)}
 else{return expr}
 }
 function $test_item(expr){
@@ -2974,6 +2996,7 @@ Function.prototype.__eq__=function(other){
 if(typeof other !=='function'){return False}
 return $bool_conv((other+'')===(this+''))
 }
+Function.prototype.__class__=Function
 Array.prototype.match=function(other){
 
 var $i=0
@@ -3337,7 +3360,8 @@ if(x[0]=='str'){js +='str('+x[1].replace(/\n/gm,'\\n')+')'}
 else if(x[0]=='int'){js +='int('+x[1]+')'}
 else if(x[0]=='float'){js +='float('+x[1]+')'}
 else{js +=x[1]}
-if(i<this.list.length-1 && this.list[i+1][0]!="bracket"){
+if(i<this.list.length-1 && this.list[i+1][0]!="bracket"
+&& this.list[i+1][0]!="point" && this.list[i+1][0]!="delimiter"){
 js +=" "
 }
 }else{
@@ -3608,7 +3632,8 @@ document.insertBefore(other.elt,ref_elt.elt)
 }
 doc=new $Document()
 win={
-__getattr__ : function(attr){return $getattr(window,attr)}
+__getattr__ : function(attr){return $getattr(window,attr)},
+location:{__getattr__:function(attr){return $getattr(window.location,attr)}}
 }
 function $DomElement(elt){
 var i=null
@@ -3619,8 +3644,10 @@ return str(elt.data)
 var obj=new $TagClass()
 if(elt_name===undefined && elt.nodeName=="#document"){
 obj.__class__=$Document
-}else{
+}else if($tags.indexOf(elt_name.toUpperCase())>-1){
 obj.__class__=eval(elt_name.toUpperCase())
+}else if($svg_tags.indexOf(elt_name)>-1){
+obj.__class__=eval('SVG.'+elt_name)
 }
 obj.elt=elt
 return obj
@@ -3755,6 +3782,17 @@ this.children.push(other.children[$i])
 }
 }else{this.children.push(other.elt)}
 }
+$TagClass.prototype.__le__=function(other){
+if($isinstance(other,$AbstractTag)){
+var $i=0
+for($i=0;$i<other.children.length;$i++){
+this.elt.appendChild(other.children[$i])
+}
+}else if($isinstance(other,list(str,int,float))){
+var $txt=document.createTextNode(other.value)
+this.elt.appendChild($txt)
+}else{this.elt.appendChild(other.elt)}
+}
 $TagClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
 $TagClass.prototype.__radd__=function(other){
 var res=$AbstractTag()
@@ -3882,14 +3920,6 @@ this.elt.innerText=$str(value)
 this.textContent=$str(value)
 }
 $TagClass.prototype.set_value=function(value){this.elt.value=$str(value)}
-$TagClass.prototype.__le__=function(other){
-if($isinstance(other,$AbstractTag)){
-var $i=0
-for($i=0;$i<other.children.length;$i++){
-this.elt.appendChild(other.children[$i])
-}
-}else{this.elt.appendChild(other.elt)}
-}
 function A(){return new $TagClass('A',arguments)}
 var $src=A+'' 
 $tags=['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
@@ -3921,18 +3951,17 @@ $code=$src.replace(/A/gm,$tags[$i])
 eval($code)
 }
 SVG={
-__getattr__:function(attr){console.log('get attribute '+attr+' '+this[attr]);return this[attr]}
+__getattr__:function(attr){return this[attr]}
 }
 $svgNS="http://www.w3.org/2000/svg"
 $xlinkNS="http://www.w3.org/1999/xlink"
-function $SVGTagClass(_class,args){
+function $SVGTagClass(tag_name,args){
 
-console.log('svg tag '+_class)
 var $i=null
 var $obj=this
-if(_class!==undefined){
-this.name=str(_class).value
-eval("this.__class__ =_class")
+if(tag_name!==undefined){
+this.name=tag_name
+this.__class__=SVG
 this.elt=document.createElementNS($svgNS,this.name)
 this.elt.parent=this
 }
@@ -3969,7 +3998,7 @@ this.set_style($arg.value)
 }else{
 if($arg.value.value!==false){
 
-this.elt.setAttributeNS(null,$arg.name.toLowerCase(),$arg.value.value)
+this.elt.setAttributeNS(null,$arg.name.replace('_','-'),$arg.value.value)
 }
 }
 }
@@ -3985,9 +4014,16 @@ $SVGTagClass.prototype.__eq__=$TagClass.prototype.__eq__
 $SVGTagClass.prototype.__getattr__=$TagClass.prototype.__getattr__
 $SVGTagClass.prototype.__getitem__=$TagClass.prototype.__getitem__
 $SVGTagClass.prototype.__iadd__=$TagClass.prototype.__iadd__
+$SVGTagClass.prototype.__le__=$TagClass.prototype.__le__
 $SVGTagClass.prototype.__ne__=$TagClass.prototype.__ne__
 $SVGTagClass.prototype.__radd__=$TagClass.prototype.__radd__
-$SVGTagClass.prototype.__setattr__=$TagClass.prototype.__setattr__
+$SVGTagClass.prototype.__setattr__=function(key,value){
+if(key=="href"){
+this.elt.setAttributeNS($xlinkNS,key.replace('_','-'),value.value)
+}else{
+this.elt.setAttributeNS(null,key.replace('_','-'),value.value)
+}
+}
 $SVGTagClass.prototype.__setitem__=$TagClass.prototype.__setitem__
 
 var $svg_tags=['a',
@@ -4024,10 +4060,11 @@ var $svg_tags=['a',
 'tref',
 'tspan',
 'use']
+$svg=function(){return new $SVGTagClass('X',arguments)}
+$svg +='' 
 for(var i=0;i<$svg_tags.length;i++){
-SVG[$svg_tags[i]]=function(){
-return $SVGTagClass($svg_tags[i],arguments)
-}
+var tag=$svg_tags[i]
+eval('SVG.'+tag+'='+$svg.replace('X',tag))
 }
 
 function $LocalStorageClass(){

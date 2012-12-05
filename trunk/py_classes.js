@@ -2,6 +2,7 @@
 
 function $raise(name,msg) {
     // raises exception with specified name and message
+    if(document.$debug==0){return}
     if(msg===undefined){msg=''}
     var lines = document.$py_src[document.$context].split('\n')
     msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
@@ -268,11 +269,11 @@ function $FloatClass(value){
     this.value = value
     this.__class__ = float
 }
-$FloatClass.prototype.__or__ = function(other){
-    if(this.value){return this}
-    else{return other}
+$FloatClass.prototype.__str__ = function(){
+    var res = this.value+'' // coerce to string
+    if(res.indexOf('.')==-1){res+='.0'}
+    return str(res)
 }
-$FloatClass.prototype.__str__ = function(){return str(this.value)}
 $FloatClass.prototype.__int__ = function(){return int(parseInt(this.value))}
 $FloatClass.prototype.__float__ = function(){return this}
     
@@ -387,7 +388,7 @@ function $ModuleClass(module){
 
 function Import(){
 
-    var js_modules = $List2Dict('time','datetime','math','random')
+    var js_modules = $List2Dict('time','datetime','math','random','sys')
     var calling={'line':document.line_num,'context':document.$context}
     for(var i=0;i<arguments.length;i++){
         module = arguments[i]
@@ -504,6 +505,10 @@ $IntegerClass.prototype.__mul__ = function(other){
         var res = '',i=0
         for(i=0;i<this.value;i++){res+=other.value}
         return str(res)
+    }else if($isinstance(other,list)) {
+        var res = other.items
+        for(i=0;i<this.value-1;i++){res=res.concat(other.items)}
+        return list(res)
     }else{$UnsupportedOpType("*",int,other.__class__)}
 }
 
@@ -611,23 +616,16 @@ function $ListClass(items){
     this.items = items // JavaScript array
 }
 
-$ListClass.prototype.__getattr__ = function(attr){return $getattr(this,attr)}
-
-$ListClass.prototype.__len__ = function(){return int(this.items.length)}
-    
-$ListClass.prototype.__str__ = function(){
-    var res = "[",i=null
-    for(i=0;i<this.items.length;i++){
-        var x = this.items[i]
-        if($isinstance(x,str)){res += x.__repr__().value} 
-        else{res += x.__str__().value}
-        if(i<this.items.length-1){res += ','}
-    }
-    return str(res+']')
-}
-        
 $ListClass.prototype.__add__ = function(other){
     return list(this.items.concat(other.items))
+}
+
+$ListClass.prototype.__contains__ = function(item){
+    for(var i=0;i<this.items.length;i++){
+        try{if(this.items[i].__eq__(item)===True){return True}
+        }catch(err){void(0)}
+    }
+    return False
 }
 
 $ListClass.prototype.__delitem__ = function(arg){
@@ -670,7 +668,6 @@ $ListClass.prototype.__delitem__ = function(arg){
     }
 }
 
-
 $ListClass.prototype.__eq__ = function(other){
     if($isinstance(other,list)){
         if(other.items.length==this.items.length){
@@ -683,8 +680,8 @@ $ListClass.prototype.__eq__ = function(other){
     return False
 }
 
-$ListClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
-    
+$ListClass.prototype.__getattr__ = function(attr){return $getattr(this,attr)}
+
 $ListClass.prototype.__getitem__ = function(arg){
     if($isinstance(arg,int)){
         var pos = arg.value
@@ -695,8 +692,8 @@ $ListClass.prototype.__getitem__ = function(arg){
         var start = arg.start || int(0)
         var stop = arg.stop || this.__len__()
         var step = arg.step || int(1)
-        if(start.value<0){start=int(this.__len__()+start.value)}
-        if(stop.value<0){stop=int(this.__len__()+stop.value)}
+        if(start.value<0){start=int(this.items.length+start.value)}
+        if(stop.value<0){stop=int(this.items.length+stop.value)}
         var res = list(),i=null
         if(step.value>0){
             if(stop.value<=start.value){return res}
@@ -720,28 +717,12 @@ $ListClass.prototype.__getitem__ = function(arg){
     }
 }
 
-$ListClass.prototype.__setitem__ = function(arg,value){
-    if($isinstance(arg,int)){
-        var pos = arg.value
-        if(arg.value<0){pos=this.items.length+pos}
-        if(pos>=0 && pos<this.items.length){this.items[pos]=value}
-        else{$raise('IndexError','list index out of range')}
-    } else if($isinstance(arg,slice)) {
-        var start = arg.start || $Integer(0)
-        var stop = arg.stop || this.__len__()
-        var step = arg.step || $Integer(1)
-        if(start.value<0){start=$Integer(this.__len__()+start.value)}
-        if(stop.value<0){stop=$Integer(this.__len__()+stop.value)}
-        var res = new Array(),i=null
-        for(i=start.value;i<stop.value;i+=step.value){
-            res.push(this.items[i])
-        }
-        return res
-    }else {
-        $raise('TypeError','list indices must be integer, not '+$str(arg.__class__))
-    }
-}
+$ListClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
+$ListClass.prototype.__len__ = function(){return int(this.items.length)}
+    
+$ListClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
+    
 $ListClass.prototype.__next__ = function(){
     if(this.iter===null){this.iter=0}
     if(this.iter<this.items.length){
@@ -753,15 +734,42 @@ $ListClass.prototype.__next__ = function(){
     }
 }
 
-$ListClass.prototype.__in__ = function(item){return item.__contains__(this)}
 $ListClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
 
-$ListClass.prototype.__contains__ = function(item){
-    for(var i=0;i<this.items.length;i++){
-        try{if(this.items[i].__eq__(item)===True){return True}
-        }catch(err){void(0)}
+$ListClass.prototype.__setitem__ = function(arg,value){
+    if($isinstance(arg,int)){
+        var pos = arg.value
+        if(arg.value<0){pos=this.items.length+pos}
+        if(pos>=0 && pos<this.items.length){this.items[pos]=value}
+        else{$raise('IndexError','list index out of range')}
+    } else if($isinstance(arg,slice)) {
+        var start = arg.start || int(0)
+        if(arg.stop===null){stop=this.__len__()}else{stop=arg.stop}
+        var step = arg.step || int(1)
+        if(start.value<0){start=int(this.items.length+start.value)}
+        if(stop.value<0){stop=int(this.items.length+stop.value)}
+        this.items.splice(start.value,stop.value-start.value)
+        // copy items in a temporary JS array
+        // otherwise, a[:0]=a fails
+        var $temp = []
+        for(var i=0;i<value.items.length;i++){$temp.push(value.items[i])}
+        for(var i=value.items.length-1;i>=0;i--){
+            this.items.splice(start.value,0,$temp[i])
+        }
+    }else {
+        $raise('TypeError','list indices must be integer, not '+$str(arg.__class__))
     }
-    return False
+}
+
+$ListClass.prototype.__str__ = function(){
+    var res = "[",i=null
+    for(i=0;i<this.items.length;i++){
+        var x = this.items[i]
+        if($isinstance(x,str)){res += x.__repr__().value} 
+        else{res += x.__str__().value}
+        if(i<this.items.length-1){res += ','}
+    }
+    return str(res+']')
 }
 
 $ListClass.prototype.append = function(item){this.items.push(item)}
@@ -956,7 +964,7 @@ $ObjectClass.prototype.__getattr__ = function(attr){
     if(attr in this){return this[attr]}
     else{$raise('AttributeError',"object has no attribute '"+attr+"'")}
 }
-$ObjectClass.prototype.__delattr__ = function(attr){eval('delete this.'+attr.value)}
+$ObjectClass.prototype.__delattr__ = function(attr){delete this[attr]}
 $ObjectClass.prototype.__setattr__ = function(attr,value){this[attr]=value}
 
 function object(){
@@ -1168,11 +1176,13 @@ $StringClass.prototype.__getitem__ = function(arg){
             if(pos>=0 && pos<this.value.length){return str(this.value.charAt(pos))}
             else{$raise('IndexError','string index out of range')}
         } else if($isinstance(arg,slice)) {
+            console.log('slice string')
             var start = arg.start || int(0)
-            var stop = arg.stop || this.__len__()
+            if(arg.stop===null){stop=this.__len__}else{stop=arg.stop}
             var step = arg.step || int(1)
-            if(start.value<0){start=int(this.__len__()+start.value)}
-            if(stop.value<0){stop=int(this.__len__()+stop.value)}
+            console.log('start '+start.value+' stop '+stop.value+' step '+step.value)
+            if(start.value<0){start=int(this.value.length+start.value)}
+            if(stop.value<0){stop=int(this.value.length+stop.value);console.log('change stop to '+stop.value)}
             var res = '',i=null
             if(step.value>0){
                 if(stop.value<=start.value){return str('')}
@@ -1330,6 +1340,9 @@ $StringClass.prototype.__repr__ = function(){
 }
 
 $StringClass.prototype.__setattr__ = function(attr,value){$setattr(this,attr,value)}
+
+$StringClass.prototype.__setitem__ = function(attr,value){
+    $raise('TypeError',"'str' object does not support item assignment")}
 
 $StringClass.prototype.__str__ = function(){return this}
 

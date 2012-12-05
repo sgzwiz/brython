@@ -41,7 +41,6 @@ function $SVGTagClass(tag_name,args){
             // keyword arguments
             $arg = args[$i]
             if($isinstance($arg,$Kw)){
-                console.log('keyword arg '+$arg.name+' '+$arg.value)
                 if($arg.name.toLowerCase() in $events){ // events
                     eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){

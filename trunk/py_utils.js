@@ -34,7 +34,9 @@ function $assign(expr){
     // if expr is a simple built-in type, return a clone, *not* the same object !
     // this is to avoid bad side effects like "a=0 ; x=a ; x++"
     // causing a to become 1, since a and x are the same object
-    if($isinstance(expr,list(int,float,str))){return $JS2Py(expr.value)}
+    if($isinstance(expr,int)){return int(expr.value)}
+    else if($isinstance(expr,float)){return float(expr.value)}
+    else if($isinstance(expr,str)){return str(expr.value)}
     else{return expr}
 }
 
@@ -57,6 +59,7 @@ Function.prototype.__eq__ = function(other){
     if(typeof other !== 'function'){return False}
     return $bool_conv((other+'')===(this+''))
 }
+Function.prototype.__class__ = Function
 
 Array.prototype.match = function(other){
     // return true if array and other have the same first items
@@ -443,7 +446,8 @@ Stack.prototype.to_js = function(){
             else if(x[0]=='int'){js += 'int('+x[1]+')'}
             else if(x[0]=='float'){js += 'float('+x[1]+')'}
             else{js += x[1]}
-            if(i<this.list.length-1 && this.list[i+1][0] != "bracket"){
+            if(i<this.list.length-1 && this.list[i+1][0] != "bracket"
+                && this.list[i+1][0]!="point" && this.list[i+1][0]!="delimiter"){
                 js += " "
             }
         } else {

@@ -222,7 +222,8 @@ function $Document(){
 doc = new $Document()
 
 win = { 
-    __getattr__ : function(attr){return $getattr(window,attr)}
+    __getattr__ : function(attr){return $getattr(window,attr)},
+    location: {__getattr__:function(attr){return $getattr(window.location,attr)}}
 }
 
 function $DomElement(elt){
@@ -234,9 +235,9 @@ function $DomElement(elt){
     var obj = new $TagClass()
     if(elt_name===undefined && elt.nodeName=="#document"){ // document
         obj.__class__ = $Document
-    }else if(elt_name.toUpperCase() in $tags){
+    }else if($tags.indexOf(elt_name.toUpperCase())>-1){
         obj.__class__ = eval(elt_name.toUpperCase())
-    }else if(elt_name in $svg_tags){
+    }else if($svg_tags.indexOf(elt_name)>-1){
         obj.__class__ = eval('SVG.'+elt_name)
     }
     obj.elt = elt
@@ -382,6 +383,18 @@ $TagClass.prototype.__iadd__ = function(other){
         this.children.push(other.children[$i])
         }
     } else {this.children.push(other.elt)}
+}
+
+$TagClass.prototype.__le__ = function(other){
+    if($isinstance(other,$AbstractTag)){
+        var $i=0
+        for($i=0;$i<other.children.length;$i++){
+            this.elt.appendChild(other.children[$i])
+        }
+    }else if($isinstance(other,list(str,int,float))){
+        var $txt = document.createTextNode(other.value)
+        this.elt.appendChild($txt)
+    }else{this.elt.appendChild(other.elt)}
 }
 
 $TagClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
@@ -532,15 +545,6 @@ $TagClass.prototype.set_text = function(value){
 }
 
 $TagClass.prototype.set_value = function(value){this.elt.value = $str(value)}
-
-$TagClass.prototype.__le__ = function(other){
-    if($isinstance(other,$AbstractTag)){
-        var $i=0
-        for($i=0;$i<other.children.length;$i++){
-            this.elt.appendChild(other.children[$i])
-        }
-    } else {this.elt.appendChild(other.elt)}
-}
 
 function A(){return new $TagClass('A',arguments)}
 
