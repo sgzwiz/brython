@@ -384,7 +384,7 @@ if(is_js){
 try{eval(res)}catch(err){$raise('ImportError',err.message)}
 }else{
 
-var stack=py2js(res,module)
+var stack=$py2js(res,module)
 
 stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
 
@@ -695,6 +695,18 @@ for(var i=0;i<this.items.length;i++){
 if($bool(this.items[i].__eq__(elt))){res++}
 }
 return int(res)
+}
+$ListClass.prototype.extend=function(other){
+if(arguments.length!=1){$raise('TypeError',
+"extend() takes exactly one argument ("+arguments.length+" given)")}
+var other=iter(other)
+while(true){
+try{this.items.push(next(other))}
+catch(err){
+if(err.name=="StopIteration"){break}
+else{throw err}
+}
+}
 }
 $ListClass.prototype.index=function(elt){
 for(var i=0;i<this.items.length;i++){
@@ -1632,7 +1644,7 @@ seq.push(['assign','='],['code','next($var)'],['delimiter',';'])
 return seq
 }
 $OpeningBrackets=$List2Dict('(','[','{')
-function py2js(src,context,debug){
+function $py2js(src,context,debug){
 
 document.$debug=debug
 var i=0
@@ -1954,7 +1966,6 @@ var op=stack.list[sign]
 if(sign>0 && 
 (stack.list[sign-1][0]in $List2Dict("delimiter","newline","indent","assign","operator")||
 (stack.list[sign-1][0]=="bracket" &&("({[".indexOf(stack.list[sign-1][1])>-1)))){
-console.log('unary '+stack.list[sign-1])
 if(sign<stack.list.length-1){
 var next=stack.list[sign+1]
 if(next[0]=="int" || next[0]=="float"){
@@ -2634,7 +2645,7 @@ for($i=0;$i<elts.length;$i++){
 var elt=elts[$i]
 if(elt.type=="text/python"){
 var src=(elt.innerHTML || elt.textContent)
-js=py2js(src,null,debug).to_js()
+js=$py2js(src,null,debug).to_js()
 if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
 try{
 $run(js)
