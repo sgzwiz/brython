@@ -16,3 +16,7 @@ a[:0]=a
 log(a)
 a[:]=[]
 log(a)
+a.extend('ab')
+log(a)
+a.extend([1,2,33])
+log(a)
