@@ -5,38 +5,44 @@
 <script src="../py_classes.js"></script>
 <script src="../py_dom.js"></script>
 <script src="../py2js.js"></script>
-<script>
-var js=null
+<script src="../py_ajax.js"></script>
 
-has_ls = typeof(Storage)!=="undefined"
+<script type="text/python">
+# override log to send output to textarea
+def log(data):
+    doc["console"].value = doc["console"].value+str(data)+'\n'
+
+def clear_console():
+    doc["console"].value = ""
+</script>
+<script>
+var has_ls = typeof(Storage)!=="undefined"
+
 function reset_src(){
     if(has_ls){
         var py_src = localStorage["py_src"]
         if(py_src){document.getElementById("src").value=py_src}
     }
+    clear_console()
 }
-    
-function to_js(){
+function show_js(){
+    var src_elt = document.getElementById("src")
+    var src = src_elt.value
+    var stack = py2js(src)
+    document.getElementById("console").value = stack.to_js()
+}
+function run(){
     var src_elt = document.getElementById("src")
     var src = src_elt.value
     if(has_ls){localStorage["py_src"]=src}
-    stack = py2js(src)
-    document.getElementById("src2js").value = stack.to_js()
-}
-function run(){
-    js = document.getElementById("src2js").value
+    var stack = py2js(src)
+    var js = stack.to_js()
     try{$run(js)}
     catch(err){log(err.message)}
 }
-function report(){
-    pycode = document.getElementById("src").value
-    pycode = pycode.replace(/\n/,'%0D%0A')
-    text = "This code bugged in the Brython console :%0D%0A%0D%0A"+pycode
-    location.href="mailto:pierre.quentel@gmail.com?subject=[Brython]%20Bug%20report&body="+text
-}
 </script>
 </head>
-<body onload="reset_src()">
+<body onload="brython();reset_src()">
 <img src="../brython.png"><p>
 
 <table>
@@ -45,14 +51,13 @@ function report(){
 <i>- Python classes and list comprehensions are not supported</i>
 <br><i>- instead of "print", use "alert", or open your browser console and use "log"</i>
 </td>
-<td>&nbsp;</td><th>Javascript</th><td>&nbsp;</td></tr>
+<td>&nbsp;</td><th>Console<br><button onClick="clear_console()">clear</button></th><td>&nbsp;</td></tr>
 <tr>
 <td><textarea id="src" cols=60 rows=20>for i in range(10):
     log(i)</textarea></td>
-<td><button onClick="to_js()">translate &rarr;</button>
-<p><button onClick="report()">report bug</button></td>
-<td><textarea id="src2js" cols=60 rows=20></textarea></td>
-<td align="top"><button onClick="run()">run</button></td>
+<td><button onClick="run()">run</button>
+<br><button onClick="show_js()">show javascript</button>
+<td><textarea id="console" cols=60 rows=20 style="color:#FFF;background-color:#000"></textarea></td>
 </tr>
 </table>
 
