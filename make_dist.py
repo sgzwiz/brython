@@ -52,10 +52,13 @@ for fname in sources:
 
 import datetime
 now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-for dest in 'brython.js','../dist/brython_%s.js' %now:
-    out = open(dest,'w')
+
+try:
+    out = open('../dist/brython_%s.js' %now,'w')
     out.write(res)
     out.close()
+except IOError:
+    pass
 
 print('size : originals %s compact %s gain %.2f' %(src_size,len(res),100*(src_size-len(res))/src_size))
 
