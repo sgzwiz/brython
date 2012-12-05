@@ -53,6 +53,10 @@ for fname in sources:
 import datetime
 now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
+out = open('brython.js','w')
+out.write(res)
+out.close()
+
 try:
     out = open('../dist/brython_%s.js' %now,'w')
     out.write(res)
