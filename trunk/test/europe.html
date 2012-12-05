@@ -21,7 +21,7 @@
 }
 </style>
 </head>
-<body onLoad="brython()">
+<body onLoad="brython(1)">
 <img src="../brython.png">
 <script type="text/python">
 import time
@@ -57,6 +57,7 @@ def drop(ev):
     ev.preventDefault()
     src_id = ev.data['text']
     elt = doc[src_id]
+    log('in drop %s' %elt.id)
     if ev.target.id==countries[int(src_id)]:
         # dropped on the right country
         elt.style.left = ev.mouse.x-elt.clientWidth/2
@@ -69,6 +70,7 @@ def drop(ev):
 
 def go_back(elt,mouse):
     # smoothly move the DIV to its original place
+    log('in go back %s' %elt)
     x0,y0 = mouse.x-elt.clientWidth/2,mouse.y-elt.clientHeight/2
     x1,y1 = elt.left,elt.top # return integers (elt.style.left returns a string like "110px")
     step = 0
