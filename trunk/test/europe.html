@@ -60,13 +60,13 @@ def drop(ev):
     log('in drop %s' %elt.id)
     if ev.target.id==countries[int(src_id)]:
         # dropped on the right country
-        elt.style.left = ev.mouse.x-elt.clientWidth/2
-        elt.style.top = ev.mouse.y-elt.clientHeight/2
+        elt.style.left = ev.x-elt.clientWidth/2
+        elt.style.top = ev.y-elt.clientHeight/2
         elt.draggable = False # don't drag any more
         elt.style.cursor = "auto"
     else:
         # back where we started
-        go_back(elt,ev.mouse)
+        go_back(elt,ev)
 
 def go_back(elt,mouse):
     # smoothly move the DIV to its original place
