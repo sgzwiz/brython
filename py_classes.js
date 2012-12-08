@@ -883,6 +883,12 @@ function list(){
     }
 }
 
+function log(data){
+    if($isinstance(data,str)){console.log("'"+data.value+"'");return}
+    try{console.log($str(data))}
+    catch(err){void(0)}
+}
+
 function $MapClass(func,iterables){
     var iterable = null
     this.func = func
@@ -1189,13 +1195,11 @@ $StringClass.prototype.__getitem__ = function(arg){
             if(pos>=0 && pos<this.value.length){return str(this.value.charAt(pos))}
             else{$raise('IndexError','string index out of range')}
         } else if($isinstance(arg,slice)) {
-            console.log('slice string')
             var start = arg.start || int(0)
             if(arg.stop===null){stop=this.__len__}else{stop=arg.stop}
             var step = arg.step || int(1)
-            console.log('start '+start.value+' stop '+stop.value+' step '+step.value)
             if(start.value<0){start=int(this.value.length+start.value)}
-            if(stop.value<0){stop=int(this.value.length+stop.value);console.log('change stop to '+stop.value)}
+            if(stop.value<0){stop=int(this.value.length+stop.value)}
             var res = '',i=null
             if(step.value>0){
                 if(stop.value<=start.value){return str('')}
@@ -1467,7 +1471,7 @@ $StringClass.prototype.join = function(iterable){
     var res = '',count=0
     while(true){
         try{
-            obj = next(iterable)
+            var obj = next(iterable)
             if(!$isinstance(obj,str)){$raise('TypeError',
                 "sequence item "+count+": expected str instance, "+$str(obj.__class__)+"found")}
             res += obj.value+this.value
@@ -1636,7 +1640,7 @@ function $tuple(arg){return arg} // used for parenthesed expressions
 function tuple(){
     var args = new Array(),i=0
     for(i=0;i<arguments.length;i++){args.push(arguments[i])}
-    obj = new $ListClass(args)
+    var obj = new $ListClass(args)
     obj.__class__ = tuple
     return obj
 }

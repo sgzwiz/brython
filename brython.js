@@ -788,6 +788,11 @@ $raise('TypeError',"'"+$str(args[0].__class__)+"' object is not iterable")
 return new $ListClass(args)
 }
 }
+function log(data){
+if($isinstance(data,str)){console.log("'"+data.value+"'");return}
+try{console.log($str(data))}
+catch(err){void(0)}
+}
 function $MapClass(func,iterables){
 var iterable=null
 this.func=func
@@ -1059,13 +1064,11 @@ if(arg.value<0){pos=this.value.length+pos}
 if(pos>=0 && pos<this.value.length){return str(this.value.charAt(pos))}
 else{$raise('IndexError','string index out of range')}
 }else if($isinstance(arg,slice)){
-console.log('slice string')
 var start=arg.start || int(0)
 if(arg.stop===null){stop=this.__len__}else{stop=arg.stop}
 var step=arg.step || int(1)
-console.log('start '+start.value+' stop '+stop.value+' step '+step.value)
 if(start.value<0){start=int(this.value.length+start.value)}
-if(stop.value<0){stop=int(this.value.length+stop.value);console.log('change stop to '+stop.value)}
+if(stop.value<0){stop=int(this.value.length+stop.value)}
 var res='',i=null
 if(step.value>0){
 if(stop.value<=start.value){return str('')}
@@ -1311,7 +1314,7 @@ if(!'__next__' in iterable){$raise('TypeError',
 var res='',count=0
 while(true){
 try{
-obj=next(iterable)
+var obj=next(iterable)
 if(!$isinstance(obj,str)){$raise('TypeError',
 "sequence item "+count+": expected str instance, "+$str(obj.__class__)+"found")}
 res +=obj.value+this.value
@@ -1465,7 +1468,7 @@ function $tuple(arg){return arg}
 function tuple(){
 var args=new Array(),i=0
 for(i=0;i<arguments.length;i++){args.push(arguments[i])}
-obj=new $ListClass(args)
+var obj=new $ListClass(args)
 obj.__class__=tuple
 return obj
 }
@@ -2027,7 +2030,13 @@ if(exc_pos===null){break}
 
 
 if(stack.list[exc_pos].match(["keyword","except"])){
-stack.list.splice(exc_pos+1,0,['id','$err'+$err_num])
+
+stack.list[exc_pos]=["keyword","else"]
+if(!stack.list[exc_pos+1].match(["delimiter",":"])){
+
+stack.list.splice(exc_pos+1,1,
+['code','if $err'+$err_num+'.name="'+stack.list[exc_pos+1][1]+'"'])
+}
 }else{break}
 }
 
@@ -2045,15 +2054,11 @@ var pos=0
 while(true){
 var exc_pos=stack.find_next(pos,"keyword","except")
 if(exc_pos===null){break}
+var line_start=stack.line_start(exc_pos)
 var block=stack.find_block(exc_pos)
-for(var x=block[0];x<block[1];x++){
-if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+8}
+for(var x=line_start;x<block[1];x++){
+if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+4}
 }
-if(stack.list[exc_pos-1][0]=='indent'){
-var except_indent=stack.list[exc_pos-1][1]+4
-stack.list[exc_pos-1][1]=except_indent
-}
-else{var except_indent=4;stack.list.splice(exc_pos,0,['indent',4]);exc_pos++}
 pos=exc_pos+1
 }
 
@@ -2474,6 +2479,38 @@ pos=func_pos+1
 }
 }
 
+
+
+var pos=stack.list.length-1
+while(true){
+var assign=stack.find_previous(pos,"assign","=")
+if(assign===null){break}
+var line_start=stack.line_start(assign)
+var line_end=stack.line_end(assign)
+var line_stack=new Stack(stack.list.slice(line_start,line_end))
+var line_pos=line_stack.list.length-1
+var assigns=[]
+var nb_assigns=0
+while(true){
+var assign_pos=line_stack.find_previous(line_pos,'assign','=')
+if(assign_pos===null){break}
+nb_assigns++
+var left=line_stack.atom_before(assign_pos,true)
+var right=line_stack.atom_at(assign_pos+1,true)
+assigns.push(stack.list[line_start])
+assigns=assigns.concat(left.list())
+assigns.push(["assign","="])
+assigns=assigns.concat(right.list())
+assigns.push(['newline','\n'])
+line_pos=assign_pos-1
+}
+if(nb_assigns>1){
+var assign_stack=new Stack(assigns)
+var tail=stack.list.slice(line_end,stack.list.length)
+stack.list=stack.list.slice(0,line_start).concat(assigns).concat(tail)
+}
+pos=line_start
+}
 pos=stack.list.length-1
 while(true){
 var assign=stack.find_previous(pos,"assign","=")
@@ -2504,12 +2541,17 @@ pos=assign-1
 
 
 if(left.list()[0][3]==="local"){left.list()[0][1]="var "+left.list()[0][1]}
-
 var head=stack.list.slice(0,right.start)
 var tail=stack.list.slice(right.end+1,stack.list.length)
+if(right.list().length==1 && 
+['int','str','float'].indexOf(right.list()[0][0])>-1){
+
+void(0)
+}else{
 seq=[['code','$assign'],['bracket','(']].concat(right.list())
 seq=seq.concat([['bracket',')']])
 stack.list=head.concat(seq).concat(tail)
+}
 pos=assign-1
 }
 }
@@ -3017,6 +3059,17 @@ $i++
 }
 return true
 }
+
+if(!Array.indexOf){
+Array.prototype.indexOf=function(obj){
+for(var i=0;i<this.length;i++){
+if(this[i]==obj){
+return i 
+}
+}
+return -1 
+}
+}
 function $List2Dict(){
 var res={}
 var i=0
@@ -3063,8 +3116,8 @@ values={}
 for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
 }
 for(i=pos;i<this.list.length;i++){
-if(this.list[i][0]==_type){
-if(values==null){
+if(this.list[i][0]===_type){
+if(values===null){
 return i
 }else if(this.list[i][1]in values){
 return i
@@ -3287,6 +3340,18 @@ if(nl<this.list.length-1 && this.list[nl+1][0]=="indent"){
 return this.list[nl+1][1]
 }else{return 0}
 }
+Stack.prototype.line_end=function(pos){
+
+var nl=this.find_next(pos,"newline")
+if(nl==null){nl=this.list.length}
+return nl
+}
+Stack.prototype.line_start=function(pos){
+
+var nl=this.find_previous(pos,"newline")
+if(nl==null){return 0}
+return nl+1 
+}
 Stack.prototype.next_at_same_indent=function(pos){
 var indent=this.indent(pos)
 var nxt_pos=this.find_next(pos,"newline")
@@ -3501,7 +3566,8 @@ this.event=ev
 this.__class__="MouseEvent"
 }
 $MouseEvent.prototype.__getattr__=function(attr){
-if(attr=="mouse"){return $mouseCoords(this.event)}
+if(attr=="x"){return $mouseCoords(this.event).x}
+if(attr=="y"){return $mouseCoords(this.event).y}
 if(attr=="data"){return new $Clipboard(this.event.dataTransfer)}
 return $getattr(this.event,attr)
 }
@@ -3588,7 +3654,6 @@ return $DomElement(parent.elt.options.namedItem(name.value))
 }
 this.get_remove=function(arg){parent.elt.options.remove(arg.value)}
 }
-function log(data){try{console.log($str(data))}catch(err){void(0)}}
 function $Document(){
 this.elt=document
 this.mouse=null
