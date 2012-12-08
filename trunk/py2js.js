@@ -100,7 +100,7 @@ function $multiple_assign(targets,right_expr,assign_pos){
 $OpeningBrackets = $List2Dict('(','[','{')
 
 function $py2js(src,context,debug){
-    // context is "main" for the main script, the module name if import
+    // context is "main" for the main script, the module name if import   
     document.$debug = debug
     var i = 0
     src = src.replace(/\r\n/gm,'\n')
@@ -499,7 +499,13 @@ function $py2js(src,context,debug){
             // insert the variable name used to test error type just after
             // the "except" keyword
             if(stack.list[exc_pos].match(["keyword","except"])){
-                stack.list.splice(exc_pos+1,0,['id','$err'+$err_num])
+                // replace "except" by "else"
+                stack.list[exc_pos]=["keyword","else"]
+                if(!stack.list[exc_pos+1].match(["delimiter",":"])){
+                    // exception type specified
+                    stack.list.splice(exc_pos+1,1,
+                        ['code','if $err'+$err_num+'.name="'+stack.list[exc_pos+1][1]+'"'])
+                }
             }else{break}
         }
         // insert pseudo-Python code "catch $err:" just after the "try" block
@@ -518,15 +524,11 @@ function $py2js(src,context,debug){
     while(true){
         var exc_pos = stack.find_next(pos,"keyword","except")
         if(exc_pos===null){break}
+        var line_start = stack.line_start(exc_pos) // indentation
         var block = stack.find_block(exc_pos)
-        for(var x=block[0];x<block[1];x++){
-            if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+8}
+        for(var x=line_start;x<block[1];x++){
+            if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+4}
         }
-        if(stack.list[exc_pos-1][0]=='indent'){
-            var except_indent = stack.list[exc_pos-1][1]+4
-            stack.list[exc_pos-1][1]=except_indent
-        }
-        else{var except_indent=4;stack.list.splice(exc_pos,0,['indent',4]);exc_pos++}
         pos = exc_pos+1
     }
 
@@ -881,7 +883,7 @@ function $py2js(src,context,debug){
             pos = op+1
         }
     }
-    
+
     // for "and" and "or", rely on JS to avoid useless evaluations
     // eg don't evaluate "x[5]==3" in "5 in x and x[5]==3" if 5 is not in x
 
@@ -962,6 +964,39 @@ function $py2js(src,context,debug){
     }
 
     // assignments
+    // first step : split chained assignments :
+    // transform x=y=0 into y=0;x=y
+    var pos = stack.list.length-1
+    while(true){
+        var assign = stack.find_previous(pos,"assign","=")
+        if(assign===null){break}
+        var line_start = stack.line_start(assign)
+        var line_end = stack.line_end(assign)
+        var line_stack = new Stack(stack.list.slice(line_start,line_end))
+        var line_pos = line_stack.list.length-1
+        var assigns = []
+        var nb_assigns = 0
+        while(true){
+            var assign_pos = line_stack.find_previous(line_pos,'assign','=')
+            if(assign_pos===null){break}
+            nb_assigns++
+            var left = line_stack.atom_before(assign_pos,true)
+            var right = line_stack.atom_at(assign_pos+1,true)
+            assigns.push(stack.list[line_start]) // indent
+            assigns = assigns.concat(left.list())
+            assigns.push(["assign","="])
+            assigns = assigns.concat(right.list())
+            assigns.push(['newline','\n'])
+            line_pos=assign_pos-1
+        }
+        if(nb_assigns>1){
+            var assign_stack = new Stack(assigns)
+            var tail = stack.list.slice(line_end,stack.list.length)
+            stack.list = stack.list.slice(0,line_start).concat(assigns).concat(tail)
+        }
+        pos = line_start
+    }
+
     pos = stack.list.length-1
     while(true){
         var assign = stack.find_previous(pos,"assign","=")
@@ -992,12 +1027,17 @@ function $py2js(src,context,debug){
             // simple assignment
             // for local variables inside functions, insert "var"
             if(left.list()[0][3]==="local"){left.list()[0][1]="var "+left.list()[0][1]}
-            // replace right argument by $single_assign(right)
             var head = stack.list.slice(0,right.start)
             var tail = stack.list.slice(right.end+1,stack.list.length)
-            seq = [['code','$assign'],['bracket','(']].concat(right.list())
-            seq = seq.concat([['bracket',')']])
-            stack.list = head.concat(seq).concat(tail)
+            if(right.list().length==1 && 
+                ['int','str','float'].indexOf(right.list()[0][0])>-1){
+                // for literals keep right argument
+                void(0)
+            }else{  // replace right argument by $single_assign(right)
+                seq = [['code','$assign'],['bracket','(']].concat(right.list())
+                seq = seq.concat([['bracket',')']])
+                stack.list = head.concat(seq).concat(tail)
+            }
             pos = assign-1
         }
     }

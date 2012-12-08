@@ -71,6 +71,18 @@ Array.prototype.match = function(other){
     return true
 }
 
+// IE doesn't implement indexOf on Arrays
+if(!Array.indexOf){  
+Array.prototype.indexOf = function(obj){  
+    for(var i=0;i<this.length;i++){  
+        if(this[i]==obj){  
+            return i;  
+        }  
+    }  
+    return -1;  
+ }  
+}  
+
 function $List2Dict(){
     var res = {}
     var i=0
@@ -121,8 +133,8 @@ Stack.prototype.find_next = function(){
         for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
     }
     for(i=pos;i<this.list.length;i++){
-        if(this.list[i][0]==_type){
-            if(values==null){
+        if(this.list[i][0]===_type){
+            if(values===null){
                 return i
             } else if(this.list[i][1] in values){
                 return i
@@ -358,6 +370,20 @@ Stack.prototype.indent = function(pos){
     }else{return 0}    
 }
 
+Stack.prototype.line_end = function(pos){
+    // return position of line end
+    var nl = this.find_next(pos,"newline")
+    if(nl==null){nl = this.list.length}
+    return nl
+}
+
+Stack.prototype.line_start = function(pos){
+    // return position of line start
+    var nl = this.find_previous(pos,"newline")
+    if(nl==null){return 0}
+    return nl+1    
+}
+
 Stack.prototype.next_at_same_indent = function(pos){
     var indent = this.indent(pos)
     var nxt_pos = this.find_next(pos,"newline")
@@ -372,7 +398,7 @@ Stack.prototype.next_at_same_indent = function(pos){
         else if(nxt_indent<indent){return null}
         nxt_pos = this.find_next(nxt_pos+1,"newline")
     }    
-}    
+}
 
 Stack.prototype.split = function(delimiter){
     // split stack with specified delimiter

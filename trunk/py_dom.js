@@ -52,7 +52,8 @@ function $MouseEvent(ev){
     this.__class__ = "MouseEvent"
 }
 $MouseEvent.prototype.__getattr__ = function(attr){
-    if(attr=="mouse"){return $mouseCoords(this.event)}
+    if(attr=="x"){return $mouseCoords(this.event).x}
+    if(attr=="y"){return $mouseCoords(this.event).y}
     if(attr=="data"){return new $Clipboard(this.event.dataTransfer)}
     return $getattr(this.event,attr)
 }
@@ -155,8 +156,6 @@ function $OptionsClass(parent){ // parent is a SELECT tag
     
     this.get_remove = function(arg){parent.elt.options.remove(arg.value)}
 }
-
-function log(data){try{console.log($str(data))}catch(err){void(0)}}
 
 function $Document(){
 
