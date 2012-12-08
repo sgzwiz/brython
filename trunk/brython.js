@@ -510,7 +510,7 @@ if(typeof value=="number"){return new $IntegerClass(parseInt(value))}
 else if(typeof value=="string" && parseInt(value)!=NaN){return new $IntegerClass(parseInt(value))}
 else if($isinstance(value,int)){return value}
 else if($isinstance(value,float)){return new $IntegerClass(parseInt(value.value))}
-else if($isinstance(value,str)&& parseInt(value.value)!=NaN){
+else if($isinstance(value,str)&& !isNaN(parseInt(value.value))){
 return new $IntegerClass(parseInt(value.value))
 }else{$raise('ValueError',
 "Invalid literal for int() with base 10: '"+$str(value)+"'")
@@ -2024,20 +2024,46 @@ var block=stack.find_block(try_pos)
 var nxt=block[1]
 
 var exc_pos=try_pos
+var clauses=[]
 while(true){
 exc_pos=stack.next_at_same_indent(exc_pos)
 if(exc_pos===null){break}
-
-
-if(stack.list[exc_pos].match(["keyword","except"])){
-
-stack.list[exc_pos]=["keyword","else"]
-if(!stack.list[exc_pos+1].match(["delimiter",":"])){
-
-stack.list.splice(exc_pos+1,1,
-['code','if $err'+$err_num+'.name="'+stack.list[exc_pos+1][1]+'"'])
+if(stack.list[exc_pos][0]!=="keyword" &&
+["except","finally","else"].indexOf(stack.list[exc_pos][1])==-1){
+break
 }
-}else{break}
+clauses.push(exc_pos)
+}
+
+if(clauses.length==0){$raise('SyntaxError','invalid syntax')}
+var last_block=stack.find_block(clauses[clauses.length-1])
+
+for(var i=clauses[0]-1;i<last_block[1];i++){
+if(stack.list[i][0]=="indent"){
+stack.list[i][1]=stack.list[i][1]+4
+}
+}
+for(var i=clauses.length-1;i>=0;i--){
+var clause=stack.list[clauses[i]]
+if(clause[1]=='except'){
+
+stack.list[clauses[i]][1]='else'
+if(!stack.list[clauses[i]+1].match(['delimiter',':'])){
+
+var excs=stack.atom_at(clauses[i]+1,true)
+if(excs.type=="id"){
+var exc=stack.list[clauses[i]+1]
+stack.list[clauses[i]+1]=['code','if($err'+$err_num+'.name=="'+exc[1]+'")']
+}else if(excs.type=="function_call"){
+var exc_str=[],exc_list=excs.list()
+for(var j=2;j<exc_list.length;j++){
+if(exc_list[j][0]=="id"){exc_str.push('"'+exc_list[j][1]+'"')}
+}
+stack.list.splice(clauses[i]+1,exc_list.length,
+['code','if(['+exc_str.join(',')+'].indexOf($err'+$err_num+'.name)>-1)'])
+}else{$raise('SyntaxError','invalid syntax')}
+}
+}
 }
 
 stack.list.splice(nxt+1,0,['indent',try_indent],['keyword','catch'],
@@ -2048,18 +2074,6 @@ stack.list.splice(nxt+6,0,['indent',try_indent+4],['code','if(false){void(0)}'],
 ['newline','\n'])
 pos=try_pos+1
 $err_num++
-}
-
-var pos=0
-while(true){
-var exc_pos=stack.find_next(pos,"keyword","except")
-if(exc_pos===null){break}
-var line_start=stack.line_start(exc_pos)
-var block=stack.find_block(exc_pos)
-for(var x=line_start;x<block[1];x++){
-if(stack.list[x][0]=='indent'){stack.list[x][1]=stack.list[x][1]+4}
-}
-pos=exc_pos+1
 }
 
 var pos=0
@@ -2230,32 +2244,6 @@ code='\n'+f_indent+'window.'+fname+'='+fname
 module_level_functions.push(fname)
 }
 tail.splice(0,0,['func_end',code])
-}else if(kw=="except"){
-
-var var_name=stack.list[kw_pos+1]
-stack.list.splice(kw_pos+1,1)
-stack.list[block[0]][1]='('
-var exc=new Stack(stack.list.slice(kw_pos+1,block[0]))
-if(exc.list.length>0){
-var excs=stack.atom_at(kw_pos+1,true)
-if(excs.type=="function_call"){
-document.line_num=pos2line[stack.list[kw_pos][2]]
-$raise("SyntaxError","can only handle a single exception")
-}
-else if(excs.type=="id"){
-var exc_name=stack.list[kw_pos+1][1]
-var _block=stack.list.slice(block[0]+1,block[1])
-stack.list=stack.list.slice(0,block[0]+1)
-stack.list.splice(kw_pos+1,1)
-stack.list.push(['code',
-var_name+'.name=="'+exc_name+'"){',
-stack.list[block[0][2]]])
-stack.list=stack.list.concat(_block)
-}
-}else{
-var _block=stack.list.slice(block[0]+1,block[1])
-stack.list=stack.list.concat(_block)
-}
 }else{
 stack.list=stack.list.slice(0,block[1])
 }
@@ -2267,49 +2255,6 @@ stack.list.push(['bracket','}',end_pos])
 stack.list=stack.list.concat(tail)
 pos=kw_pos+1
 }
-}
-
-var pos=0
-while(true){
-var exc_pos=stack.find_next(pos,"keyword","except")
-if(exc_pos===null){break}
-var block=stack.find_block(exc_pos)
-var tail=stack.list.slice(block[1],stack.list.length)
-var var_name=stack.list[exc_pos+1][1]
-if(stack.list[exc_pos+2][0]=='id'){
-var block=stack.find_block(exc_pos)
-
-
-var exc=new Stack(stack.list.slice(exc_pos+1,block[0]))
-var excs=stack.atom_at(exc_pos+1,true)
-if(excs.type=="function_call"){
-document.line_num=pos2line[stack.list[exc_pos][2]]
-$raise("SyntaxError","can only handle a single exception")
-}
-else if(excs.type=="id"){
-var exc_name=stack.list[exc_pos+2][1]
-var _block=stack.list.slice(block[0]+1,block[1])
-stack.list.splice(exc_pos,4)
-stack.list=stack.list.slice(0,block[0])
-stack.list.push(['code',
-"if("+var_name+'.name=="'+exc_name+'"){',
-stack.list[block[0][2]]])
-stack.list=stack.list.concat(_block)
-}
-}else{
-var _block=stack.list.slice(block[0]+1,block[1])
-stack.list=stack.list.slice(0,block[0])
-stack.list.splice(exc_pos,3)
-stack.list.push(['code',"else{"])
-stack.list=stack.list.concat(_block)
-}
-stack.list.push(['newline','\n',end_pos])
-if(block[2]>0){
-stack.list.push(['indent',block[2],end_pos])
-}
-stack.list.push(['bracket','}',end_pos])
-stack.list=stack.list.concat(tail)
-pos=exc_pos+1
 }
 var dobj=new Date()
 times['if def class for']=dobj.getTime()-t0

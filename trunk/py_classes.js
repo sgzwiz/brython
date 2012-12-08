@@ -575,7 +575,7 @@ function int(value){
     else if(typeof value=="string" && parseInt(value)!=NaN){return new $IntegerClass(parseInt(value))}
     else if($isinstance(value,int)){return value}
     else if($isinstance(value,float)){return new $IntegerClass(parseInt(value.value))}
-    else if($isinstance(value,str) && parseInt(value.value)!=NaN){
+    else if($isinstance(value,str) && !isNaN(parseInt(value.value))){
         return new $IntegerClass(parseInt(value.value))
     } else { $raise('ValueError',
         "Invalid literal for int() with base 10: '"+$str(value)+"'")
