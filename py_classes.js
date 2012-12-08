@@ -690,7 +690,7 @@ $ListClass.prototype.__getitem__ = function(arg){
         else{$raise('IndexError','list index out of range')}
     } else if($isinstance(arg,slice)) {
         var start = arg.start || int(0)
-        var stop = arg.stop || this.__len__()
+        if(arg.stop===null){stop=int(this.value.length)}else{stop=arg.stop}
         var step = arg.step || int(1)
         if(start.value<0){start=int(this.items.length+start.value)}
         if(stop.value<0){stop=int(this.items.length+stop.value)}
@@ -884,7 +884,6 @@ function list(){
 }
 
 function log(data){
-    if($isinstance(data,str)){console.log("'"+data.value+"'");return}
     try{console.log($str(data))}
     catch(err){void(0)}
 }
@@ -1196,7 +1195,7 @@ $StringClass.prototype.__getitem__ = function(arg){
             else{$raise('IndexError','string index out of range')}
         } else if($isinstance(arg,slice)) {
             var start = arg.start || int(0)
-            if(arg.stop===null){stop=this.__len__}else{stop=arg.stop}
+            if(arg.stop===null){stop=int(this.value.length)}else{stop=arg.stop}
             var step = arg.step || int(1)
             if(start.value<0){start=int(this.value.length+start.value)}
             if(stop.value<0){stop=int(this.value.length+stop.value)}
@@ -1221,107 +1220,107 @@ $StringClass.prototype.__getitem__ = function(arg){
     }
 
 $StringClass.prototype.__iadd__ = function(other){
-        if(!isinstance(other,str)){$raise('TypeError',
-            "Can't convert "+$str(other.__class__)+" to str implicitely")}
-        this.value += other.value
-    }
+    if(!isinstance(other,str)){$raise('TypeError',
+        "Can't convert "+$str(other.__class__)+" to str implicitely")}
+    this.value += other.value
+}
 
 $StringClass.prototype.__imul__ = function(other){
-        if(!$isinstance(other,int)){$raise('TypeError',
-            "Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")}
-        $res = ''
-        for(var i=0;i<other.value;i++){$res+=this.value}
-        this.value = $res
-    }
+    if(!$isinstance(other,int)){$raise('TypeError',
+        "Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")}
+    $res = ''
+    for(var i=0;i<other.value;i++){$res+=this.value}
+    this.value = $res
+}
 
 $StringClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
 $StringClass.prototype.__int__ = function(){
-        var $int = parseInt(this.value)
-        if($int==NaN){$raise('ValueError',
-            "invalid literal for int() with base 10: '"+this.value+"'")}
-        else{return int($int)}
-    }
+    var $int = parseInt(this.value)
+    if($int==NaN){$raise('ValueError',
+        "invalid literal for int() with base 10: '"+this.value+"'")}
+    else{return int($int)}
+}
 
 $StringClass.prototype.__len__ = function(){return int(this.value.length)}
 
 $StringClass.prototype.__mod__ = function(args){
-        // string formatting (old style with %)
-        var flags = $List2Dict('#','0','-',' ','+')
-        var ph = [] // placeholders for replacements
+    // string formatting (old style with %)
+    var flags = $List2Dict('#','0','-',' ','+')
+    var ph = [] // placeholders for replacements
+    
+    function format(s){
+        var conv_flags = '([#\\+\\- 0])*'
+        var conv_types = '[diouxXeEfFgGcrsa%]'
+        var re = new RegExp('\\%(\\(.+\\))*'+conv_flags+'(\\*|\\d*)(\\.\\*|\\.\\d*)*(h|l|L)*('+conv_types+'){1}')
+        var res = re.exec(s)
+        this.is_format = true
+        if(res===undefined){this.is_format = false;return}
+        this.src = res[0]
+        if(res[1]){this.mapping_key=str(res[1].substr(1,res[1].length-2))}
+        else{this.mapping_key=null}
+    this.flag = res[2]
+    this.min_width = res[3]
+    this.precision = res[4]
+    this.length_modifier = res[5]
+    this.type = res[6]
         
-        function format(s){
-            var conv_flags = '([#\\+\\- 0])*'
-            var conv_types = '[diouxXeEfFgGcrsa%]'
-            var re = new RegExp('\\%(\\(.+\\))*'+conv_flags+'(\\*|\\d*)(\\.\\*|\\.\\d*)*(h|l|L)*('+conv_types+'){1}')
-            var res = re.exec(s)
-            this.is_format = true
-            if(res===undefined){this.is_format = false;return}
-            this.src = res[0]
-            if(res[1]){this.mapping_key=str(res[1].substr(1,res[1].length-2))}
-            else{this.mapping_key=null}
-        this.flag = res[2]
-        this.min_width = res[3]
-        this.precision = res[4]
-        this.length_modifier = res[5]
-        this.type = res[6]
-            
-        this.toString = function(){
-                var res = 'type '+this.type+' key '+this.mapping_key+' min width '+this.min_width
-                res += ' precision '+this.precision
-                return res
+    this.toString = function(){
+            var res = 'type '+this.type+' key '+this.mapping_key+' min width '+this.min_width
+            res += ' precision '+this.precision
+            return res
+        }
+    this.format = function(src){
+            if(this.mapping_key!==null){
+                if(!$isinstance(src,dict)){$raise('TypeError',"format requires a mapping")}
+                src=src.__getitem__(this.mapping_key)
             }
-        this.format = function(src){
-                if(this.mapping_key!==null){
-                    if(!$isinstance(src,dict)){$raise('TypeError',"format requires a mapping")}
-                    src=src.__getitem__(this.mapping_key)
-                }
-                if(this.type=="s"){return $str(src)}
-                else if(this.type=="i" || this.type=="d"){
-                    if(!$isinstance(src,list(int,float))){$raise('TypeError',
-                        "%"+this.type+" format : a number is required, not "+$str(src.__class__))}
-                    return $str(int(src))
-                }else if(this.type=="f" || this.type=="F"){
-                    if(!$isinstance(src,list(int,float))){$raise('TypeError',
-                        "%"+this.type+" format : a number is required, not "+$str(src.__class__))}
-                    return $str(float(src))
-                }
+            if(this.type=="s"){return $str(src)}
+            else if(this.type=="i" || this.type=="d"){
+                if(!$isinstance(src,list(int,float))){$raise('TypeError',
+                    "%"+this.type+" format : a number is required, not "+$str(src.__class__))}
+                return $str(int(src))
+            }else if(this.type=="f" || this.type=="F"){
+                if(!$isinstance(src,list(int,float))){$raise('TypeError',
+                    "%"+this.type+" format : a number is required, not "+$str(src.__class__))}
+                return $str(float(src))
             }
         }
-        
-        // elts is an Array ; items of odd rank are string format objects
-        var elts = []
-        var pos = 0, start = 0, nb_repl = 0
-        while(pos<this.value.length){
-            if(this.value.charAt(pos)=='%'){
-                var f = new format(this.value.substr(pos))
-                if(f.is_format){
-                    elts.push(this.value.substring(start,pos))
-                    elts.push(f)
-                    start = pos+f.src.length
-                    pos = start
-                    nb_repl++
-                }else{pos++}
-            }else{pos++}
-        }
-        elts.push(this.value.substr(start))
-        if(!$isinstance(args,tuple)){
-            if(nb_repl>1){$raise('TypeError','not enough arguments for format string')}
-            else{elts[1]=elts[1].format(args)}
-        }else{
-            if(nb_repl==args.items.length){
-                for(var i=0;i<args.items.length;i++){
-                    var fmt = elts[1+2*i]
-                    elts[1+2*i]=fmt.format(args.items[i])
-                }
-            }else if(nb_repl<args.items.length){$raise('TypeError',
-                "not all arguments converted during string formatting")
-            }else{$raise('TypeError','not enough arguments for format string')}
-        }
-        var res = ''
-        for(var i=0;i<elts.length;i++){res+=elts[i]}
-        return str(res)
     }
+    
+    // elts is an Array ; items of odd rank are string format objects
+    var elts = []
+    var pos = 0, start = 0, nb_repl = 0
+    while(pos<this.value.length){
+        if(this.value.charAt(pos)=='%'){
+            var f = new format(this.value.substr(pos))
+            if(f.is_format){
+                elts.push(this.value.substring(start,pos))
+                elts.push(f)
+                start = pos+f.src.length
+                pos = start
+                nb_repl++
+            }else{pos++}
+        }else{pos++}
+    }
+    elts.push(this.value.substr(start))
+    if(!$isinstance(args,tuple)){
+        if(nb_repl>1){$raise('TypeError','not enough arguments for format string')}
+        else{elts[1]=elts[1].format(args)}
+    }else{
+        if(nb_repl==args.items.length){
+            for(var i=0;i<args.items.length;i++){
+                var fmt = elts[1+2*i]
+                elts[1+2*i]=fmt.format(args.items[i])
+            }
+        }else if(nb_repl<args.items.length){$raise('TypeError',
+            "not all arguments converted during string formatting")
+        }else{$raise('TypeError','not enough arguments for format string')}
+    }
+    var res = ''
+    for(var i=0;i<elts.length;i++){res+=elts[i]}
+    return str(res)
+}
     
 $StringClass.prototype.__mul__ = function(other){
     if(!$isinstance(other,int)){$raise('TypeError',
@@ -1359,8 +1358,14 @@ $StringClass.prototype.__repr__ = function(){
 $StringClass.prototype.__setattr__ = function(attr,value){$setattr(this,attr,value)}
 
 $StringClass.prototype.__setitem__ = function(attr,value){
-    $raise('TypeError',"'str' object does not support item assignment")}
-
+    if($isinstance(attr,int)){
+        $raise('TypeError',"'str' object does not support item assignment")
+    }else if($isinstance(attr,slice)){
+        $raise('TypeError',"'str' object does not support slice assignment")
+    }else{
+        $raise('TypeError',"string indices must be integer")
+    }
+}
 $StringClass.prototype.__str__ = function(){return this}
 
 // generate comparison methods
