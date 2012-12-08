@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset=utf-8>
-    <script src="brython.js"></script>
+    <script src="../brython.js"></script>
     <title>Liquid Particles - spielzeugz.de canvas experiment </title>
     <meta name="description" content="HTML5/canvas demo, 500 particles to play around with." />
     <meta name="keywords" content="html5,canvas,javascript,particles,interactive,velocity,programming,flash" />
@@ -80,6 +80,7 @@ sqrt = math.sqrt
 floor = math.floor
 
 def C():
+    global u,v
     e.globalCompositeOperation="source-over"
     e.fillStyle="rgba(8,8,12,0.65)"
     e.fillRect(0,0,f,p)
@@ -153,7 +154,7 @@ def C():
 def E(d):
     global q,r
     if not d:
-        d=window.event
+        d=win.event
     q=d.x-m.offsetLeft-n.offsetLeft
     r=d.y-m.offsetTop-n.offsetTop
 
@@ -168,12 +169,12 @@ def G():
     return False
 
 def H():
-    self = object()
-    self.color="rgb(%s,%s,%s)" %(floor(255*rand()),floor(255*rand()),
+    _obj = object()
+    _obj.color="rgb(%s,%s,%s)" %(floor(255*rand()),floor(255*rand()),
         floor(255*rand()))
-    self.b=self.a=self.x=self.y=0
-    self.size=1
-    return self
+    _obj.b=_obj.a=_obj.x=_obj.y=0
+    _obj.size=1
+    return _obj
 
 D=2*math.pi
 f=1000
@@ -189,7 +190,6 @@ q=None
 r=None
 if o.getContext:
     m=doc["outer"]
-    log(m.offsetLeft)
     n=doc["canvasContainer"]
     e=o.getContext("2d")
     for d in range(z,0,-1):

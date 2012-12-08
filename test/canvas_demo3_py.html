@@ -369,13 +369,13 @@ def mouse_move(e):
         return
     x,y = mpos
     mpos = [e.x,e.y]
-    if x==e.x:
-        if e.y-y>0:
+    if x==mpos[0]:
+        if mpos[1]-y>0:
             key[3] = 1 # down
-        elif e.y-y<0:
+        elif mpos[1]-y<0:
             key[2] = 1 # up
-    elif y==e.y:
-        if e.x-x>0:    
+    elif y==mpos[1]:
+        if mpos[0]-x>0:    
             key[1] = 1 # right
         else:
             key[0] = 1 # left
