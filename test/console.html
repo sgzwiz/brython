@@ -13,8 +13,6 @@
 <script type="text/python">
 # override log to send output to textarea
 def log(data):
-    if isinstance(data,str):
-        data = "'%s'" %data
     doc["console"].value = doc["console"].value+str(data)+'\n'
 </script>
 <script>
