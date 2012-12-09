@@ -11,6 +11,12 @@ var $operators = {
     "not_in":"not_in","is_not":"is_not" // fake
     }
 
+var $augmented_assigns = {
+    "//=":"ifloordiv",">>=":"irshift","<<=":"ilshift",
+    "**=":"ipow","+=":"iadd","-=":"isub","*=":"imul","/=":"itruediv",
+    "%=":"imod","^=":"ipow"
+}
+
 var $first_op_letter = {}
 for(op in $operators){$first_op_letter[op.charAt(0)]=0}
 
@@ -198,7 +204,7 @@ function $tokenize(src){
                 continue
             }
         }
-        // qualified name ?
+        // point
         if(car=="."){
             stack.push(["point",".",pos])
             pos++;continue
@@ -280,7 +286,11 @@ function $tokenize(src){
                 }
             }
             if(op_match.length>0){
-                stack.push(["operator",op_match,pos])
+                if(op_match in $augmented_assigns){
+                    stack.push(["assign",op_match,pos])
+                }else{
+                    stack.push(["operator",op_match,pos])
+                }
                 pos += op_match.length
                 continue
             }
