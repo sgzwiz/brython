@@ -82,7 +82,7 @@ Enfin, certains mots clés et fonctions intégrées adaptés au fonctionnement dans 
 <li>les fonctions intégrées <code>alert confirm prompt</code> correspondent à leur équivalent Javascript
 <li>la fonction intégrée <code>ajax</code> permet l'exécution de requêtes HTTP en mode Ajax
 <li>le mot clé <code>local_storage</code> représente le stockage local spécifié dans HTML5
-<li>le mot clé <code>win</code> représente la fenêtre (objet window en JS) et <code>doc</code> représente le document HTML (document en JS)
+<li>le mot clé <code>win</code> représente la fenêtre (objet <em>window</em> en JS) et <code>doc</code> représente le document HTML (<em>document</em> en JS)
 <li>les fonctions intégrées <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : chacune correspond à la balise HTML de même nom
 </ul>
 <hr>
@@ -156,7 +156,7 @@ La fonction intégrée <code>ajax()</code> renvoie un objet comparable à XMLHTTPRe
 <li><code>send()</code> : lance la requête
 </ul>
 Pour interagir avec le serveur, il faut définir les attributs suivants, correspondant à chaque état de la variable <tt>readyState</tt> en Javascript :
-<p><table><tr><th>readyState</th><th>attribut</th></tr>
+<p><table cellspacing=0 cellpadding=0 border=1><tr><th>readyState</th><th>attribut</th></tr>
 <tr><td>0</td><td><code>on_uninitialized</code></td></tr>
 <tr><td>1</td><td><code>on_loading</code></td></tr>
 <tr><td>2</td><td><code>on_loaded</code></td></tr>
@@ -166,8 +166,8 @@ Pour interagir avec le serveur, il faut définir les attributs suivants, correspo
 <p>L'attribut doit prendre pour valeur une fonction à un seul argument, qui est l'objet <code>ajax</code>. Cet objet possède les attributs suivants :
 <ul>
 <li><code>status</code> : un entier représentant le statut HTTP de la requête
-<li><code>text</code> : la réponse du serveur sous forme de chaine de caractères (correspond à <tt>responseText</tt> en Javascript)
-<li><code>xml</code> : la réponse du serveur sous forme d'objet DOM (correspond à <tt>responseXML</tt> en Javascript)
+<li><code>text</code> : la réponse du serveur sous forme de chaine de caractères (correspond à <em>responseText</em> en Javascript)
+<li><code>xml</code> : la réponse du serveur sous forme d'objet DOM (correspond à <em>responseXML</em> en Javascript)
 </ul>
 
 <h4>Exemple</h4>

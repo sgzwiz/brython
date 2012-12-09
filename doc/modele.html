@@ -1,0 +1,79 @@
+<html>
+<head>
+<title>Brython</title>
+<link rel="stylesheet" href="brython.css">
+</head>
+<body>
+<a name="modele"><h3>Compilation et exécution</h3>
+</ol>
+Le fichier <b>brython.js</b> est généré par compilation de plusieurs scripts :
+<ul>
+<li><b>py_tokenizer.js</b> : découpe le code source Python en jetons (tokens) : identifiants, littéraux, opérateurs, délimiteurs, etc
+<li><b>py2js.js</b> : opère la conversion entre les jetons et le code Javascript
+<li><b>py_utils.js</b> : fonctions utilitaires (manipulation des jetons, conversion de types entre Javascript et Python)
+<li><b>py_classes.js</b> : regroupe toutes les fonctions intégrées de Python, implémentées sous forme de fonctions Javascript
+<li><b>py_dom.js</b> : interaction avec le document HTML (DOM)
+<li><b>py_ajax.js</b> : implémentation d'Ajax
+<li><b>py_local_storage.js</b> : implémentation du stockage local HTML5
+<li><b>py_svg.py</b> : support de SVG (dessin vectoriel)
+</ul>
+
+La traduction et l'exécution d'un script Brython passent par les phases suivantes :
+<ol>
+<li>si le niveau de débogage est supérieur à 0, on ajoute après chaque ligne du code source Python une ligne contenant le numéro de la prochaine ligne exécutée (sauf quand cela provoquerait une erreur de syntaxe, par exemple juste avant un <tt>except</tt> ou un <tt>else</tt>
+<p>
+<li>découpage du code source en jetons (tokens)
+<br>Fonction réalisée par le script <tt>py_tokenizer.js</tt>. Les jetons générés sont des listes Javascript à 3 éléments [<em>type,valeur,position</em>]. <em>position</em> est le rang du premier caractère du jeton dans le code source Python. Leus deux autres éléments peuvent prendre les valeurs suivantes :
+<ul>
+<li><tt>["indent",<em>indentation</em>]</tt> : toujours présent au début de chaque ligne. <em>indentation</em> est un nombre
+<li><tt>["newline","\n"]</tt> : saut de ligne
+<li><tt>["str",<em>string</em>]</tt> : littéral de type chaine de caractères
+<li><tt>["int",<em>number</em>]</tt> : littéral de type entier
+<li><tt>["float",<em>number</em>]</tt> : littéral de type réel
+<li><tt>["id",<em>string</em>]</tt> : identifiant de variable (chaine de caractères)
+<li><tt>["qualifier",<em>string</em>]</tt> : nom suivant un point, comme <tt>bar</tt> dans <tt>foo.bar</tt>
+<li><tt>["keyword",<em>value</em>]</tt> : mot-clé Python (chaine de caractères)
+<li><tt>["bracket",<em>value</em>]</tt> : parenthèse, crochet ou accolade ouvrante ou fermante. La valeur peut être <em>()[]{}</em>
+<li><tt>["point","."]</tt> : le point
+<li><tt>["delimiter",<em>string</em>]</tt> : un délimiteur, valeur <em>:</em>, <em>,</em> ou <em>=</em> à l'intérieur d'une parenthèse (syntaxe <tt>foo(x=0)</tt>
+<li><tt>["assign","="]</tt> : le signe = quand il n'est pas à l'intérieur d'une parenthèse
+<li><tt>["operator",<em>string</em>]</tt> : un opérateur
+</ul>
+<p>Dans cette étape, des erreurs peuvent être signalées : 
+<ul>
+<li>erreur d'indentation
+<li>chaine de caractères non terminée
+<li>parenthèses non équilibrées
+<li>caractère illégal
+<li>mot clé Python non géré par Brython
+<li>identifiant inutilisable parce qu'il entre en conflit avec les mots réservés Javascript (par exemple <em>window, document, status...</em>)
+</ul>
+<p>
+<li>Traduction des jetons en code Javascript
+<p>Elle est réalisée par les scripts <tt>py2js.js</tt> et <tt>py_utils.js</tt>, dans l'ordre suivant :
+<ol>
+<li>remplacement de la séquence <tt>not in</tt> par l'opérateur <tt>__not_in__</tt>
+<li>transformation des parenthèses, crochets et accolades en tuples, listes et dictionnaires
+<li>conversion des arguments dans la définition des fonctions (<tt>def foo(x,y=1,*args,**kw)</tt>)
+<li>conversion des arguments sous forme de mots-clés dans les appels de fonctions (<tt>foo(b=1)</tt>)
+<li>résolution des suites de + et de - (++ devient +, -+- devient -, etc.) et des opérateurs unaires - et +
+<li>remplacement de <tt>import foo</tt> par <tt>Import(foo)</tt>
+<li>traduction des suites <tt>try / except / finally / else</tt>
+<li>traduction de <tt>assert</tt>
+<li>traduction de l'indentation en accolades pour les blocs commençant par <tt>if, else, elif, def, for, try, finally</tt>
+<li>remplacement de <tt>not x</tt> par <tt>$not(x)</tt>
+<li>remplacement des assignations augmentées (<tt>x += 1</tt>) par des assignations et opérations simples (<tt>x = x+1</tt>)
+<li>remplacement des opérateurs par les fonctions équivalentes : <tt>x+y</tt> devient <tt>x.__add__(y)</tt>
+<li>traitement des conditions combinées par <tt>and</tt> et <tt>or</tt>
+<li>affectations en chaine (<tt>x=y=0</tt>), simples (<tt>x=y</tt>) et multiples (<tt>x,y=a,b</tt>)
+<li>accès (<tt>a=foo[x]</tt>) ou affectation (<tt>foo[x] = 0</tt>) aux clés ou aux tranches (slices)
+<li>accès (<tt>a=foo.x</tt>) et affectation (<tt>foo.x = 0</tt>) aux attributs
+</ol>
+<p>
+<li>Exécution du code Javascript généré
+<p>Les classes définies dans les autres modules sont utilisées pour la syntaxe Python et l'interface avec le navigateur
+<p>En cas d'erreur d'exécution, une trace aussi proche que possible de celle générée par Python est imprimée dans la console du navigateur
+
+</ol>
+</body>
+</html>
