@@ -689,8 +689,9 @@ $ListClass.prototype.__getitem__ = function(arg){
         if(pos>=0 && pos<this.items.length){return this.items[pos]}
         else{$raise('IndexError','list index out of range')}
     } else if($isinstance(arg,slice)) {
+        console.log('get list slice')
         var start = arg.start || int(0)
-        if(arg.stop===null){stop=int(this.value.length)}else{stop=arg.stop}
+        if(arg.stop===null){stop=int(this.items.length)}else{stop=arg.stop}
         var step = arg.step || int(1)
         if(start.value<0){start=int(this.items.length+start.value)}
         if(stop.value<0){stop=int(this.items.length+stop.value)}
