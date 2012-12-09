@@ -11,9 +11,12 @@
 <script src="../py_ajax.js"></script>
 
 <script type="text/python">
+# print version info
+import sys
 # override log to send output to textarea
 def log(data):
-    doc["console"].value = doc["console"].value+str(data)+'\n'
+    doc["console"].value += str(data)+'\n'
+doc["version_info"].text = "Brython version %s" %str(sys.version_info)
 </script>
 <script>
 var has_ls = typeof(Storage)!=="undefined"
@@ -84,6 +87,6 @@ function run(){
 <td colspan=2><textarea id="console" cols=80 rows=20></textarea></td>
 </tr>
 </table>
-
+<div id="version_info">version</div>
 </body>
 </html>
