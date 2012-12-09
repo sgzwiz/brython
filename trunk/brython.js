@@ -1,3 +1,4 @@
+// brython.js www.brython.info
 
 function $raise(name,msg){
 
@@ -254,7 +255,7 @@ else{$raise('TypeError',
 }
 }
 $op_func +='' 
-var $ops={'+':'add','-':'sub','*':'mul','/':'truediv'}
+var $ops={'+':'add','-':'sub','*':'mul','/':'truediv','%':'mod'}
 for($op in $ops){
 eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
 }
@@ -614,7 +615,7 @@ if(pos>=0 && pos<this.items.length){return this.items[pos]}
 else{$raise('IndexError','list index out of range')}
 }else if($isinstance(arg,slice)){
 var start=arg.start || int(0)
-var stop=arg.stop || this.__len__()
+if(arg.stop===null){stop=int(this.value.length)}else{stop=arg.stop}
 var step=arg.step || int(1)
 if(start.value<0){start=int(this.items.length+start.value)}
 if(stop.value<0){stop=int(this.items.length+stop.value)}
@@ -789,7 +790,6 @@ return new $ListClass(args)
 }
 }
 function log(data){
-if($isinstance(data,str)){console.log("'"+data.value+"'");return}
 try{console.log($str(data))}
 catch(err){void(0)}
 }
@@ -1065,7 +1065,7 @@ if(pos>=0 && pos<this.value.length){return str(this.value.charAt(pos))}
 else{$raise('IndexError','string index out of range')}
 }else if($isinstance(arg,slice)){
 var start=arg.start || int(0)
-if(arg.stop===null){stop=this.__len__}else{stop=arg.stop}
+if(arg.stop===null){stop=int(this.value.length)}else{stop=arg.stop}
 var step=arg.step || int(1)
 if(start.value<0){start=int(this.value.length+start.value)}
 if(stop.value<0){stop=int(this.value.length+stop.value)}
@@ -1212,7 +1212,14 @@ return str(res)
 }
 $StringClass.prototype.__setattr__=function(attr,value){$setattr(this,attr,value)}
 $StringClass.prototype.__setitem__=function(attr,value){
-$raise('TypeError',"'str' object does not support item assignment")}
+if($isinstance(attr,int)){
+$raise('TypeError',"'str' object does not support item assignment")
+}else if($isinstance(attr,slice)){
+$raise('TypeError',"'str' object does not support slice assignment")
+}else{
+$raise('TypeError',"string indices must be integer")
+}
+}
 $StringClass.prototype.__str__=function(){return this}
 
 var $comp_func=function(other){
@@ -2273,6 +2280,27 @@ stack.list=stack.list.slice(0,op+1).concat(seq).concat(tail)
 pos=op-1
 }
 
+pos=stack.list.length-1
+while(true){
+var assign=stack.find_previous(pos,"assign")
+if(assign===null){break}
+if(stack.list[assign][1]in $augmented_assigns){
+var left=stack.atom_before(assign)
+
+if(left.type=="id"){console.log(left.list()[0]);left.list()[0][3]="global"}
+var op=stack.list[assign][1]
+var simple_op=op.substr(0,op.length-1)
+stack.list[assign][1]="=" 
+
+stack.list.splice(assign+1,0,['operator',simple_op])
+
+for(var i=left.list().length-1;i>=0;i--){
+stack.list.splice(assign+1,0,left.list()[i])
+}
+}
+pos=assign-1
+}
+
 var ops_order=["**","*","/","//","%","-","+",
 "<","<=",">",">=","!=","==",
 "+=","-=","*=","/=","//=","%=","**=",
@@ -2619,8 +2647,6 @@ pos=func_pos+1
 }
 var dobj=new Date()
 times['total']=dobj.getTime()-t0
-var ch='',attr=''
-for(attr in times){ch+=attr+':'+times[attr]+'\n'}
 return stack
 }
 function $run(js){
@@ -2653,6 +2679,11 @@ else{throw err}
 "<=":"le",">=":"ge","==":"eq","!=":"ne",
 "or":"or","and":"and","in":"in","not":"not",
 "not_in":"not_in","is_not":"is_not" 
+}
+var $augmented_assigns={
+"//=":"ifloordiv",">>=":"irshift","<<=":"ilshift",
+"**=":"ipow","+=":"iadd","-=":"isub","*=":"imul","/=":"itruediv",
+"%=":"imod","^=":"ipow"
 }
 var $first_op_letter={}
 for(op in $operators){$first_op_letter[op.charAt(0)]=0}
@@ -2919,7 +2950,12 @@ op_match=op_sign
 }
 }
 if(op_match.length>0){
+if(op_match in $augmented_assigns){
+stack.push(["assign",op_match,pos])
+console.log('augmented '+op_match)
+}else{
 stack.push(["operator",op_match,pos])
+}
 pos +=op_match.length
 continue
 }
@@ -3938,7 +3974,7 @@ ev.target.$parent['on_drop'](ev.target.$parent,dropped.$parent)
 $TagClass.prototype.set_html=function(value){this.elt.innerHTML=$str(value)}
 $TagClass.prototype.set_text=function(value){
 this.elt.innerText=$str(value)
-this.textContent=$str(value)
+this.elt.textContent=$str(value)
 }
 $TagClass.prototype.set_value=function(value){this.elt.value=$str(value)}
 function A(){return new $TagClass('A',arguments)}
