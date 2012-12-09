@@ -285,7 +285,7 @@ var $op_func = function(other){
     }
 }
 $op_func += '' // source code
-var $ops = {'+':'add','-':'sub','*':'mul','/':'truediv'}
+var $ops = {'+':'add','-':'sub','*':'mul','/':'truediv','%':'mod'}
 for($op in $ops){
     eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
 }
