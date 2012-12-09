@@ -747,7 +747,29 @@ function $py2js(src,context,debug){
         stack.list = stack.list.slice(0,op+1).concat(seq).concat(tail)
         pos = op-1
     }
-                
+
+    // replace augmented assigns (x+=1) by simple operator (x=x+1)
+    pos = stack.list.length-1
+    while(true){
+        var assign = stack.find_previous(pos,"assign")
+        if(assign===null){break}
+        if(stack.list[assign][1] in $augmented_assigns){
+            var left = stack.atom_before(assign)
+            // if left argument is an id, it must not be declared by "var"
+            if(left.type=="id"){console.log(left.list()[0]);left.list()[0][3]="global"}
+            var op = stack.list[assign][1]
+            var simple_op = op.substr(0,op.length-1) // remove trailing =
+            stack.list[assign][1]="=" // replace += by =
+            // insert simple operator before right argument
+            stack.list.splice(assign+1,0,['operator',simple_op])
+            // copy left argument to the right of =
+            for(var i=left.list().length-1;i>=0;i--){
+                stack.list.splice(assign+1,0,left.list()[i])
+            }
+        }
+        pos = assign-1
+    }
+                    
     // operators with authorized left operand types
     var ops_order = ["**","*","/","//","%","-","+",
         "<","<=",">",">=","!=","==",
@@ -1111,8 +1133,7 @@ function $py2js(src,context,debug){
 
     var dobj = new Date()
     times['total'] = dobj.getTime()-t0
-    var ch = '',attr=''
-    for(attr in times){ch+=attr+':'+times[attr]+'\n'}
+
     return stack
 }
 
