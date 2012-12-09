@@ -2,21 +2,51 @@
 <head>
 <title>Brython</title>
 <style>
-body,a {font-family:arial,verdana;
-font-size:14px
+body {font-family:arial,verdana;
+font-size:14px;
+}
+a{
+    text-decoration:none;
+}
+a:hover{
+    color:#000;
+}
+a:visited{
+    color:#aaa;
 }
 </style>
+<script>
+var marked = null
+function mark(elt){
+    if(marked!==null){
+        marked.style.color="#aaa"
+        marked.style.fontWeight="normal"
+    }
+    if(elt===undefined){
+        elt = document.getElementsByTagName('A')[0]
+    }
+    elt.style.color="#000"
+    elt.style.fontWeight = "bold"
+    marked=elt
+}
+mark(first)
+</script>
 </head>
-<body>
-<p><a target="right" href="brython.html#intro">Introduction</a>
-<br><a target="right" href="brython.html#syntaxe">Syntaxe</a>
-<br><a target="right" href="brython.html#integr">Mots clés et fonction intégrées</a>
-<br><a target="right" href="brython.html#htmldocs">Manipulation de documents HTML</a>
-<br><a target="right" href="brython.html#ajax">Ajax</a>
-<br><a target="right" href="brython.html#locstor">Local storage</a>
+<body onload="mark()">
+<h4>Utilisation</h4>
+<div style="padding-left:10px;"><a target="right" href="brython.html#intro" onClick="mark(this)">Introduction</a>
+<br><a target="right" href="brython.html#syntaxe" onClick="mark(this)">Syntaxe</a>
+<br><a target="right" href="brython.html#integr" onClick="mark(this)">Mots clés et fonctions intégrées</a>
+<br><a target="right" href="brython.html#htmldocs" onClick="mark(this)">Manipulation de documents HTML</a>
+<br><a target="right" href="brython.html#ajax" onClick="mark(this)">Ajax</a>
+<br><a target="right" href="brython.html#locstor" onClick="mark(this)">Local storage</a>
+</div>
 <h4>Implémentation</h4>
-<a target="right" href="modele.html">Compilation et exécution</a>
-<br><a target="right" href="implem.html#conv">Conversion de syntaxe Python &rarr; JS</a>
-<br><a target="right" href="implem.html#import">Implémentation de <tt>import</tt></a>
+<div style="padding-left:10px;">
+<a target="right" href="modele.html" onClick="mark(this)">Compilation et exécution</a>
+<br><a target="right" href="implem.html#conv" onClick="mark(this)">Conversion de syntaxe Python &rarr; JS</a>
+<br><a target="right" href="implem.html#import" onClick="mark(this)">Implémentation de <tt>import</tt></a>
+</div>
+
 </body>
 </html>
