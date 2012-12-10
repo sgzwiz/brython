@@ -44,7 +44,7 @@ function $tokenize(src){
         'outerHeight','outerWidth','pageXOffset','pageYOffset',
         'parent','screen','screenLeft','screenTop',
         'screenX','screenY','self','status',
-        'top')
+        'top','print')
 
     var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
