@@ -689,7 +689,6 @@ $ListClass.prototype.__getitem__ = function(arg){
         if(pos>=0 && pos<this.items.length){return this.items[pos]}
         else{$raise('IndexError','list index out of range')}
     } else if($isinstance(arg,slice)) {
-        console.log('get list slice')
         var start = arg.start || int(0)
         if(arg.stop===null){stop=int(this.items.length)}else{stop=arg.stop}
         var step = arg.step || int(1)
@@ -884,10 +883,15 @@ function list(){
     }
 }
 
-function log(data){
-    try{console.log($str(data))}
-    catch(err){void(0)}
+function log(){
+    $ns = $MakeArgs("log",arguments,[],{},'args','kw')
+    var res = ''
+    for(var i=0;i<$ns['args'].items.length;i++){
+        res += str($ns['args'].items[i]).value+' '
+    }
+    console.log(res+'\n')
 }
+
 
 function $MapClass(func,iterables){
     var iterable = null
