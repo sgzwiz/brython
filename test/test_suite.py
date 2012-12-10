@@ -47,23 +47,47 @@ log('str' 'ing')
 log('str'.strip() + 'ing')
 
 # list examples
+# list examples
 a=['spam','eggs',100,1234]
-log(a[:2]+['bacon',2*2])
-log(3*a[:3]+['Boo!'])
-log(a[:])
+assert a[:2]+['bacon',2*2]==['spam','eggs','bacon',4]
+assert 3*a[:3]+['Boo!']==['spam','eggs',100,'spam','eggs',
+100,'spam','eggs',100,'Boo!']
+assert a[:]==['spam','eggs',100,1234]
 a[2]=a[2]+23
-log(a)
+assert a==['spam','eggs',123,1234]
 a[0:2]=[1,12]
-log(a)
+assert a==[1,12,123,1234]
 a[0:2]=[]
-log(a)
+assert a==[123,1234]
 a[1:1]=['bletch','xyzzy']
-log(a)
+assert a==[123,'bletch','xyzzy',1234]
 a[:0]=a
-log(a)
+assert a==[123,'bletch','xyzzy',
+    1234,123,'bletch','xyzzy',1234]
 a[:]=[]
-log(a)
+assert a==[]
 a.extend('ab')
-log(a)
+assert a==['a','b']
 a.extend([1,2,33])
-log(a)
+assert a==['a','b',1,2,33]
+a = ['a', 'b', 'c', 'd']
+assert len(a)==4
+q = [2, 3]
+p = [1, q, 4]
+assert len(p)==3
+assert p[1]==[2, 3]
+assert p[1][0]==2
+p[1].append('xtra')
+assert p==[1,[2,3,'xtra'],4]
+assert q==[2,3,'xtra']
+
+log('list tests ok')
+
+# Fibonacci
+a, b = 0, 1
+res = []
+while b<10:
+    res.append(b)
+    a, b = b, a+b
+assert res==[1,1,2,3,5,8]
+log('Fibonacci ok')
