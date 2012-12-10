@@ -14,8 +14,17 @@
 # print version info
 import sys
 # override log to send output to textarea
-def log(data):
-    doc["console"].value += str(data)+'\n'
+def log(*data,**kw):
+    res = ''
+    if data:
+        for x in data[:-1]:
+            res += str(x)+' '
+        res += str(data[-1])
+    if 'end' in kw:
+        res += kw['end']
+    else:
+        res += '\n'
+    doc["console"].value += res
 doc["version_info"].text = "Brython version %s" %str(sys.version_info)
 </script>
 <script>
