@@ -1,0 +1,272 @@
+<html>
+<head>
+<title>Brython</title>
+<link rel="stylesheet" href="brython.css">
+<meta charset="iso-8859-1">
+</head>
+<body>
+<a name="conv"><h3>Translation of the Python syntax into Javascript code</h3>
+
+<p>
+<table border=1>
+<tr>
+<th>Python</th>
+<th>Javascript</th>
+<th>Comments</th>
+</tr>
+
+<tr>
+<td><pre>x = 1
+y = 3.14
+z = "azerty"</td>
+<td><pre>x = int(1)
+y = float(3.14)
+z = str("azerty")</pre>
+</td>
+<td><tt>int, float, str</tt> are Javascript functions defined in <b>py_classes.js</b></td>
+</tr>
+
+<tr>
+<td><pre>x = a</td>
+<td><pre>x = $assign(a)</pre>
+<td>We can not simply keep the = sign: when the value on the right is a single built-in types (int, float, string), the = sign would point to the same Javascript <i>object</i> and not a Javascript integer / float / string, resulting in an undesirable side effect :
+
+<p><pre>
+a = 0
+x = a
+x+= 1
+log(a)
+>>1
+</pre>
+<p>The $assign function creates a copy of the original object
+</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>x = foo.bar</td>
+<td><pre>x = $assign(foo.__getattr__('bar'))</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>foo.bar = x</td>
+<td><pre>foo.__setattr__('bar',x)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>x = foo[bar]</td>
+<td><pre>x = $assign(foo.__getitem__(bar))</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>foo[bar] = x</td>
+<td><pre>foo.__setitem__(bar,x)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>x+y</td>
+<td><pre>x.__add__(b)</pre>
+<td>same for all operators
+<br>necessary to implement such operations as 2 * "a"</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>a and b</td>
+<td><pre>$test_expr($test_item(a)&&$test_item(b))</pre>
+<td>we are keeping the Javascript && operator so as to not evaluate b if a is false
+<br><tt>$test_item</tt> returns a Javascript boolean (true or false)  and stores the resulting value in a global variable ; <tt>$test_expr</tt> returns this global variable</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>for obj in iterable:
+    (...)</pre></td>
+<td><pre>$Iterable1 = iter(iterable)
+while(true){ 
+    try{ 
+        var $Next = next($Iterable1) 
+        obj = $Next
+        (...) 
+    }catch(err){ 
+        if(err.name=="StopIteration")
+            {break} 
+        else{throw err} 
+    } 
+}</pre>
+</td>
+<td>&nbsp;</td></tr>
+
+<tr>
+<td><pre>x,y = iterable</pre></td>
+<td><pre>var $var = iter(iterable)
+x = next($var)
+y = next($var)</pre>
+</td>
+<td>&nbsp;</td></tr>
+
+<tr>
+<td><pre>x,y = a,b</pre></td>
+<td><pre>var $temp=[]
+$temp.push(a);$temp.push(b)
+x=$assign($temp[0]);y=$assign($temp[1])
+</pre>
+</td>
+<td>&nbsp;</td></tr>
+
+<tr>
+<td><pre>def foo():
+   x=3
+</pre></td>
+<td><pre>function foo(){
+   var x=int(3)
+}
+window.foo=foo 
+</td>
+<td>To be consistent with the management of the Python namespace, the local variable <tt>x</tt> is declared by the <em>var</em> keyword
+<p>The last line adds the function name in the namespace of the browser ; it will only exist if the function is at the level of the module, and not inside another function</td></tr>
+
+<tr>
+<td><pre>def foo():
+   global x
+   x=3
+</pre></td>
+<td><pre>function foo(){
+   x=int(3)
+}
+window.foo=foo 
+</td>
+<td>for a global variable, we do not use the <em>var</em> keyword</td>
+</tr>
+
+<tr>
+<td><pre>def foo(x,y=3,*args,**kw):
+   (...)
+</pre></td>
+<td><pre>function foo(){
+   $ns=$MakeArgs(arguments,['x'],{"y":int(3)},"args","kw")
+   for($var in $ns){eval("var "+$var+"=$ns[$var]")} 
+   (...)
+}
+window.foo=foo 
+</td>
+<td>the <tt>$MakeArgs</tt> function builds a Javascript object matching the names defined in the function signature to the values that are actually passed to it. The following line builds the namespace of the function (local variables)</td>
+</tr>
+
+<tr>
+<td><pre>foo(x,y=1)
+</pre></td>
+<td><pre>foo(x,$Kw("y",int(1)))
+</td>
+<td>arguments passed as keywords are converted into objects created by the <em>$Kw</em> function
+</tr>
+
+<tr>
+<td><pre>x='brython'
+try:
+    x[2]='a'
+except TypeError:
+    log('error')
+except:
+    log('another error')
+</pre></td>
+<td><pre>x =str('brython') 
+try{
+    x.__setitem__(int(2),str('a'))
+}
+catch($err0){
+    if(false){void(0)} 
+    else if($err0.name=="TypeError"){
+        log(str('error'))
+    }
+    else{
+        log(str('another error'))
+    }
+} 
+</td>
+<td>the lines
+<pre><b>catch($err0){
+    if(false){void(0)} </b></pre><p>
+are added before all <code>except</code> clauses, translated as <em>else if</em> when an exception name is specified or as an <em>else</em> when it is not the case
+
+</tr>
+
+</table>
+
+<p>
+<table border=1>
+<tr>
+<th>Javascript</th>
+<th>Python</th>
+<th>Comment</th>
+</tr>
+
+
+<tr>
+<td><pre>document</td>
+<td><pre>doc</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>document.getElementById(elt_id)</td>
+<td><pre>doc[elt_id]</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>document.getElementsByTagName('A')</td>
+<td><pre>doc[A]</pre>
+<td>returns a Python list</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>setInterval(func,millisec)</td>
+<td><pre>import time
+time.set_interval(func,millisec)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>clearInterval(interval_id)</td>
+<td><pre>import time
+time.clear_interval(interval_id)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>setTimeOut(func,millisec)</td>
+<td><pre>import time
+time.set_timeout(func,millisec)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+
+
+</table>
+<hr>
+<a name="import"><h3>import</h3>
+The import is performed by Ajax calls
+
+<p>There are two types of importable modules :
+<ul>
+<li>modules written in Javascript : <tt>time, datetime, math, random, sys</tt> (of which only some of the attributes and methods are implemented)
+<li>modules written in Python, which will be imported from the same directory in which the calling script is situated
+</ul>
+
+</body>
+</html>
