@@ -1,0 +1,194 @@
+<html>
+<head>
+<title>Brython</title>
+<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<link rel="stylesheet" href="/doc/brython.css">
+<script src="/brython.js"></script>
+</head>
+<body onload="brython()">
+
+<a name="intro">Brython's goal is to replace Javascript with Python, as the scripting language for web browsers.
+<p>A simple example :
+<table>
+<tr>
+<td>
+CODE<br>
+<pre>&lt;html&gt;
+&lt;head&gt;
+&lt;script src="/brython.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body onLoad="brython()"&gt;
+&lt;script type="text/python"&gt;
+def echo():
+    alert(doc["zone"].value)
+&lt;/script&gt;
+&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td>
+<td>
+TEST<p>
+<script type="text/python">
+def echo():
+    alert(doc["zone"].value)
+</script>
+
+<input id="zone"><button onclick="echo()">clic !</button>
+</td>
+</tr>
+</table>
+
+<p>In order for the Python script to be processed, it is necessary to include <em>brython.js</em> and to run the <code>brython()</code> function upon page load (using the <tt>onload</tt> attribute of the &lt;BODY&gt; tag)
+<p>In the above code, when we click on the button, the onclick event calls and run the <code>echo()</code> function, which was defined in the Python script. This function gets the value of the INPUT element, through its id (<tt>zone</tt>). This is accomplished by the syntax <code>doc["zone"]</code> instead of the Javascript equivalent of <code>document.getElementById("zone")</code>  : <code>doc</code> is a keyword in Brython, which behaves just like a dictionary whose keys are the ids of the elements of the DOM. Hence, in our example, <code>doc["zone"]</code> is an object that maps to the INPUT element ; the <tt>value</tt> property holds, interestingly enough, the value of the object
+<p>In Brython, the output can be accomplished with the <code>alert()</code> built-in function. It works in the exact same way as the function of the same name in Javascript.
+<hr>
+<a name="syntaxe"><h3>Syntax</h3>
+Brython follows the Python syntax:
+<ul>
+<li>whitespaces are significant and define blocks
+<li>lists are created with <code>[]</code> or <code>list()</code>, tuples with <code>()</code> or <code>tuple()</code>, dictionnaries with <code>{}</code> or <code>dict()</code> and sets with <code>set()</code>
+<li>functions can be defined with any combination of fixed arguments, default values, variable positional arguments and variable keyword arguments : <br><code>def foo(x, y=0, *args, **kw):</code>
+</ul>
+
+<p>At this moment, list comprehensions have not been implemented : <code>[ expr for item in iterable if condition ]</code>
+</ul>
+
+<a name="integr"><h3>Keywords and built-in functions</h3>
+
+Brython supports most keywords and functions of Python 3 :
+<ul><li>keywords : <code>break continue def del elif else except False finally for global if import None pass return True try while </code>
+<li>built-in functions : <code>abs() all() any() bool() dict() enumerate() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
+</ul>
+
+The following are not implemented : 
+<ul>
+<li>keywords <code>as assert class from is lambda nonlocal raise with yield</code>
+<li>amongst the built-in functions :
+<ul><li>some might be implemented in the future : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), dir(), divmod(), eval(), exec(), format(), frozenset(), globals() ,hex(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code>
+<li>while others are unlikely : <code>bytearray(), bytes(), compile(), hash(), help(), id(), memoryview(), property(), super(), __import__() </code>
+<li>some are irrelevant in the context of a web browser : <code>input(), open(), print()</code>
+<li>the complex number type (j) is not supported
+</ul>
+</ul>
+The <code>class</code> keyword is not implemented, you can not define classes other than the built-in types (lists, dictionaries, sets). However, unlike Python, you can add attributes to objects created by the <code>object()</code> built-in:
+<p><pre>x = object()
+x.foo = 44
+del x.foo
+</pre>
+<p>
+Finally, some keywords and built-in functions designed for operation in a browser have been added :
+<ul>
+<li>built-ins <code>alert confirm prompt</code> correspond to their Javascript equivalents
+<li>the <code>ajax</code> built-in function allows the execution of HTTP requests in Ajax mode
+<li>the <code>local_storage</code> keyword corresponds to HTML5's local storage
+<li>the <code>win</code> keyword  is the window (window object in JS) and <code>doc</code> represents the HTML document (document in JS)
+<li>built-in functions <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : each an equivalent of the HTML tag of the same name
+</ul>
+<hr>
+<a name="htmldocs"><h3>Handling of HTML documents</h3>
+
+An HTML page is seen as a tree whose root node is represented by the tag <code>doc</code>. Subsequent nodes are either built-in Python objects (strings, integers ...) or objects created by the functions corresponding to their HTML tags
+<p>The syntax to create an object (eg a hyperlink) is :
+<dl><dt><code>A(<i>[content,[attributes]]</i>)</code>
+<dd><em>content</em> is the child node of the the object ; <em>attributes</em> is a sequence of keywords corresponding to the attributes of the HTML tag. These attributes must be provided as Javascript syntax, not CSS: <em>backgroundColor</em> instead of <em>background-color</em>
+</dl>
+Example :
+<p><pre>link1 = A('Brython', href='http://www.brython.info')
+link2 = A(B('Python'), href='http://www.python.org')
+</pre>
+<p>For the <em>style</em> attribute, the value must be a dictionary :
+<p><pre>d = DIV('Brython', style={'height':100, 'width':200})
+</pre>
+
+<p>You can also create an object without argument, then build it up:
+<ul>
+<li>to add a child node, use the <= operator
+<li>to add attributes, use the classic Python syntax : <pre style="display:inline">object.attribute = value</pre>
+</ul>
+<p>Example :
+<p><pre>link = A()
+link <= B('connexion')
+link.href = 'http://example.com'
+</pre>
+<p>You can also create multiple elements at the same level by using the plus (+) sign :
+<p><pre>row = TR(TH('LastName') + TH('FirstName'))</pre>
+<p>Here is how to create a selection box from a list (by combining these operators and Python syntax) :
+<p><pre>items = ['one', 'two', 'three']
+sel = SELECT()
+for i, elt in enumerate(items):
+    sel <= OPTION(elt, value = i)
+doc <= sel
+</pre>
+<p>It is important to note that the creation of an instance of a class involves creating HTML from a single DOM object. If we assign the instance to a variable, you can not use it in several places. For example, with this code :
+<p><pre>link = A('Python', href='http://www.python.org')
+doc <= 'Official Python Website: ' + link
+doc <= P() + 'I repeat: the site is ' + link
+</pre>
+the link will only show in the second line. One solution is to clone the original object :
+<p><pre>link = A('Python', href='http://www.python.org')
+doc <= 'Official Python Website: ' + link
+doc <= P() + 'I repeat: the site is ' + link.clone()
+</pre>
+
+
+<p>As a rule of thumb, instances of classes HTML attributes have the same name as the corresponding JavaScript objects. It can for example retrieve the option selected by the<tt>selectedIndex</tt> attribute of the SELECT object
+<p>Exceptionally, the content of a DOM node can be read or modified by the <tt>text</tt> or <tt>html</tt> attributes, corresponding to <i>innerText</i> (or <i>textContent</i>) and <i>innerHTML</i> respectively, in Javascript
+<p>The <code>options</code> collection associated with a SELECT object has an interface of a Python list :
+<ul>
+<li>access to an option by its index : <pre style="display:inline">option = elt.options[index]</pre>
+<li>insertion of an option at the <em>index</em> position : <pre style="display:inline">elt.options.insert(index,option)</pre>
+<li>insertion of an option at the end of the list : <pre style="display:inline">elt.options.append(option)</pre>
+<li>deleting an option : <pre style="display:inline">del elt.options[index]</pre>
+</ul>
+<p>To search for objects by identifier or by their tag name, use the following syntax :
+<ul>
+<li><pre style="display:inline">doc[obj_id]</pre>  returns the object from its identifier, or throws a <code>KeyError</code>
+<li><pre style="display:inline">doc[A]</pre>  returns a list of all objects of type A (hyperlink) in the document
+</ul>
+<hr>
+<a name="ajax"><h3>Ajax</h3>
+The <code>ajax()</code> built-in function returns an object similar to XMLHttpRequest in Javascript, but its interface is slightly different. It has the following methods
+
+<ul><li><code>open(<em>method, url, async</em>)</code> : <em>method</em> is the HTTP method used for the request (usually GET or POST), <em>url</em> is the url to call, <em>async</em> is a boolean that indicates whether the call is asynchronous or not
+<li><code>set_header(<em>name, value</em>)</code> : sets the <em>value</em> of the header <em>name</em>
+<li><code>set_timeout(<em>duration, function</em>)</code> : if the query did not return response within <em>duration</em> in seconds, it will cancel the query and execute the <em>function</em>. This function cannot have arguments
+<li><code>send()</code> : send (starts) the request
+</ul>
+To interact with the server, you must set the following attributes corresponding to each state of the <tt>readyState</tt> variable in Javascript :
+<p><table><tr><th>readyState</th><th>attribute</th></tr>
+<tr><td>0</td><td><code>on_uninitialized</code></td></tr>
+<tr><td>1</td><td><code>on_loading</code></td></tr>
+<tr><td>2</td><td><code>on_loaded</code></td></tr>
+<tr><td>3</td><td><code>on_interactive</code></td></tr>
+<tr><td>4</td><td><code>on_complete</code></td></tr>
+</table>
+<p>The attribute has to be a function which will take a single argument: the <code>ajax</code> object. This object has the following attributes :
+<ul>
+<li><code>status</code> : an integer representing the HTTP status of the request
+<li><code>text</code> : the server response as a string of characters (this would be <tt>responseText</tt> in Javascript)
+<li><code>xml</code> : the server response as a DOM object (this would be <tt>responseXML</tt> in Javascript)
+</ul>
+
+<h4>Example</h4>
+<pre>req = ajax()
+req.on_complete = on_complete
+req.set_timeout(timeout, err_msg)
+req.open('POST', url, True)
+req.set_header('content-type', 'application/x-www-form-urlencoded')
+req.send(data)
+</pre>
+<hr>
+<a name="locstor"><h3>Local storage</h3>
+
+The local storage defined by HTML5 (the <tt>Storage</tt> class and <tt>localStorage</tt> object of Javascript) can be accessed with <code>local_storage</code>. This is used as a typical Python dictionary, with these differences: the search for a nonexistent key returns <code>None</code> instead of raising an exception, and deleting a nonexistent key does not trigger an exception
+
+<h4>Example</h4>
+<pre>local_storage['foo'] = 'bar'
+log(local_storage['foo'])
+del local_storage['foo']
+log(local_storage['foo']) # prints None
+</pre>
+
+</body>
+</html>

@@ -1,0 +1,52 @@
+<html>
+<head>
+<title>Brython</title>
+<style>
+body {font-family:arial,verdana;
+font-size:14px;
+}
+a{
+    text-decoration:none;
+}
+a:hover{
+    color:#000;
+}
+a:visited{
+    color:#aaa;
+}
+</style>
+<script>
+var marked = null
+function mark(elt){
+    if(marked!==null){
+        marked.style.color="#aaa"
+        marked.style.fontWeight="normal"
+    }
+    if(elt===undefined){
+        elt = document.getElementsByTagName('A')[0]
+    }
+    elt.style.color="#000"
+    elt.style.fontWeight = "bold"
+    marked=elt
+}
+mark(first)
+</script>
+</head>
+<body onload="mark()">
+<h4>Use</h4>
+<div style="padding-left:10px;"><a target="right" href="brython.html#intro" onClick="mark(this)">Introduction</a>
+<br><a target="right" href="brython.html#syntaxe" onClick="mark(this)">Syntax</a>
+<br><a target="right" href="brython.html#integr" onClick="mark(this)">Keywords and built-in functions</a>
+<br><a target="right" href="brython.html#htmldocs" onClick="mark(this)">Handling of HTML documents</a>
+<br><a target="right" href="brython.html#ajax" onClick="mark(this)">Ajax</a>
+<br><a target="right" href="brython.html#locstor" onClick="mark(this)">Local storage</a>
+</div>
+<h4>Implementation</h4>
+<div style="padding-left:10px;">
+<a target="right" href="modele.html" onClick="mark(this)">Compiling and running</a>
+<br><a target="right" href="implem.html#conv" onClick="mark(this)">Python &rarr; JS syntax conversion</a>
+<br><a target="right" href="implem.html#import" onClick="mark(this)"><tt>import</tt> implementation</a>
+</div>
+
+</body>
+</html>
