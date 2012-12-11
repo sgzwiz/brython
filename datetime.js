@@ -102,14 +102,13 @@ function $datetime(year,month,day,hour,minute,second,microsecond){
 }
 
 datetime = {
-    __getattr__ : function(attr){console.log('get attribute '+attr);return this[attr]},
+    __getattr__ : function(attr){return this[attr]},
     date : function(){return new $Date(arguments)},
     datetime : function(){return new $DateTime(arguments)}
 }
 
 datetime.datetime.__getattr__= function(attr){
     if(attr=='now'){
-        console.log('get now')
         return function(){
             var obj = new Date()
             var args = [int(obj.getFullYear()),int(obj.getMonth()+1),
@@ -122,7 +121,6 @@ datetime.datetime.__getattr__= function(attr){
 
 datetime.date.__getattr__= function(attr){
     if(attr=='today'){
-        console.log('get today')
         return function(){
             var obj = new Date()
             var args = [int(obj.getFullYear()),int(obj.getMonth()+1),
