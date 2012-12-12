@@ -704,8 +704,8 @@ function $py2js(src,context,debug){
                 if(parent==null){
                     code = '\n'+f_indent+'window.'+fname+'='+fname
                     module_level_functions.push(fname)
+                    tail.splice(0,0,['func_end',code])
                 }
-                tail.splice(0,0,['func_end',code])
             } else {
                 stack.list = stack.list.slice(0,block[1])
             }
