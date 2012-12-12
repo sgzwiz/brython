@@ -702,7 +702,7 @@ function $py2js(src,context,debug){
                 var f_indent = ''
                 while(indent>0){f_indent+=' ';indent--}
                 if(parent==null){
-                    code = '\n'+f_indent+'window.'+fname+'='+fname
+                    var code = '\n'+f_indent+'window.'+fname+'='+fname
                     module_level_functions.push(fname)
                     tail.splice(0,0,['func_end',code])
                 }
