@@ -547,7 +547,7 @@ $TagClass.prototype.set_html = function(value){this.elt.innerHTML=str(value)}
 
 $TagClass.prototype.set_text = function(value){
     this.elt.innerText=str(value)
-    this.textContent=str(value)
+    this.elt.textContent=str(value)
 }
 
 $TagClass.prototype.set_value = function(value){this.elt.value = value.toString()}
