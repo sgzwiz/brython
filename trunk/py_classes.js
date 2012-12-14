@@ -409,7 +409,6 @@ Number.prototype.__mul__ = function(other){
 }
 
 Number.prototype.__not_in__ = function(item){
-    console.log('???'+isinstance(this,int))
     res = item.__contains__(this)
     return !res
 }
@@ -813,7 +812,6 @@ function $SliceClass(start,stop,step){
     this.step = step
 }
 function slice(){
-    console.log('slice arguments '+arguments[0]+' '+arguments[1]+' '+arguments[2])
     var start = arguments[0] || null
     var stop = arguments[1]
     if(typeof stop!=="number"){stop=null}

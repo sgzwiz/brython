@@ -19,6 +19,7 @@ out.write(sys_src)
 out.close()
 
 res = '// brython.js www.brython.info\n'
+res += '// version 1.0.%s\n' %now
 src_size = 0
 for fname in sources:
     src = open(fname+'.js').read()
