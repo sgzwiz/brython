@@ -55,10 +55,13 @@ $MouseEvent.prototype.__getattr__ = function(attr){
     if(attr=="x"){return $mouseCoords(this.event).x}
     if(attr=="y"){return $mouseCoords(this.event).y}
     if(attr=="data"){return new $Clipboard(this.event.dataTransfer)}
-    return $getattr(this.event,attr)
+    return getattr(this.event,attr)
 }
 
-function $DomWrapper(js_dom){this.value=js_dom}
+function $DomWrapper(js_dom){
+    this.value=js_dom
+    this.__class__ = "$DomWrapper"
+}
 
 $DomWrapper.prototype.__getattr__ = function(attr){
     if(attr in this.value){
@@ -66,7 +69,7 @@ $DomWrapper.prototype.__getattr__ = function(attr){
         if(typeof this.value[attr]=='function'){
             return function(){
                 var args = []
-                for(var i=0;i<arguments.length;i++){args.push(arguments[i].value)}
+                for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
                 var res = obj_attr.apply(obj,args)
                 if(typeof res == 'object'){return new $DomWrapper(res)}
                 else if(res===undefined){return None}
@@ -81,20 +84,24 @@ $DomWrapper.prototype.__getattr__ = function(attr){
 }
 
 $DomWrapper.prototype.__setattr__ = function(attr,value){
-    this.value[attr]=value.value
+    if(isinstance(value,"$DomWrapper")){
+        this.value[attr]=value.value
+    }else{
+        this.value[attr]=value
+    }
 }
 
 function $Clipboard(data){ // drag and drop dataTransfer
     this.data = data
 }
 $Clipboard.prototype.__getitem__ = function(name){
-    return $JS2Py(this.data.getData(name.value))
+    return $JS2Py(this.data.getData(name))
 }
 $Clipboard.prototype.__setitem__ = function(name,value){
-    this.data.setData(name.value,value.value)
+    this.data.setData(name,value)
 }
 $Clipboard.prototype.__setattr__ = function(attr,value){
-    eval("this.data."+attr+"=value.value")
+    eval("this.data."+attr+"=value")
 }
 function $DomObject(obj){
     this.obj=obj
@@ -121,20 +128,20 @@ function $OptionsClass(parent){ // parent is a SELECT tag
     this.__class__ = 'options'
 
     this.__getitem__ = function(arg){
-        return $DomElement(parent.elt.options[arg.value])
+        return $DomElement(parent.elt.options[arg])
     }
     this.__delitem__ = function(arg){
-        parent.elt.options.remove(arg.value)
+        parent.elt.options.remove(arg)
     }
 
-    this.__len__ = function() {return int(parent.elt.options.length)}
+    this.__len__ = function() {return parent.elt.options.length}
 
     this.__setattr__ = function(attr,value){
-        eval('parent.elt.options.'+attr+'= $str(value)')
+        eval('parent.elt.options.'+attr+'= str(value)')
     }
 
     this.__setitem__ = function(attr,value){
-        parent.elt.options[attr.value]= $JS2Py(value)
+        parent.elt.options[attr]= $JS2Py(value)
     }
 
     this.get_append = function(element){
@@ -143,18 +150,18 @@ function $OptionsClass(parent){ // parent is a SELECT tag
 
     this.get_insert = function(index,element){
         if(index===undefined){parent.elt.options.add(element.elt)}
-        else{parent.elt.options.add(element.elt,index.value)}
+        else{parent.elt.options.add(element.elt,index)}
     }
 
     this.get_item = function(index){
-        return $DomElement(parent.elt.options.item(index.value))
+        return $DomElement(parent.elt.options.item(index))
     }
     
     this.get_namedItem = function(name){
-        return $DomElement(parent.elt.options.namedItem(name.value))
+        return $DomElement(parent.elt.options.namedItem(name))
     }
     
-    this.get_remove = function(arg){parent.elt.options.remove(arg.value)}
+    this.get_remove = function(arg){parent.elt.options.remove(arg)}
 }
 
 function $Document(){
@@ -163,17 +170,17 @@ function $Document(){
     this.mouse = null
 
     this.__delitem__ = function(key){
-        if($isinstance(key,str)){
-            var res = document.getElementById(key.value)
+        if(typeof key==="string"){
+            var res = document.getElementById(key)
             if(res){res.parentNode.removeChild(res)}
-            else{$raise("KeyError",str(key))}
+            else{$raise("KeyError",key)}
         }else{
             try{
-                var elts=document.getElementsByTagName(key.name),res=list()
+                var elts=document.getElementsByTagName(key),res=list()
                 for(var $i=0;$i<elts.length;$i++){res.append($DomElement(elts[$i]))}
                 return res
             }catch(err){
-                $raise("KeyError",str(key))
+                $raise("KeyError",key)
             }
         }
     }
@@ -181,14 +188,14 @@ function $Document(){
     this.__getattr__ = function(attr){return getattr(this.elt,attr)}
 
     this.__getitem__ = function(key){
-        if($isinstance(key,str)){
-            var res = document.getElementById(key.value)
+        if(typeof key==="string"){
+            var res = document.getElementById(key)
             if(res){return $DomElement(res)}
-            else{$raise("KeyError",str(key))}
+            else{$raise("KeyError",key)}
         }else{
             try{
-                var elts=document.getElementsByTagName(key.name),res=list()
-                for(var $i=0;$i<elts.length;$i++){res.append($DomElement(elts[$i]))}
+                var elts=document.getElementsByTagName(key.name),res=[]
+                for(var $i=0;$i<elts.length;$i++){res.push($DomElement(elts[$i]))}
                 return res
             }catch(err){
                 $raise("KeyError",str(key))
@@ -197,13 +204,13 @@ function $Document(){
     }
 
     this.__le__ = function(other){
-        if($isinstance(other,$AbstractTag)){
+        if(isinstance(other,$AbstractTag)){
             var $i=0
             for($i=0;$i<other.children.length;$i++){
                 document.body.appendChild(other.children[$i])
             }
-        }else if($isinstance(other,list(str,int,float,list,dict,set,tuple))){
-            txt = document.createTextNode($str(other))
+        }else if(isinstance(other,[str,int,float,list,dict,set,tuple])){
+            txt = document.createTextNode(str(other))
             document.body.appendChild(txt)
         } else {document.body.appendChild(other.elt)}
     }
@@ -221,8 +228,8 @@ function $Document(){
 doc = new $Document()
 
 win = { 
-    __getattr__ : function(attr){return $getattr(window,attr)},
-    location: {__getattr__:function(attr){return $getattr(window.location,attr)}}
+    __getattr__ : function(attr){return getattr(window,attr)},
+    location: {__getattr__:function(attr){return getattr(window.location,attr)}}
 }
 
 function $DomElement(elt){
@@ -247,6 +254,7 @@ function $DomElement(elt){
 function $AbstractTagClass(){
     // for abstract tags
     this.__class__ = $AbstractTag
+    this._class_name = 'abstract'
     this.children = []
 }
 $AbstractTagClass.prototype.appendChild = function(child){    
@@ -254,14 +262,14 @@ $AbstractTagClass.prototype.appendChild = function(child){
 }
 
 $AbstractTagClass.prototype.__add__ = function(other){
-    if($isinstance(other,$AbstractTag)){
+    if(isinstance(other,$AbstractTag)){
         this.children = this.children.concat(other.children)
     } else {this.children.push(other.elt)}
     return this
 }        
 
 $AbstractTagClass.prototype.__iadd__ = function(other){
-    if($isinstance(other,$AbstractTag)){
+    if(isinstance(other,$AbstractTag)){
         this.children = this.children.concat(other.children)
     } else {this.children.push(other.elt)}
 }        
@@ -309,15 +317,12 @@ function $TagClass(class_name,args){
         $start = 0
         $first = args[0]
         // if first argument is not a keyword, it's the tag content
-        if(!$isinstance($first,$Kw)){
+        if(!isinstance($first,$Kw)){
             $start = 1
-            if($isinstance($first,str)){
-                txt = document.createTextNode($first.value)
+            if(isinstance($first,[str,int,float])){
+                txt = document.createTextNode($first.toString())
                 this.elt.appendChild(txt)
-            } else if($isinstance($first,int) || $isinstance($first,float)){
-                txt = document.createTextNode($first.value.toString())
-                this.elt.appendChild(txt)
-            } else if($isinstance($first,$AbstractTag)){
+            } else if(isinstance($first,$AbstractTag)){
                 for($i=0;$i<$first.children.length;$i++){
                     this.elt.appendChild($first.children[$i])
                 }
@@ -330,15 +335,15 @@ function $TagClass(class_name,args){
         for($i=$start;$i<args.length;$i++){
             // keyword arguments
             $arg = args[$i]
-            if($isinstance($arg,$Kw)){
+            if(isinstance($arg,$Kw)){
                 if($arg.name.toLowerCase() in $events){ // events
-                    eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
+                    eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){
                     this.set_style($arg.value)
                 } else {
-                    if($arg.value.value!==false){
+                    if($arg.value!==false){
                         // option.selected=false sets it to true :-)
-                        this.elt.setAttribute($arg.name.toLowerCase(),$arg.value.value)
+                        this.elt.setAttribute($arg.name.toLowerCase(),$arg.value)
                     }
                 }
             }
@@ -352,22 +357,22 @@ function $TagClass(class_name,args){
 $TagClass.prototype.__add__ = function(other){
     var res = $AbstractTag() // abstract tag
     res.children = [this.elt]
-    if($isinstance(other,$AbstractTag)){
+    if(isinstance(other,$AbstractTag)){
         for(var $i=0;$i<other.children.length;$i++){res.children.push(other.children[$i])}
-    } else if($isinstance(other,list(str,int,float,list,dict,set,tuple))){
-        res.children.push(document.createTextNode($str(other)))
+    } else if(isinstance(other,[str,int,float,list,dict,set,tuple])){
+        res.children.push(document.createTextNode(str(other)))
     }else{res.children.push(other.elt)}
     return res
 }
 
 $TagClass.prototype.__eq__ = function(other){
     if(!('getAttribute' in other.elt)){return False}
-    return $bool_conv(this.elt.getAttribute('id')==other.elt.getAttribute('id'))
+    return this.elt.getAttribute('id')==other.elt.getAttribute('id')
 }
 
 $TagClass.prototype.__getattr__ = function(attr){
     if('get_'+attr in this){return this['get_'+attr]()}
-    else{return $getattr(this.elt,attr)}
+    return getattr(this.elt,attr)
 }
 
 $TagClass.prototype.__getitem__ = function(key){
@@ -377,7 +382,7 @@ $TagClass.prototype.__getitem__ = function(key){
 $TagClass.prototype.__iadd__ = function(other){
     this.__class__ = $AbstractTag // change to abstract tag
     if(!('children' in this)){this.children = [this.elt]}
-    if($isinstance(other,$AbstractTag)){
+    if(isinstance(other,$AbstractTag)){
         for(var $i=0;$i<other.children.length;$i++){
         this.children.push(other.children[$i])
         }
@@ -385,22 +390,24 @@ $TagClass.prototype.__iadd__ = function(other){
 }
 
 $TagClass.prototype.__le__ = function(other){
-    if($isinstance(other,$AbstractTag)){
+    if(isinstance(other,$AbstractTag)){
         var $i=0
         for($i=0;$i<other.children.length;$i++){
             this.elt.appendChild(other.children[$i])
         }
-    }else if($isinstance(other,list(str,int,float))){
-        var $txt = document.createTextNode(other.value)
+    }else if(typeof other==="string" || typeof other==="number"){
+        var $txt = document.createTextNode(other.toString())
         this.elt.appendChild($txt)
-    }else{this.elt.appendChild(other.elt)}
+    }else{
+        this.elt.appendChild(other.elt)
+    }
 }
 
 $TagClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
 
 $TagClass.prototype.__radd__ = function(other){ // add to a string
     var res = $AbstractTag() // abstract tag
-    var txt = document.createTextNode(other.value)
+    var txt = document.createTextNode(other)
     res.children = [txt,this.elt]
     return res        
 }
@@ -431,7 +438,7 @@ $TagClass.prototype.get_getContext = function(){ // for CANVAS tag
     if(!('getContext' in this.elt)){$raise('AttributeError',
         "object has no attribute 'getContext'")}
     var obj = this.elt
-    return function(ctx){return new $DomWrapper(obj.getContext(ctx.value))}
+    return function(ctx){return new $DomWrapper(obj.getContext(ctx))}
 }
 
 $TagClass.prototype.get_parent = function(){
@@ -452,9 +459,9 @@ $TagClass.prototype.get_top = function(){
 }
 
 $TagClass.prototype.get_children = function(){
-    var res = list()
+    var res = []
     for(var i=0;i<this.elt.childNodes.length;i++){
-        res.append($DomElement(this.elt.childNodes[i]))
+        res.push($DomElement(this.elt.childNodes[i]))
     }
     return res
 }
@@ -470,7 +477,7 @@ $TagClass.prototype.get_style = function(){
     
 $TagClass.prototype.set_style = function(style){ // style is a dict
     for(var i=0;i<style.$keys.length;i++){
-        this.elt.style[$str(style.$keys[i])] = style.$values[i].value
+        this.elt.style[str(style.$keys[i])] = style.$values[i]
     }
 }
 
@@ -483,9 +490,9 @@ $TagClass.prototype.get_text = function(){
     return str(this.elt.innerText || this.elt.textContent)
 }
     
-$TagClass.prototype.get_html = function(){return str(this.elt.innerHTML)}
+$TagClass.prototype.get_html = function(){return this.elt.innerHTML}
 
-$TagClass.prototype.get_value = function(value){return str(this.elt.value)}
+$TagClass.prototype.get_value = function(value){return this.elt.value}
 
 $TagClass.prototype.make_draggable = function(target){
     // make element draggable and droppable into target
@@ -536,14 +543,14 @@ $TagClass.prototype.make_draggable = function(target){
     }
 }
 
-$TagClass.prototype.set_html = function(value){this.elt.innerHTML=$str(value)}
+$TagClass.prototype.set_html = function(value){this.elt.innerHTML=str(value)}
 
 $TagClass.prototype.set_text = function(value){
-    this.elt.innerText=$str(value)
-    this.elt.textContent=$str(value)
+    this.elt.innerText=str(value)
+    this.textContent=str(value)
 }
 
-$TagClass.prototype.set_value = function(value){this.elt.value = $str(value)}
+$TagClass.prototype.set_value = function(value){this.elt.value = value.toString()}
 
 function A(){return new $TagClass('A',arguments)}
 

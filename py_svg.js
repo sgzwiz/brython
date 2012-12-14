@@ -19,15 +19,15 @@ function $SVGTagClass(tag_name,args){
         $start = 0
         $first = args[0]
         // if first argument is not a keyword, it's the tag content
-        if(!$isinstance($first,$Kw)){
+        if(!isinstance($first,$Kw)){
             $start = 1
-            if($isinstance($first,str)){
+            if(isinstance($first,str)){
                 txt = document.createTextNode($first.value)
                 this.elt.appendChild(txt)
-            } else if($isinstance($first,int) || $isinstance($first,float)){
+            } else if(isinstance($first,int) || isinstance($first,float)){
                 txt = document.createTextNode($first.value.toString())
                 this.elt.appendChild(txt)
-            } else if($isinstance($first,$AbstractTag)){
+            } else if(isinstance($first,$AbstractTag)){
                 for($i=0;$i<$first.children.length;$i++){
                     this.elt.appendChild($first.children[$i])
                 }
@@ -40,7 +40,7 @@ function $SVGTagClass(tag_name,args){
         for($i=$start;$i<args.length;$i++){
             // keyword arguments
             $arg = args[$i]
-            if($isinstance($arg,$Kw)){
+            if(isinstance($arg,$Kw)){
                 if($arg.name.toLowerCase() in $events){ // events
                     eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){

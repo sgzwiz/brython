@@ -1,16 +1,19 @@
 <html>
+<meta charset="iso-8859-1">
 <head>
 <style>
 body,td,th{font-family:sans-serif}
 a.sort_link{margin-left:10px;text-decoration:none}
 </style>
 
-<script src="../py_tokenizer.js"></script>
-<script src="../py_utils.js"></script>
-<script src="../py_classes.js"></script>
-<script src="../py_dom.js"></script>
-<script src="../py2js.js"></script>
-<script src="../py_ajax.js"></script>
+<script src="/py_tokenizer.js"></script>
+<script src="/py_utils.js"></script>
+<script src="/py_classes.js"></script>
+<script src="/py_list.js"></script>
+<script src="/py_string.js"></script>
+<script src="/py_dom.js"></script>
+<script src="/py2js.js"></script>
+<script src="/py_ajax.js"></script>
 
 </head>
 <body onLoad="brython()">
@@ -21,7 +24,7 @@ t0 = time.time()
 
 orders = {}
 
-doc <= IMG(src="../brython.png")
+doc <= IMG(src="/brython.png")
 
 def sort_by_col(cell,numeric=False):
     th_elt = cell.parent # TH cell
@@ -43,7 +46,7 @@ def sort_by_col(cell,numeric=False):
     def k_str(_item):
         return _item.children[col_num].text
     def k_int(_item):
-        return int(_item.children[col_num].text)
+        return float(_item.children[col_num].text)
 
     if not numeric:
         func = k_str
@@ -51,6 +54,7 @@ def sort_by_col(cell,numeric=False):
         func = k_int
 
     rows.sort(func)
+
     if ascending == 'down':
         rows.reverse()
 

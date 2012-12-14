@@ -14,15 +14,13 @@ float:left;
 }
 a.banner:link,a.banner:visited
 {
-    display:block;
-    font-size:14px;
-    font-weight:bold;
-    color:#FFFFFF;
-    line-height:35px; /*hauteur de l'image de fond*/
-    background:black url(/doc/images/noir-1.png) repeat-x;
-    padding:8px;
-    text-align:center;
-    text-decoration:none;
+display:block;
+font-weight:bold;
+color:#FFFFFF;
+ line-height:35px; /*hauteur de l'image de fond*/
+ background:black url(/doc/images/noir-1.png) repeat-x;
+text-align:center;
+text-decoration:none;
 }
 a.banner:hover,a.banner:active
 {
@@ -30,7 +28,7 @@ a.banner:hover,a.banner:active
  color:white;
 }
 #banner{
-    width:85%;
+    width:80%;
     padding-bottom:15px;
 }
 #console{

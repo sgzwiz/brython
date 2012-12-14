@@ -1,20 +1,14 @@
 // transform native JS types into Brython types
 function $JS2Py(src){
-    if($isinstance(src,list(str,int,float,list,dict,set))){return src}
+    if(isinstance(src,[str,int,float,list,dict,set])){return src}
     if(src===null){return None}
     if(src===false){return False}
     if(src===true){return True}
     htmlelt_pattern = new RegExp(/\[object HTML(.*)Element\]/)
-    if(typeof src=="string"){
-        return str(src)
-    } else if(typeof src=="number") {
-        if(src.toString().search(/\./)==-1){
-            return int(src)
-        } else {
-            return float(src)
-        }
+    if(["string","number"].indexOf(typeof src)>-1){
+        return src
     } else if(typeof src=="object"){
-        if(src.constructor===Array){return new $ListClass(src)}
+        if(src.constructor===Array){return src}
         else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
         else{
             try{if(src.constructor==DragEvent){return new $MouseEvent(src)}}
@@ -29,15 +23,24 @@ function $JS2Py(src){
     }else{return src}
 }
 
-function $assign(expr){
-    // used for simple assignments : target = expr
-    // if expr is a simple built-in type, return a clone, *not* the same object !
-    // this is to avoid bad side effects like "a=0 ; x=a ; x++"
-    // causing a to become 1, since a and x are the same object
-    if($isinstance(expr,int)){return int(expr.value)}
-    else if($isinstance(expr,float)){return float(expr.value)}
-    else if($isinstance(expr,str)){return str(expr.value)}
-    else{return expr}
+// exceptions
+
+function $raise(name,msg) {
+    // raises exception with specified name and message
+    if(document.$debug==0){return}
+    if(msg===undefined){msg=''}
+    var lines = document.$py_src[document.$context].split('\n')
+    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    err = new Error(name+": "+msg)
+    err.name = name
+    err.message = name+": "+msg;
+    err.py_error = true
+    throw err
+}
+
+function $UnsupportedOpType(op,class1,class2){
+    $raise('TypeError',
+        "unsupported operand type(s) for "+op+": '"+class1+"' and '"+class2+"'")
 }
 
 function $test_item(expr){
@@ -45,7 +48,7 @@ function $test_item(expr){
     // returns a Javascript boolean (true or false) and stores
     // the evaluation in a global variable $test_result
     document.$test_result = expr
-    return $bool(expr)
+    return bool(expr)
 }
 
 function $test_expr(){
@@ -57,9 +60,15 @@ function $test_expr(){
 // such as object.__class__ == SomeClass
 Function.prototype.__eq__ = function(other){
     if(typeof other !== 'function'){return False}
-    return $bool_conv((other+'')===(this+''))
+    return other+''===this+''
 }
 Function.prototype.__class__ = Function
+Function.prototype.get_name = function(){
+    var src = this.toString() // coerce to string
+    pattern = new RegExp("function (.*?)\\(")
+    var res = pattern.exec(src)
+    value = '<function '+res[1]+'>'
+}
 
 Array.prototype.match = function(other){
     // return true if array and other have the same first items
@@ -81,7 +90,13 @@ Array.prototype.indexOf = function(obj){
     }  
     return -1;  
  }  
-}  
+}
+
+// in case console is not defined
+try{console}
+catch(err){
+    console = {'log':function(data){alert(data)}}
+}
 
 function $List2Dict(){
     var res = {}
@@ -468,8 +483,7 @@ Stack.prototype.to_js = function(){
         if(x[0]=="indent") {
             for(j=0;j<x[1];j++){js += " "}
         } else if(x[0] in t2) {
-            if(x[0]=='str'){js += 'str('+x[1].replace(/\n/gm,'\\n')+')'}
-            else if(x[0]=='int'){js += 'int('+x[1]+')'}
+            if(x[0]=='int'){js += 'Number('+x[1]+')'}
             else if(x[0]=='float'){js += 'float('+x[1]+')'}
             else{js += x[1]}
             if(i<this.list.length-1 && this.list[i+1][0] != "bracket"

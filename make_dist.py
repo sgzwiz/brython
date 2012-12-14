@@ -1,22 +1,11 @@
 # script to compact all Brython scripts in a single one
 import tokenize
-import datetime
-import re
-now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
-sources = ['py_classes','py2js','py_tokenizer','py_utils','py_ajax','py_dom',
-    'py_svg','py_local_storage']
+sources = ['py2js','py_tokenizer','py_utils',
+    'py_classes','py_list','py_string',
+    'py_ajax','py_dom','py_svg','py_local_storage']
 
-# update version number in module sys
-sys_src = open('sys.js').read()
-print(re.search('version_info:tuple\(int\(1\),int\(0\),str\(".*?"\)\)',sys_src))
-sys_src = re.sub('version_info:tuple\(int\(1\),int\(0\),str\(".*?"\)\)',
-    'version_info:tuple(int(1),int(0),str("%s"))' %now,sys_src)
-out = open('sys.js','w')
-out.write(sys_src)
-out.close()
-
-res = '// brython.js www.brython.info\n'
+res = ''
 src_size = 0
 for fname in sources:
     src = open(fname+'.js').read()
@@ -62,6 +51,8 @@ for fname in sources:
             res += src[pos]
             pos += 1
 
+import datetime
+now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
 out = open('brython.js','w')
 out.write(res)
@@ -103,5 +94,20 @@ for path in os.listdir(os.getcwd()):
     print('add',path)
     dist.add(os.path.join(os.getcwd(),path),
         arcname=os.path.join(name,path))
-
+"""
+for path in ['test','doc','cgi-bin']:
+    abs_path = os.path.join(os.getcwd(),path)
+    print('abs_path %s' %abs_path)
+    for (dirpath,dirnames,filenames) in os.walk(abs_path):
+        exclude = [ d for d in dirnames if d[0] in '._' ]
+        for d in exclude:
+            dirnames.remove(d)
+        for filename in filenames:
+            if not is_valid(filename):
+                continue
+            print('add',dirpath,filename)
+            print(os.path.join(name,dirpath,filename))
+            dist.add(os.path.join(dirpath,filename),
+                arcname=os.path.join(name,dirpath,filename))
+"""
 dist.close()
