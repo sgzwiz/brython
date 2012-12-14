@@ -1,4 +1,4 @@
-
+// brython.js www.brython.info
 function $MakeArgs($args,$required,$defaults,$other_args,$other_kw){
 var i=null
 var $PyVars={}
@@ -3629,7 +3629,7 @@ ev.target.$parent['on_drop'](ev.target.$parent,dropped.$parent)
 $TagClass.prototype.set_html=function(value){this.elt.innerHTML=str(value)}
 $TagClass.prototype.set_text=function(value){
 this.elt.innerText=str(value)
-this.textContent=str(value)
+this.elt.textContent=str(value)
 }
 $TagClass.prototype.set_value=function(value){this.elt.value=value.toString()}
 function A(){return new $TagClass('A',arguments)}
