@@ -103,6 +103,7 @@ def C():
         g=sqrt(c*c+k*k) or 0.001
         c=c/g
         k=k/g
+        log('first a %s b %s g %s' %(a,b,g))
         if w and g<m:
             dfg = 9
             s=14*(1-g/m)
@@ -116,6 +117,8 @@ def C():
             c=2.6e-4*(1-g/l)*f
             a+=x*c
             b+=y*c
+        if not isinstance(a,float):
+            return
         a*=B
         b*=B
         c=abs(a)
@@ -126,6 +129,7 @@ def C():
         if 0.1>k:
             b*=3*rand()
         c=0.45*g
+
         c=max(min(c,3.5),0.4)
         i+=a
         j+=b
@@ -143,6 +147,7 @@ def C():
             b*=-1
         h.a=a
         h.b=b
+        log('end %s %s' %(h.a,h.b))
         h.x=i
         h.y=j
         e.fillStyle=h.color
@@ -207,9 +212,9 @@ if o.getContext:
     doc.onmouseup=G
     doc.onmousemove=E
     time.set_interval(C,133)
-    doc["output"].innerHTML='hgk666hg'
+    doc["output"].html='hgk666hg'
 else:
-    doc["output"].innerHTML="Sorry, needs a recent version of Chrome, Firefox, Opera, Safari, or Internet Explorer 9."
+    doc["output"].html="Sorry, needs a recent version of Chrome, Firefox, Opera, Safari, or Internet Explorer 9."
 </script>
 
   </body>
