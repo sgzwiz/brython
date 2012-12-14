@@ -484,7 +484,8 @@ Stack.prototype.to_js = function(){
             for(j=0;j<x[1];j++){js += " "}
         } else if(x[0] in t2) {
             if(x[0]=='int'){js += 'Number('+x[1]+')'}
-            else if(x[0]=='float'){js += 'float('+x[1]+')'}
+            else if(x[0]==='float'){js += 'float('+x[1]+')'}
+            else if(x[0]==='str'){js+= x[1].replace(/\n/gm,'\\n')}
             else{js += x[1]}
             if(i<this.list.length-1 && this.list[i+1][0] != "bracket"
                 && this.list[i+1][0]!="point" && this.list[i+1][0]!="delimiter"){
