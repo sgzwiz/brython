@@ -1,6 +1,7 @@
 // built-in functions
 function abs(obj){
-    if(isinstance(obj,[int,float])){return int(Math.abs(obj))}
+    if(isinstance(obj,int)){return int(Math.abs(obj))}
+    else if(isinstance(obj,float)){return int(Math.abs(obj.value))}
     else{$raise('TypeError',"Bad operand type for abs(): '"+str(obj.__class__)+"'")}
 }
 
@@ -207,9 +208,8 @@ $FloatClass.prototype.toString = function(){
     if(res.indexOf('.')==-1){res+='.0'}
     return str(res)
 }
-$FloatClass.prototype.__int__ = function(){return parseInt(this.value)}
 
-$FloatClass.prototype.__float__ = function(){return this}
+$FloatClass.prototype.__bool__ = function(){return bool(this.value)}
     
 $FloatClass.prototype.__floordiv__ = function(other){
     if(isinstance(other,int)){return float(Math.floor(this.value/other))}
@@ -537,7 +537,6 @@ function map(){
 }
 
 function $extreme(args,op){ // used by min() and max()
-    console.log(args.length+' arguments')
     if(op==='__gt__'){var $op_name = "max"}
     else{var $op_name = "min"}
     if(args.length==0){$raise('TypeError',$op_name+" expected 1 argument, got 0")}
