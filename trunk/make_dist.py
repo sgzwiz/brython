@@ -51,6 +51,9 @@ for fname in sources:
             res += src[pos]
             pos += 1
 
+while '\n\n' in res:
+    res = res.replace('\n\n','\n')
+
 import datetime
 now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
