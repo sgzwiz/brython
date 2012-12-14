@@ -1,4 +1,5 @@
 // brython.js www.brython.info
+// version 1.0.20121214-222307
 function $MakeArgs($args,$required,$defaults,$other_args,$other_kw){
 var i=null
 var $PyVars={}
