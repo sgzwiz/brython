@@ -19,33 +19,16 @@
 <td><pre>x = 1
 y = 3.14
 z = "azerty"</td>
-<td><pre>x = int(1)
+<td><pre>x = 1
 y = float(3.14)
-z = str("azerty")</pre>
+z = "azerty"</pre>
 </td>
-<td><tt>int, float, str</tt> sont des fonctions Javascript définies dans <b>py_classes.js</b></td>
-</tr>
-
-<tr>
-<td><pre>x = a</td>
-<td><pre>x = $assign(a)</pre>
-<td>On ne peut pas simplement conserver le signe = : quand la valeur de droite est un type intégré simple (entier, flottant, chaine de caractères), le signe = ferait pointer vers le même <i>objet</i> Javascript (pas un entier / flottant / chaine Javascript), d'où un effet de bord indésirable :
-
-<p><pre>
-a = 0
-x = a
-x+= 1
-log(a)
->>1
-</pre>
-<p>La fonction $assign crée une copie de l'objet initial
-</td>
-</td>
+<td><tt>float</tt> est une fonction Javascript définie dans <b>py_classes.js</b></td>
 </tr>
 
 <tr>
 <td><pre>x = foo.bar</td>
-<td><pre>x = $assign(foo.__getattr__('bar'))</pre>
+<td><pre>x = foo.__getattr__('bar')</pre>
 <td>&nbsp;</td>
 </td>
 </tr>
@@ -59,7 +42,7 @@ log(a)
 
 <tr>
 <td><pre>x = foo[bar]</td>
-<td><pre>x = $assign(foo.__getitem__(bar))</pre>
+<td><pre>x = foo.__getitem__(bar)</pre>
 <td>&nbsp;</td>
 </td>
 </tr>
@@ -90,34 +73,30 @@ log(a)
 <tr>
 <td><pre>for obj in iterable:
     (...)</pre></td>
-<td><pre>$Iterable1 = iter(iterable)
-while(true){ 
-    try{ 
-        var $Next = next($Iterable1) 
-        obj = $Next
-        (...) 
-    }catch(err){ 
-        if(err.name=="StopIteration")
-            {break} 
-        else{throw err} 
-    } 
+<td><pre>var $iter1 =iterable 
+for (var $i1=0;$i1<$iter1.__len__();$i1++){ 
+   obj =$iter1.__item__($i1)
+   void(0) 
 }</pre>
 </td>
 <td>&nbsp;</td></tr>
 
 <tr>
 <td><pre>x,y = iterable</pre></td>
-<td><pre>var $var = iter(iterable)
-x = next($var)
-y = next($var)</pre>
+<td><pre>var $var =iterable 
+x =$var.__item__(0) 
+y =$var.__item__(1) 
+</pre>
 </td>
 <td>&nbsp;</td></tr>
 
 <tr>
 <td><pre>x,y = a,b</pre></td>
-<td><pre>var $temp=[]
-$temp.push(a);$temp.push(b)
-x=$assign($temp[0]);y=$assign($temp[1])
+<td><pre>var $temp=[] 
+$temp.push(a)
+$temp.push(b)
+x =$temp[0] 
+y =$temp[1]
 </pre>
 </td>
 <td>&nbsp;</td></tr>
@@ -127,7 +106,7 @@ x=$assign($temp[0]);y=$assign($temp[1])
    x=3
 </pre></td>
 <td><pre>function foo(){
-   var x=int(3)
+   var x=3
 }
 window.foo=foo 
 </td>
@@ -139,7 +118,7 @@ window.foo=foo
    x=3
 </pre></td>
 <td><pre>function foo(){
-   x=int(3)
+   x=3
 }
 window.foo=foo 
 </td>
@@ -151,7 +130,7 @@ window.foo=foo
    (...)
 </pre></td>
 <td><pre>function foo(){
-   $ns=$MakeArgs(arguments,['x'],{"y":int(3)},"args","kw")
+   $ns=$MakeArgs(arguments,['x'],{"y":3},"args","kw")
    for($var in $ns){eval("var "+$var+"=$ns[$var]")} 
    (...)
 }
@@ -163,7 +142,7 @@ window.foo=foo
 <tr>
 <td><pre>foo(x,y=1)
 </pre></td>
-<td><pre>foo(x,$Kw("y",int(1)))
+<td><pre>foo(x,$Kw("y",1))
 </td>
 <td>les arguments passés sous forme de mots-clés sont convertis en objets créés par la fonction <em>$Kw</em>
 </tr>
@@ -177,19 +156,20 @@ except TypeError:
 except:
     log('autre erreur')
 </pre></td>
-<td><pre>x =str('brython') 
+<td><pre>x ='brython' 
 try{
-    x.__setitem__(int(2),str('a'))
+    x.__setitem__(Number(2),'a')
 }
 catch($err0){
     if(false){void(0)} 
     else if($err0.name=="TypeError"){
-        log(str('erreur'))
+        log('erreur')
     }
     else{
-        log(str('autre erreur'))
+        log('autre erreur')
     }
-} 
+}
+</pre>
 </td>
 <td>les lignes
 <pre><b>catch($err0){
