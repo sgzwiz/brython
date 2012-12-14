@@ -46,48 +46,43 @@ log('<' + word*5 + '>')
 log('str' 'ing')
 log('str'.strip() + 'ing')
 
-# list examples
+# string methods
+x='fooss'
+log(x.replace('o','X',20))
+log('GhFF'.lower())
+log(x.lstrip('of'))
+x='aZjhkhZyuy'
+log(x.find('Z'))
+log(x.rfind('Z'))
+log(x.rindex('Z'))
+try:
+    log(x.rindex('K'))
+except ValueError:
+    log('erreur')
+log(x.split('h'))
+log(x.split('h',1))
+log(x.startswith('aZ'))
+log(x.strip('auy'))
+log(x.upper())
+
 # list examples
 a=['spam','eggs',100,1234]
-assert a[:2]+['bacon',2*2]==['spam','eggs','bacon',4]
-assert 3*a[:3]+['Boo!']==['spam','eggs',100,'spam','eggs',
-100,'spam','eggs',100,'Boo!']
-assert a[:]==['spam','eggs',100,1234]
+log(a[:2]+['bacon',2*2])
+log(3*a[:3]+['Boo!'])
+log(a[:])
 a[2]=a[2]+23
-assert a==['spam','eggs',123,1234]
+log(a)
 a[0:2]=[1,12]
-assert a==[1,12,123,1234]
+log(a)
 a[0:2]=[]
-assert a==[123,1234]
+log(a)
 a[1:1]=['bletch','xyzzy']
-assert a==[123,'bletch','xyzzy',1234]
+log(a)
 a[:0]=a
-assert a==[123,'bletch','xyzzy',
-    1234,123,'bletch','xyzzy',1234]
+log(a)
 a[:]=[]
-assert a==[]
+log(a)
 a.extend('ab')
-assert a==['a','b']
+log(a)
 a.extend([1,2,33])
-assert a==['a','b',1,2,33]
-a = ['a', 'b', 'c', 'd']
-assert len(a)==4
-q = [2, 3]
-p = [1, q, 4]
-assert len(p)==3
-assert p[1]==[2, 3]
-assert p[1][0]==2
-p[1].append('xtra')
-assert p==[1,[2,3,'xtra'],4]
-assert q==[2,3,'xtra']
-
-log('list tests ok')
-
-# Fibonacci
-a, b = 0, 1
-res = []
-while b<10:
-    res.append(b)
-    a, b = b, a+b
-assert res==[1,1,2,3,5,8]
-log('Fibonacci ok')
+log(a)

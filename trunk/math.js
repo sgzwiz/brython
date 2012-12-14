@@ -4,9 +4,9 @@ math = {
         if(res===undefined){$raise('AttributeError','module has no attribute '+attr)}
         return res
     },
-    cos : function(x){return float(Math.cos(x.value))},
-    floor:function(x){return int(Math.floor(x.value))},
+    cos : function(x){return float(Math.cos(x))},
+    floor:function(x){return Math.floor(x)},
     pi : float(Math.PI),
-    sin : function(x){return float(Math.sin(x.value))},
-    sqrt : function(x){return float(Math.sqrt(x.value))}
+    sin : function(x){return float(Math.sin(x))},
+    sqrt : function(x){return float(Math.sqrt(x))}
 }

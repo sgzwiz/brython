@@ -9,21 +9,21 @@ function $TimeClass(){
     
     this.__getattr__ = function(attr){return this[attr]}
 
-    this.clear_interval = function(int_id){window.clearInterval(int_id.value)}
+    this.clear_interval = function(int_id){window.clearInterval(int_id)}
     
     this.set_interval = function(func,interval){
-        return int(window.setInterval(func,interval.value))
+        return int(window.setInterval(func,interval))
     }
     this.set_timeout = function(func,interval){
-        window.setTimeout(func,interval.value)
+        window.setTimeout(func,interval)
     }
     this.time = function(){
         var obj = new Date()
-        return int(obj.getTime())
+        return obj.getTime()
     }
     this.strftime = function(format,arg){
         if(arg){var obj = new Date(arg)}else{var obj=new Date()}
-        var res = format.value
+        var res = format
         res = res.replace(/%H/,norm_str(obj.getHours(),2))
         res = res.replace(/%M/,norm_str(obj.getMinutes(),2))
         res = res.replace(/%S/,norm_str(obj.getSeconds(),2))
@@ -31,7 +31,7 @@ function $TimeClass(){
         res = res.replace(/%y/,norm_str(obj.getFullYear(),4).substr(2))
         res = res.replace(/%m/,norm_str(obj.getMonth()+1,2))
         res = res.replace(/%d/,norm_str(obj.getDate(),2))
-        return str(res)
+        return res
     }
 }
 time = new $TimeClass()

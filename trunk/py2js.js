@@ -1,5 +1,5 @@
 
-function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
+function $MakeArgs($args,$required,$defaults,$other_args,$other_kw){
     // builds a namespace from the arguments provided in $args
     // in a function call like foo(x,y,z=1,*args,**kw) the parameters are
     // $required : ['x','y']
@@ -11,19 +11,19 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     var $def_names = []
     var $ns = {}
     for(k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
-    if($other_args != null){$ns[$other_args]=list()}
-    if($other_kw != null){$keys=[];$values=[]}
+    if($other_args != null){$ns[$other_args]=[]}
+    if($other_kw != null){$dict_items=[]}
     for(i=0;i<$args.length;i++){
         $arg=$args[i]
         $PyVar=$JS2Py($arg)
-        if(!$isinstance($arg,$Kw)){ // positional arguments
+        if(!isinstance($arg,$Kw)){ // positional arguments
             if(i<$required.length){
                 eval($required[i]+"=$PyVar")
                 $ns[$required[i]]=$PyVar
             } else if(i<$required.length+$def_names.length) {
                 $ns[$def_names[i-$required.length]]=$PyVar
             } else if($other_args!=null){
-                eval('$ns["'+$other_args+'"].append($PyVar)')
+                eval('$ns["'+$other_args+'"].push($PyVar)')
             } else {
                 msg = $fname+"() takes "+$required.length+' positional arguments '
                 msg += 'but more were given'
@@ -38,21 +38,20 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
                 eval($required[ix]+"=$PyVar")
                 $ns[$required[ix]]=$PyVar
             } else if($arg.name in $defaults){
-                $ns[$arg.name]=$arg.value
+                $ns[$arg.name]=$arg
             } else if($other_kw!=null){
-                $keys.push(str($arg.name))
-                $values.push($PyVar)
+                $dict_items.push([$arg.name,$PyVar])
             } else {
                 throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"'")
             }
             if($arg.name in $defaults){delete $defaults[$arg.name]}
         }
     }
-    if($other_kw!=null){$ns[$other_kw]=new $DictClass($keys,$values)}
+    if($other_kw!=null){$ns[$other_kw]=dict($dict_items)}
     return $ns
 }
 
-function $multiple_assign(targets,right_expr,assign_pos){
+function $multiple_assign(indent,targets,right_expr,assign_pos){
     var i=0,target=null
     // for local variables inside functions, insert "var"
     for(var i=0;i<targets.list;i++){
@@ -70,28 +69,30 @@ function $multiple_assign(targets,right_expr,assign_pos){
             $raise("ValueError","Need more than "+rs_items.length+" values to unpack")
         } else {
             // right operands are evaluated first and stored in a temporary variable
-            var seq=[['code','var $temp=[];']]
+            var seq=[['code','var $temp=[]'],['newline','\n']]
             for(i=0;i<targets.length;i++){
-                seq.push(['code','$temp.push'],['bracket','('])
+                seq.push(['indent',indent],['code','$temp.push'],['bracket','('])
                 seq = seq.concat(rs_items[i].list)
-                seq.push(['bracket',')'],['delimiter',';',assign_pos])
+                seq.push(['bracket',')'],['newline','\n',assign_pos])
             }
             for(i=0;i<targets.length;i++){
+                seq.push(['indent',indent])
                 seq = seq.concat(targets[i].list)
                 seq.push(['assign','=',assign_pos],
-                    ['code','$temp['+i+']'],['delimiter',';',assign_pos])
+                    ['code','$temp['+i+']'],['newline','\n',assign_pos])
             }
         }        
     } else {
-        var seq = [['code',"var $var=iter",assign_pos]]
-        seq.push(['bracket','(',assign_pos])
+        var seq = [['code',"var $var",assign_pos],
+            ['assign','=']]
         seq = seq.concat(right_expr.list())
-        seq.push(['bracket',')',assign_pos])
-        seq.push(['delimiter',';',assign_pos])
+        seq.push(['newline','\n',assign_pos])
         for(var i=0;i<targets.length;i++){
             target = targets[i]
+            seq.push(['indent',indent])
             seq = seq.concat(target.list)
-            seq.push(['assign','='],['code','next($var)'],['delimiter',';'])
+            seq.push(['assign','='],['code','$var.__item__('+i+')'],
+                ['newline','\n'])
         }
     }
     return seq
@@ -120,7 +121,7 @@ function $py2js(src,context,debug){
         if(src.charAt(i)=='\n'){lnum+=1}
     }
     var dobj = new Date()
-    t0 = dobj.getTime()
+    var t0 = dobj.getTime()
     var times = {}
         
     // tokenization
@@ -131,23 +132,25 @@ function $py2js(src,context,debug){
     var $err_num = 0
     // add a line number at the end of each line in source code
     // used for traceback
-    var pos = 0
-    var s_nl = 0
-    while(true){
-        var nl = stack.find_next(pos,'newline')
-        if(nl==null){break}
-        var indent_pos = stack.find_previous(nl,'indent')
-        if(!stack.list[indent_pos+1].match(['keyword','else']) &&
-            !stack.list[indent_pos+1].match(['keyword','elif']) &&
-            !stack.list[indent_pos+1].match(['keyword','except'])){
-            stack.list.splice(s_nl,0,stack.list[indent_pos],
-                ['code','document.line_num='+stack.list[nl][1],stack.list[nl][2]],
-                ['newline','\n'])
-            s_nl = nl+4
-            pos = nl+5
-        }else{
-            s_nl = nl+1
-            pos = nl+2
+    if(debug){
+        var pos = 0
+        var s_nl = 0
+        while(true){
+            var nl = stack.find_next(pos,'newline')
+            if(nl==null){break}
+            var indent_pos = stack.find_previous(nl,'indent')
+            if(!stack.list[indent_pos+1].match(['keyword','else']) &&
+                !stack.list[indent_pos+1].match(['keyword','elif']) &&
+                !stack.list[indent_pos+1].match(['keyword','except'])){
+                stack.list.splice(s_nl,0,stack.list[indent_pos],
+                    ['code','document.line_num='+stack.list[nl][1],stack.list[nl][2]],
+                    ['newline','\n'])
+                s_nl = nl+4
+                pos = nl+5
+            }else{
+                s_nl = nl+1
+                pos = nl+2
+            }
         }
     }
     var dobj = new Date()
@@ -221,7 +224,7 @@ function $py2js(src,context,debug){
                             // position of key in args is kv.start+key.start
                             var key_start = kv.start+key.start
                             var key_end = kv.start+key.end
-                            sequence.push(['id','list'])
+                            sequence.push(['id','$list'])
                             sequence.push(['bracket','('])
                             sequence = sequence.concat(args.list.slice(key_start,key_end+1))
                             sequence.push(['delimiter',',',br_pos])
@@ -332,7 +335,7 @@ function $py2js(src,context,debug){
             if(end_def==null){
                 $raise("SyntaxError","Unable to find definition end "+end_def)
             }
-            var arg_code = '"'+func_token[1]+'",arguments,'
+            var arg_code = 'arguments,'
             
             if(required.length==0){arg_code+='[],'}
             else{
@@ -453,7 +456,7 @@ function $py2js(src,context,debug){
         pos=sign+1
     }
     
-    // replace import module_list by Import(module_list)
+    // replace import module_list by $import(module_list)
     pos = 0
     while(pos<stack.list.length){
         var imp_pos = stack.find_next(pos,"keyword","import")
@@ -472,7 +475,7 @@ function $py2js(src,context,debug){
         var src_pos = stack.list[imp_pos][2]
         stack.list.splice(imported.end+1,0,['bracket',')'])
         stack.list.splice(imp_pos,1,
-            ['code','Import',src_pos],['bracket','(',src_pos])
+            ['code','$import',src_pos],['bracket','(',src_pos])
         pos = imp_pos+1
     }
 
@@ -544,20 +547,28 @@ function $py2js(src,context,debug){
     }
 
     // "assert condition" becomes "if condition: pass else: raise AssertionError"
-    var pos = stack.list.length-1
+    var pos = 0
     while(true){
-        var assert_pos = stack.find_previous(pos,"keyword","assert")
+        var assert_pos = stack.find_next(pos,"keyword","assert")
         if(assert_pos===null){break}
-        var assert_indent = stack.indent(assert_pos)
-        var end = stack.line_end(assert_pos)
-        var cond_block = stack.list.slice(assert_pos+1,end)
-        stack.list[assert_pos][1]="if"
-        stack.list.splice(end,0,['delimiter',':'],['newline','\n'],
-            ['indent',assert_indent+4],['keyword','pass'],['newline','\n'],
-            ['indent',assert_indent],['keyword','else'],['delimiter',':'],['newline','\n'],
+        var assert_indent = 0
+        if(assert_pos==0){assert_indent=0}
+        else if(stack.list[assert_pos-1][0]=='indent'){assert_indent = stack.list[assert_pos-1][1]}
+        var end = stack.find_next(assert_pos,"newline")
+        if(end===null){end=stack.list.length-1}
+        var cond_block = stack.list.slice(assert_pos+1,end+1)
+        alert(cond_block)
+        // replace assert by if
+        stack.list.splice(assert_pos,1,['keyword','if'])
+        stack.dump()
+        stack.list.splice(end-1,0,['delimiter',':'],['newline','\n'],
+            ['indent',assert_indent+4],['keyword','pass'],['newline','\n'])
+        stack.dump()
+        if(assert_indent>0){stack.list.splice(end+4,0,['indent',assert_indent]);end++}
+        stack.list.splice(end+4,0,['keyword','else'],['delimiter',':'],['newline','\n'],
             ['indent',assert_indent+4],['code','$raise("AssertionError")'])
-        
-        pos = assert_pos-1
+        stack.dump()
+        pos = assert_pos+1
     }
 
     // replace if,elif,else,def,for,try,catch,finally by equivalents
@@ -594,9 +605,9 @@ function $py2js(src,context,debug){
             tail = stack.list.slice(block[1],stack.list.length)
             if(kw in has_parenth){
                 if(kw=="for"){
-                    // remove 'for'
-                    stack.list.splice(kw_pos,1)
-                    var arg_list = stack.atom_at(kw_pos,true) // accept implicit tuple
+                    loop_id++
+                    var block_indent = stack.indent(block[0]+1)
+                    var arg_list = stack.atom_at(kw_pos+1,true) // accept implicit tuple
                     var _in = stack.atom_at(arg_list.end+1)
                     var _in_list = stack.list.slice(_in.start,_in.end+1)
                     if(_in_list.length != 1 || 
@@ -604,48 +615,28 @@ function $py2js(src,context,debug){
                         $raise("SyntaxError","missing 'in' after 'for'",src,src_pos)
                     }
                     var iterable = stack.atom_at(_in.end+1,true)
-                    seq = []
-                    loop_id++
-                    if(kw_indent){seq.push(['indent',kw_indent,src_pos])}
-                    seq = seq.concat([['id','$Iterable'+loop_id,src_pos],
-                        ['assign','=',src_pos],['id','iter',src_pos]])
-                    if(iterable.type=="tuple"){ // implicit tuple
-                        seq = seq.concat([['bracket','(',src_pos],['id','tuple',src_pos]])
-                    }
-                    seq.push(['bracket','(',src_pos])
-                    seq = seq.concat(stack.list.slice(iterable.start,iterable.end+1))
-                    seq.push(['bracket',')',src_pos])
-                    if(iterable.type=="tuple"){seq.push(['bracket',')',src_pos])}
-                    seq.push(['newline','\n',src_pos])
-                    if(kw_indent){seq.push(['indent',kw_indent,src_pos])}
-                    seq= seq.concat([['code','while(true){',src_pos],
-                        ['newline','\n',src_pos],['indent',kw_indent,src_pos],
-                        ['code','try{',src_pos],['newline','\n',src_pos],
-                        ['indent',kw_indent+4,src_pos],['code','var $Next=next($Iterable'+loop_id+')',src_pos],
-                        ['newline','\n',src_pos],['indent',kw_indent+4,src_pos]])
-                    seq = seq.concat(stack.list.slice(arg_list.start,arg_list.end+1))
-                    seq.push(['assign','=',src_pos])
-                    seq.push(['code','$Next',src_pos])
-                    seq = seq.concat(stack.list.slice(block[0],block[1]))
-                    // code to include at block end
-                    seq = seq.concat([['indent',kw_indent,src_pos],
-                        ['code','}catch(err'+$err_num+'){',src_pos],
-                        ['newline','\n',src_pos],
-                        ['indent',kw_indent+8,src_pos],
-                        ['code','if(err'+$err_num+'.name=="StopIteration"){break}',src_pos],
-                        ['newline','\n',src_pos],['indent',kw_indent+4,src_pos],
-                        ['code','else{throw err'+$err_num+'}',src_pos],
-                        ['newline','\n',src_pos],
-                        ['indent',kw_indent,src_pos],['code','}',src_pos]])
-                    stack.list = stack.list.slice(0,kw_pos)
+                    // create temporary variable for iterator
+                    seq = [['indent',kw_indent],
+                        ['code','var $iter'+loop_id],['assign','=']]
+                    seq = seq.concat(iterable.list())
+                    seq.push(['newline','\n'],['indent',kw_indent],['code','for'])
+                    //if(kw_indent){seq.push(['indent',kw_indent,src_pos])}
+                    var $loop = '(var $i'+loop_id+'=0;$i'+loop_id+'<'
+                    $loop += '$iter'+loop_id+'.__len__();$i'+loop_id+'++){'
+                    seq = seq.concat([['code',$loop],['newline','\n'],
+                        ['indent',block_indent]])
+                    seq = seq.concat(arg_list.list())
+                    seq.push(['assign','='],['id','$iter'+loop_id])
+                    seq.push(['point','.'],['qualifier','__item__'],
+                        ['bracket','('],['id','$i'+loop_id],['bracket',')'])
+                    //seq.push(['newline','\n'],['indent',block_indent])
+                    seq = seq.concat(stack.list.slice(block[0]+1,block[1]))
+                    stack.list = stack.list.slice(0,kw_pos-1)
                     stack.list = stack.list.concat(seq)
                     $err_num++
-                } else if(kw=='if' || kw=='elif' || kw=='while'){ // if, elif and while : use bool()
+                } else if(kw=='if' || kw=='elif' || kw=='while'){ // if and elif : use bool()
                     var seq = [['bracket','(',src_pos]]
-                    seq.push(['code','$bool',src_pos])
-                    seq.push(['bracket','(',src_pos])
                     seq = seq.concat(stack.list.slice(kw_pos+1,block[0]))
-                    seq.push(['bracket',')',src_pos]) // close bool
                     seq.push(['bracket',')',src_pos]) // close if / elif
                     seq.push(stack.list[block[0]])
                     seq = seq.concat(stack.list.slice(block[0]+1,block[1]))
@@ -662,9 +653,9 @@ function $py2js(src,context,debug){
                 }
             } else if(kws[kw]=="function"){
                 var func_name = stack.list[kw_pos+1]
-                var i=0,parent = null
+                var i=0,parent = false
                 for(i=$funcs.length-1;i>=0;i--){
-                    if(kw_pos>$funcs[i][1] && kw_pos<$funcs[i][2]){parent = $funcs[i][0];break}
+                    if(kw_pos>$funcs[i][1] && kw_pos<$funcs[i][2]){parent = true;break}
                 }
                 $funcs.push([func_name[1],block[0],block[1],parent])
                 // function name is a special id (for to_js())
@@ -701,7 +692,7 @@ function $py2js(src,context,debug){
                 var indent = stack.indent(kw_pos)
                 var f_indent = ''
                 while(indent>0){f_indent+=' ';indent--}
-                if(parent==null){
+                if(!parent){
                     var code = '\n'+f_indent+'window.'+fname+'='+fname
                     module_level_functions.push(fname)
                     tail.splice(0,0,['func_end',code])
@@ -718,7 +709,6 @@ function $py2js(src,context,debug){
             pos = kw_pos+1
         }
     }
-
 
     var dobj = new Date()
     times['if def class for'] = dobj.getTime()-t0
@@ -969,7 +959,8 @@ function $py2js(src,context,debug){
             var t_stack = new Stack(list)
             var targets = t_stack.split(',')
             document.line_num = pos2line[stack.list[assign][2]]
-            var seq = $multiple_assign(targets,right,stack.list[assign][2])
+            var indent = stack.indent(assign)
+            var seq = $multiple_assign(indent,targets,right,stack.list[assign][2])
             var tail = stack.list.slice(right.end+1,stack.list.length)
             stack.list = stack.list.slice(0,left.start).concat(seq).concat(tail)
             pos = left.start+seq.length-1
@@ -983,17 +974,6 @@ function $py2js(src,context,debug){
             // simple assignment
             // for local variables inside functions, insert "var"
             if(left.list()[0][3]==="local"){left.list()[0][1]="var "+left.list()[0][1]}
-            var head = stack.list.slice(0,right.start)
-            var tail = stack.list.slice(right.end+1,stack.list.length)
-            if(right.list().length==1 && 
-                ['int','str','float'].indexOf(right.list()[0][0])>-1){
-                // for literals keep right argument
-                void(0)
-            }else{  // replace right argument by $single_assign(right)
-                seq = [['code','$assign'],['bracket','(']].concat(right.list())
-                seq = seq.concat([['bracket',')']])
-                stack.list = head.concat(seq).concat(tail)
-            }
             pos = assign-1
         }
     }
@@ -1006,6 +986,9 @@ function $py2js(src,context,debug){
     while(true){
         br_pos = stack.find_previous(pos,'bracket','[')
         if(br_pos==null){break}
+        if(br_pos==0){break}
+        var previous = stack.list[br_pos-1]
+        if(['id','qualifier','keyword'].indexOf(previous[0])==-1){pos=br_pos-1;continue}
         src_pos = stack.list[br_pos][2]
         var end = stack.find_next_matching(br_pos)
         
@@ -1109,8 +1092,20 @@ function $py2js(src,context,debug){
         }
         pos = q_pos-1
     }
+    
+    // replace $list by arrays
+    var pos=0
+    while(true){
+        var $list_pos = stack.find_next(pos,'id','$list')
+        if($list_pos===null){break}
+        stack.list.splice($list_pos,1)
+        var end = stack.find_next_matching($list_pos)
+        stack.list[$list_pos][1]='['
+        stack.list[end][1]=']'
+        pos = $list_pos
+    }
 
-    // add a try/except clause in functions, for traceback
+    // add a try/except clause in functions, for traceback XXX
     var pos = 0
     while(true){
         var func_pos = stack.find_next(pos,'keyword','function')

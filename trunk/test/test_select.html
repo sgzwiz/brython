@@ -1,11 +1,20 @@
 <html>
 <head>
+<meta charset="iso-8859-1">
 <style>
 body,td,th{font-family:sans-serif}
 a.sort_link{margin-left:10px;text-decoration:none}
 </style>
 
-<script src="/brython.js"></script>
+<script src="/py_tokenizer.js"></script>
+<script src="/py_utils.js"></script>
+<script src="/py_classes.js"></script>
+<script src="/py_list.js"></script>
+<script src="/py_string.js"></script>
+<script src="/py_dom.js"></script>
+<script src="/py2js.js"></script>
+<script src="/py_ajax.js"></script>
+
 </head>
 <body onLoad="brython()">
 
@@ -13,7 +22,6 @@ a.sort_link{margin-left:10px;text-decoration:none}
 items = ['unan','daou','tri','pevar','pemp']
 
 def swap(src,dest):
-    log(src.options.__class__)
     selected = src.selectedIndex
     if selected == -1:
         return
@@ -34,7 +42,8 @@ def down(src):
     selected = src.selectedIndex
     if selected == -1 or selected == len(src.options)-1:
         return
-    option = src.options[selected]
+    options = src.options
+    option = options[selected]
     del src.options[selected]
     src.options.insert(selected+1,option)
 
@@ -45,11 +54,9 @@ up_down_left = BUTTON('\u2191',onClick="up(left)")
 up_down_left += BR()+BUTTON('\u2193',onClick="down(left)")
 
 left = SELECT(size=10,style={'width':100})
-log(left.__class__)
 
 for i,_item in enumerate(items):
     option = OPTION(_item,value=i,width=40,Id='opt%s' %i,selected=i==1)
-    log(option.selected)
     left <= option
 
 buttons = BUTTON('>',onClick="swap(left,right)")

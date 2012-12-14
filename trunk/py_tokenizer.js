@@ -28,23 +28,23 @@ function $tokenize(src){
     var br_close = {")":"(","]":"[","}":"{"}
     var br_stack = ""
     var br_pos = new Array()
-    var kwdict = $List2Dict("False","class","finally","is","return",
+    var kwdict = ["False","class","finally","is","return",
         "None","continue","for","lambda","try","True","def","from",
         "nonlocal","while","del","global","with",
         "as","elif","if","yield","assert","else","import","pass",
-        "break","except","raise")
-    var unsupported = $List2Dict("class","is","from","nonlocal","with",
-        "as","yield")
+        "break","except","raise"]
+    var unsupported = ["class","is","from","nonlocal","with",
+        "as","yield"]
     // causes errors for some browsers
     // complete list at http://www.javascripter.net/faq/reserved.htm
-    var forbidden = $List2Dict('item','var',
+    var forbidden = ['item','var',
         'closed','defaultStatus','document','frames',
         'history','innerHeight','innerWidth','length',
         'location','name','navigator','opener',
         'outerHeight','outerWidth','pageXOffset','pageYOffset',
         'parent','screen','screenLeft','screenTop',
         'screenX','screenY','self','status',
-        'top','print')
+        'top']
 
     var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
@@ -183,8 +183,8 @@ function $tokenize(src){
                 name+=car
                 pos++;continue
             } else{
-                if(name in kwdict){
-                    if(name in unsupported){
+                if(kwdict.indexOf(name)>-1){
+                    if(unsupported.indexOf(name)>-1){
                         document.line_num = pos2line[pos]
                         $raise('SyntaxError',"Unsupported Python keyword '"+name+"'")                    
                     }
@@ -192,9 +192,9 @@ function $tokenize(src){
                 } else if(name in $operators) { // and, or
                     stack.push(["operator",name,pos-name.length])
                 } else if(stack.length>1 && $last(stack)[0]=="point"
-                    && (stack[stack.length-2][0] in $List2Dict('id','qualifier','bracket'))) {
+                    && (['id','str','int','float','qualifier','bracket'].indexOf(stack[stack.length-2][0])>-1)) {
                     stack.push(["qualifier",name,pos-name.length])
-                } else if(name in forbidden) {
+                } else if(forbidden.indexOf(name)>-1) {
                     document.line_num = pos2line[pos]
                     $raise('SyntaxError',"Forbidden name '"+name+"' : might conflict with Javascript variables")                    
                 } else {

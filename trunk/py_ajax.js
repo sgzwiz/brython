@@ -4,7 +4,7 @@ function $XmlHttpClass(obj){
     this.__class__ = 'XMLHttpRequest'
     this.__getattr__ = function(attr){
         if('get_'+attr in this){return this['get_'+attr]()}
-        else{return $getattr(obj,attr)}
+        else{return getattr(obj,attr)}
     }
     
     this.get_text = function(){return str(obj.responseText)}
@@ -13,7 +13,6 @@ function $XmlHttpClass(obj){
 }
 
 function $AjaxClass(){
-
     if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
         var $xmlhttp=new XMLHttpRequest();
     }else{// code for IE6, IE5
@@ -38,26 +37,26 @@ function $AjaxClass(){
         }
     }
 
-    this.__getattr__ = function(attr){return $getattr(this,attr)}
+    this.__getattr__ = function(attr){return getattr(this,attr)}
     
-    this.__setattr__ = function(attr,value){$setattr(this,attr,value)}
+    this.__setattr__ = function(attr,value){setattr(this,attr,value)}
 
     this.open = function(method,url,async){
-        $xmlhttp.open(method.value,url.value,$bool(async));
+        $xmlhttp.open(method,url,async);
     }
 
     this.set_header = function(key,value){
-        $xmlhttp.setRequestHeader(key.value,value.value)
+        $xmlhttp.setRequestHeader(key,value)
     }
     
     this.send = function(params){
         // params is a Python dictionary
         if(!params || params.$keys.length==0){$xmlhttp.send();return}
-        if(!$isinstance(params,dict)){$raise('TypeError',
-            "send() argument must be dictonary, not '"+$str(params.__class__)+"'")}
+        if(!isinstance(params,dict)){$raise('TypeError',
+            "send() argument must be dictonary, not '"+str(params.__class__)+"'")}
         var res = ''
         for(i=0;i<params.$keys.length;i++){
-            res += $str(params.$keys[i])+'='+$str(params.$values[i])+'&'
+            res += str(params.$keys[i])+'='+str(params.$values[i])+'&'
         }
         res = res.substr(0,res.length-1)
         $xmlhttp.send(res)
@@ -68,7 +67,7 @@ function $AjaxClass(){
     this.set_timeout = function(seconds,func){
         $xmlhttp.$requestTimer = setTimeout(
             function() {$xmlhttp.abort();func()}, 
-            seconds.value*1000); 
+            seconds*1000); 
     }
 }
 

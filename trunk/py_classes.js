@@ -1,37 +1,16 @@
-// exceptions
-
-function $raise(name,msg) {
-    // raises exception with specified name and message
-    if(document.$debug==0){return}
-    if(msg===undefined){msg=''}
-    var lines = document.$py_src[document.$context].split('\n')
-    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
-    err = new Error(name+": "+msg)
-    err.name = name
-    err.message = name+": "+msg;
-    err.py_error = true
-    throw err
-}
-
-function $UnsupportedOpType(op,class1,class2){
-    $raise('TypeError',
-        "unsupported operand type(s) for "+op+": '"+$str(class1)+"' and '"+$str(class2)+"'")
-}
-
 // built-in functions
 function abs(obj){
-    if($isinstance(obj,int)){return int(Math.abs(obj.value))}
-    else if($isinstance(obj,float)){return float(Math.abs(obj.value))}
-    else{$raise('TypeError',"Bad operand type for abs(): '"+$str(obj.__class__)+"'")}
+    if(isinstance(obj,[int,float])){return int(Math.abs(obj))}
+    else{$raise('TypeError',"Bad operand type for abs(): '"+str(obj.__class__)+"'")}
 }
 
-function $alert(src){alert(str(src).value)}
+function $alert(src){alert(str(src))}
 
 function all(iterable){
     while(true){
         try{
             var elt = next(iterable)
-            if(!$bool(elt)){return False}
+            if(!bool(elt)){return False}
         }catch(err){return True}
     }
 }
@@ -40,28 +19,23 @@ function any(iterable){
     while(true){
         try{
             var elt = next(iterable)
-            if($bool(elt)){return True}
+            if(bool(elt)){return True}
         }catch(err){return False}
     }
 }
 
-function $bool(obj){ // return true or false ; used for if / elif
-    if(obj===None||obj==False){return false}
-    else if($isinstance(obj,list(int,float))){return obj.value!=0}
-    else if($isinstance(obj,str)){return obj.value!=''}
-    else if($isinstance(obj,list(list,tuple))){return obj.items.length>0}
-    else if($isinstance(obj,dict)){return obj.keys.length>0}
-    
-    else if('__bool__' in obj){return obj.__bool__()===True}
-    else if('__len__' in obj){return obj.__len__().__gt__(int(0))}
+function bool(obj){ // return true or false
+    if(isinstance(obj,dict)){return obj.keys.length>0}
+    else if(isinstance(obj,tuple)){return obj.items.length>0}
+    else if(typeof obj==="boolean"){return obj}
+    else if(typeof obj==="number" || typeof obj==="string"){
+        if(obj){return true}else{return false}
+    }else if('__bool__' in obj){return obj.__bool__()}
+    else if('__len__' in obj){return obj.__len__()>0}
     return true
 }
 
-function $bool_conv(arg){if(arg){return True}else{return False}}
-
-function bool(obj){return $bool_conv($bool(obj))}
-
-function $confirm(src){return $bool_conv(confirm(src.value))}
+function $confirm(src){return confirm(src)}
 
 // dictionary
 function $DictClass($keys,$values){
@@ -74,47 +48,43 @@ function $DictClass($keys,$values){
     this.$keys = $keys // JS Array
     this.$values = $values // idem
 }
-$DictClass.prototype.__len__ = function() {return int(this.$keys.length)}
-$DictClass.prototype.__str__ = function(){
-    if(this.$keys.length==0){return str('{}')}
+
+$DictClass.prototype.toString = function(){
+    if(this.$keys.length==0){return '{}'}
     var res = "{",key=null,value=null,i=null
     for(i=0;i<this.$keys.length;i++){
-        key = this.$keys[i]
-        value = this.$values[i]
-        if($isinstance(key,str)){
-            key=key.__repr__().value
-        } else {
-            key=key.__str__().value
-        }
-        if($isinstance(value,str)){
-            value = value.__repr__().value
-        } else {
-            value = value.__str__().value
-        }
+        if(typeof this.$keys[i]==="string"){key="'"+this.$keys[i]+"'"}
+        else{key = str(this.$keys[i])}
+        if(typeof this.$values[i]==="string"){value="'"+this.$values[i]+"'"}
+        else{value = str(this.$values[i])}
         res += key+':'+value+','
     }
-    return str(res.substr(0,res.length-1)+'}')
+    return res.substr(0,res.length-1)+'}'
 }
 
 $DictClass.prototype.__add__ = function(other){
     var msg = "unsupported operand types for +:'dict' and "
-    $raise('TypeError',msg+"'"+($str(other.__class__) || typeof other)+"'")
+    $raise('TypeError',msg+"'"+(str(other.__class__) || typeof other)+"'")
+}
+
+$DictClass.prototype.__contains__ = function(item){
+    return this.$keys.__contains__(item)
 }
 
 $DictClass.prototype.__delitem__ = function(arg){
     // search if arg is in the keys
     for(var i=0;i<this.$keys.length;i++){
-        if($bool(arg.__eq__(this.$keys[i]))){
+        if(arg.__eq__(this.$keys[i])){
             this.$keys.splice(i,1)
             this.$values.splice(i,1)
             return
         }
     }
-    $raise('KeyError',$str(arg))
+    $raise('KeyError',str(arg))
 }
 
 $DictClass.prototype.__eq__ = function(other){
-    if(!$isinstance(other,dict)){return False}
+    if(!isinstance(other,dict)){return False}
     if(!other.$keys.length==this.$keys.length){return False}
     for(var i=0;i<this.$keys.length;i++){
         test = false
@@ -122,7 +92,7 @@ $DictClass.prototype.__eq__ = function(other){
         for(j=0;j<other.$keys.length;j++){
             try{
                 if(other.$keys[j].__eq__(key)){
-                    if($bool(other.$values[j].__eq__($values[i]))){
+                    if(other.$values[j].__eq__($values[i])){
                         test = true;break
                     }
                 }
@@ -133,35 +103,25 @@ $DictClass.prototype.__eq__ = function(other){
     return True
 }
 
-$DictClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
-
 $DictClass.prototype.__getattr__ = function(attr){
-    return $getattr(this,attr)
+    return getattr(this,attr)
 }
 
 $DictClass.prototype.__getitem__ = function(arg){
     // search if arg is in the keys
     for(var i=0;i<this.$keys.length;i++){
-        if($bool(arg.__eq__(this.$keys[i]))){return this.$values[i]}
+        if(arg.__eq__(this.$keys[i])){return this.$values[i]}
     }
-    $raise('KeyError',$str(arg))
+    $raise('KeyError',str(arg))
 }
 
-$DictClass.prototype.__setitem__ = function(key,value){
-    for(var i=0;i<this.$keys.length;i++){
-        try{
-            if($bool(key.__eq__(this.$keys[i]))){ // reset value
-                this.$values[i]=value
-                return
-            }
-        }catch(err){ // if __eq__ throws an exception
-            void(0)
-        }
-    }
-    // create a new key/value
-    this.$keys.push(key)
-    this.$values.push(value)
-}
+$DictClass.prototype.__in__ = function(item){return item.__contains__(this)}
+
+$DictClass.prototype.__item__ = function(i){return this.$keys[i]}
+
+$DictClass.prototype.__len__ = function() {return this.$keys.length}
+
+$DictClass.prototype.__ne__ = function(other){return !this.__eq__(other)}
 
 $DictClass.prototype.__next__ = function(){
     if(this.iter==null){this.iter==0}
@@ -174,114 +134,101 @@ $DictClass.prototype.__next__ = function(){
     }
 }
 
-$DictClass.prototype.__in__ = function(item){return item.__contains__(this)}
-$DictClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
+$DictClass.prototype.__not_in__ = function(item){return !(item.__contains__(this))}
 
-$DictClass.prototype.__contains__ = function(item){
-    return list(this.$keys).__contains__(item)
-}
-
-$DictClass.prototype.items = function(){return new $DictIterator(this.$keys,this.$values)}
-
-$DictClass.prototype.keys = function(){
-    var res = list()
-    for(var i=0;i<this.$keys.length;i++){res.append(this.$keys[i])}
-    return res
-}
-$DictClass.prototype.values = function() {
-    var res = list()
-    for(var i=0;i<this.$values.length;i++){res.append(this.$values[i])}
-    return res
-}
-
-function $DictIterator(keys,values){
-    this.keys = keys
-    this.values = values
-    this.iter = null
-    this.__next__ = function(){
-        if(this.iter==null){this.iter==0}
-        if(this.iter<keys.length){
-            this.iter++
-            return list(keys[this.iter-1],this.values[this.iter-1])
-        } else {
-            this.iter = null
-            $raise('StopIteration')
+$DictClass.prototype.__setitem__ = function(key,value){
+    for(var i=0;i<this.$keys.length;i++){
+        try{
+            if(key.__eq__(this.$keys[i])){ // reset value
+                this.$values[i]=value
+                return
+            }
+        }catch(err){ // if __eq__ throws an exception
+            void(0)
         }
     }
-}    
+    // create a new key/value
+    this.$keys.push(key)
+    this.$values.push(value)
+}
+
+$DictClass.prototype.items = function(){
+    var res=[]
+    for(var i=0;i<this.$keys.length;i++){
+        res.push([this.$keys[i],this.$values[i]])
+    }
+    return res
+}
+
+$DictClass.prototype.keys = function(){return this.$keys}
+
+$DictClass.prototype.values = function(){return this.$values}  
 
 function dict(){
     if(arguments.length==0){return new $DictClass([],[])}
-    var arg_iter=iter(arguments[0]),i=0
+    var iterable = arguments[0]
     var keys=[],values=[]
-    while(true){
-        try{
-            arg = next(arg_iter)
-            keys.push(arg.items[0])
-            values.push(arg.items[1])
-        }catch(err){
-            if(err.name=="StopIteration"){break}
-            else{throw err}
-        }
+    for(var i=0;i<iterable.__len__();i++){
+        var elt = iterable.__item__(i)
+        keys.push(elt.__item__(0))
+        values.push(elt.__item__(1))
     }
     return new $DictClass(keys,values)
 }
 
-function $EnumerateClass(iterator){
-    this.iterator = iter(iterator)
-    this.count = -1
-    this.__next__ = function(){
-        this.count += 1
-        try{
-            return list(int(this.count),this.iterator.__next__())
-        }catch(err){
-            if(err.name=="StopIteration"){this.count=-1;this.iterator.iter=null}
-            throw err
-        }
-    }
-}
 function enumerate(iterator){
-    return new $EnumerateClass(iterator)
-}
-
-function $FilterClass(func,iterable){
-    this.func = func
-    this.iterable = iterable
-    this.__next__ = function(){
-        while(true){
-            var elt = next(this.iterable)
-            if($bool(this.func(elt))){return elt}
-        }
+    var res = []
+    for(var i=0;i<iterator.__len__();i++){
+        res.push([i,iterator.__item__(i)])
     }
+    return res
 }
-                
+            
 function filter(){
     if(arguments.length!=2){$raise('TypeError',
             "filter expected 2 arguments, got "+arguments.length)}
-    var func = arguments[0]
-    var iterable = arguments[1]
-    if(!'__next__' in iterable){$raise('TypeError',
-         "'"+$str(iterable.__class__)+"' object is not iterable")}
-    return new $FilterClass(func,iterable)
+    var func=arguments[0],iterable=arguments[1]
+    var res=[]
+    for(var i=0;i<iterable.__len__();i++){
+        if(func(iterable.__item__(i))){
+            res.push(iterable.__item__(i))
+        }
+    }
+    return res
 }
 
 function $FloatClass(value){
     this.value = value
     this.__class__ = float
 }
-$FloatClass.prototype.__str__ = function(){
+
+$FloatClass.prototype.toString = function(){
     var res = this.value+'' // coerce to string
     if(res.indexOf('.')==-1){res+='.0'}
     return str(res)
 }
-$FloatClass.prototype.__int__ = function(){return int(parseInt(this.value))}
+$FloatClass.prototype.__int__ = function(){return parseInt(this.value)}
+
 $FloatClass.prototype.__float__ = function(){return this}
     
-var $op_func = function(other){
-    if($isinstance(other,int)){return float(this.value-other.value)}
-    else if($isinstance(other,float)){return float(this.value-other.value)}
+$FloatClass.prototype.__floordiv__ = function(other){
+    if(isinstance(other,int)){return float(Math.floor(this.value/other))}
+    else if(isinstance(other,float)){return float(Math.floor(this.value/other.value))}
     else{$raise('TypeError',
-        "unsupported operand type(s) for -: "+this.value+" (float) and '"+$str(other.__class__)+"'")
+        "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
+    }
+}
+
+$FloatClass.prototype.__in__ = function(item){return item.__contains__(this)}
+
+$FloatClass.prototype.__not_in__ = function(item){return !(item.__contains__(this))}
+
+// operations
+var $op_func = function(other){
+    if(isinstance(other,int)){return float(this.value-other)}
+    else if(isinstance(other,float)){return float(this.value-other.value)}
+    else{$raise('TypeError',
+        "unsupported operand type(s) for -: "+this.value+" (float) and '"+other.__class__+"'")
     }
 }
 $op_func += '' // source code
@@ -290,36 +237,12 @@ for($op in $ops){
     eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
 }
 
-var $augm_op_func = function(other){
-    if($isinstance(other,int)){this.value -= other.value}
-    else if($isinstance(other,float)){this.value -= other.value}
-    else{$raise('TypeError',
-        "unsupported operand type(s) for -=: 'float' and '"+$str(other.__class__)+"'")
-    }
-}
-$augm_op_func += '' // source code
-var $ops = {'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv','%=':'imod'}
-for($op in $ops){
-    eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
-}
-
-$FloatClass.prototype.__floordiv__ = function(other){
-    if($isinstance(other,int)){return int(Math.floor(this.value/other.value))}
-    else if($isinstance(other,float)){return int(Math.floor(this.value/other.value))}
-    else{$raise('TypeError',
-        "unsupported operand type(s) for //: 'int' and '"+$str(other.__class__)+"'")
-    }
-}
-
-$FloatClass.prototype.__in__ = function(item){return item.__contains__(this)}
-$FloatClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
-
 // comparison methods
 var $comp_func = function(other){
-    if($isinstance(other,int)){return $bool_conv(this.value > other.value)}
-    else if($isinstance(other,float)){return $bool_conv(this.value > other.value)}
+    if(isinstance(other,int)){return this.value > other.valueOf()}
+    else if(isinstance(other,float)){return this.value > other.value}
     else{$raise('TypeError',
-        "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")
+        "unorderable types: "+this.__class__+'() > '+other.__class__+"()")
     }
 }
 $comp_func += '' // source code
@@ -331,7 +254,7 @@ for($op in $comps){
 // unsupported operations
 var $notimplemented = function(other){
     $raise('TypeError',
-        "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
+        "unsupported operand types for OPERATOR: '"+this.__class__+"' and '"+other.__class__+"'")
 }
 $notimplemented += '' // coerce to string
 for($op in $operators){
@@ -342,13 +265,11 @@ for($op in $operators){
 }
 
 function float(value){
-    if(typeof value=="number"){return new $FloatClass(parseFloat(value))}
-    else if(typeof value=="string" && parseFloat(value)!=NaN){return new $FloatClass(parseFloat(value))}
-    else if($isinstance(value,int)){return new $FloatClass(value)}
-    else if($isinstance(value,float)){return value}
-    else if($isinstance(value,str) && !isNaN(parseFloat(value.value))){
-        return new $FloatClass(parseFloat(value.value))
-    } else {$raise('ValueError',"Could not convert to float(): '"+$str(value)+"'")}
+    if(typeof value=="number" || (
+        typeof value=="string" && parseFloat(value)!=NaN)){
+        return new $FloatClass(parseFloat(value))
+    }else if(isinstance(value,float)){return value}
+    else{$raise('ValueError',"Could not convert to float(): '"+str(value)+"'")}
 }
 
 // this trick is necessary to set "this" to the instance inside functions
@@ -357,7 +278,7 @@ function $bind(func, thisValue) {
     return function() {return func.apply(thisValue, arguments)}
 }
 
-function $getattr(obj,attr,_default){
+function getattr(obj,attr,_default){
     if(attr in obj){
         var res = obj[attr]
         if(typeof res==="function"){
@@ -367,13 +288,7 @@ function $getattr(obj,attr,_default){
     }
     else if(_default !==undefined){return _default}
     else{$raise('AttributeError',
-        "'"+$str(obj.__class__)+"' object has no attribute '"+attr+"'")}
-}
-
-function getattr(obj,attr,_default){
-    if(!$isinstance(attr,str)){$raise('TypeError',
-        "getattr(): attribute name must be string "+$str(attr))}
-    return $getattr(obj.value,attr,_default)
+        "'"+str(obj.__class__)+"' object has no attribute '"+attr+"'")}
 }
 
 function hasattr(obj,attr){
@@ -381,12 +296,7 @@ function hasattr(obj,attr){
     catch(err){return False}
 }
 
-function $ModuleClass(module){
-    // module namespace is in $ns[module]
-    this.__getattr__ = function(attr){return $ns[module][attr]}
-}
-
-function Import(){
+function $import(){
 
     var js_modules = $List2Dict('time','datetime','math','random','sys')
     var calling={'line':document.line_num,'context':document.$context}
@@ -394,7 +304,6 @@ function Import(){
         module = arguments[i]
         if(!isinstance(module,str)){$raise('SyntaxError',"invalid syntax")}
         var res = ''
-        module = module.value // JS string
         var is_js = module in js_modules
 
         if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
@@ -462,474 +371,180 @@ function Import(){
     }
 }
 
-function $IntegerClass(value){
-    this.value = value
-    this.__class__ = int
+function $getNumClass(obj){
+    return "int"
 }
 
-$IntegerClass.prototype.__add__ = function(other){
-    if($isinstance(other,int)){return int(this.value+other.value)}
-    else if($isinstance(other,float)){return float(this.value+other.value)}
-    else{$UnsupportedOpType("+",int,other.__class__)}
+// Python integers are Javascript numbers
+Number.prototype.__class__ = $getNumClass(this)
+
+Number.prototype.__floordiv__ = function(other){
+    if(isinstance(other,int)){return Math.floor(this/other)}
+    else if(isinstance(other,float)){return float(Math.floor(this/other.value))}
+    else{$UnsupportedOpType("//","int",other.__class__)}
 }
 
-$IntegerClass.prototype.__float__ = function(){return float(this.value)}
+Number.prototype.__getattr__ = function(attr){$raise('AttributeError',
+    "'int' object has no attribute '"+attr+"'")}
 
-$IntegerClass.prototype.__floordiv__ = function(other){
-    if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
+Number.prototype.__in__ = function(item){return item.__contains__(this)}
+
+Number.prototype.__int__ = function(){return this}
+
+Number.prototype.__mul__ = function(other){
+    var val = this.valueOf()
+    if(isinstance(other,int)){return this*other}
+    else if(isinstance(other,float)){return float(this*other.value)}
+    else if(typeof other==="string") {
+        var res = ''
+        for(var i=0;i<val;i++){res+=other}
+        return res
+    }else if(isinstance(other,list)){
+        var res = []
+        // make temporary copy of list
+        var $temp = other.slice(0,other.length)
+        for(var i=0;i<val-1;i++){res=res.concat($temp)}
+        return res
+    }else{$UnsupportedOpType("*",int,other)}
+}
+
+Number.prototype.__not_in__ = function(item){
+    console.log('???'+isinstance(this,int))
+    res = item.__contains__(this)
+    return !res
+}
+
+Number.prototype.__pow__ = function(other){
+    if(typeof other==="number"){return int(Math.floor(this.valueOf()/other.valueOf()))}
     else{$UnsupportedOpType("//",int,other.__class__)}
 }
 
-$IntegerClass.prototype.__getattr__ = function(attr){$raise('AttributeError',
-    "'int' object has no attribute '"+attr.value+"'")}
-
-$IntegerClass.prototype.__ifloordiv__ = function(other){
-    if($isinstance(other,int)){this.value = Math.floor(this.value/other.value)}
-    else if($isinstance(other,float)){this.value = Math.floor(this.value/other.value)}
-    else{$UnsupportedOpType("//=",int,other.__class__)}
-}
-
-$IntegerClass.prototype.__in__ = function(item){return item.__contains__(this)}
-
-$IntegerClass.prototype.__int__ = function(){return this}
-
-$IntegerClass.prototype.__mod__ = function(other){
-    if($isinstance(other,int)){return int(this.value%other.value)}
-    else{$UnsupportedOpType("%",int,other.__class__)}
-}
-
-$IntegerClass.prototype.__mul__ = function(other){
-    if($isinstance(other,int)){return int(this.value*other.value)}
-    else if($isinstance(other,float)) {return float(this.value*other.value)}
-    else if($isinstance(other,str)) {
-        var res = '',i=0
-        for(i=0;i<this.value;i++){res+=other.value}
-        return str(res)
-    }else if($isinstance(other,list)) {
-        var res = other.items
-        for(i=0;i<this.value-1;i++){res=res.concat(other.items)}
-        return list(res)
-    }else{$UnsupportedOpType("*",int,other.__class__)}
-}
-
-$IntegerClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
-
-$IntegerClass.prototype.__pow__ = function(other){
-    if($isinstance(other,list(int,float))){return int(Math.floor(this.value/other.value))}
-    else{$UnsupportedOpType("//",int,other.__class__)}
-}
-
-$IntegerClass.prototype.__setattr__ = function(attr,value){$raise('AttributeError',
+Number.prototype.__setattr__ = function(attr,value){$raise('AttributeError',
     "'int' object has no attribute "+attr+"'")}
 
-$IntegerClass.prototype.__str__ = function(){return str(this.value)}
+Number.prototype.__str__ = function(){return this.toString()}
 
-$IntegerClass.prototype.__sub__ = function(other){
-    if($isinstance(other,int)){return int(this.value-other.value)}
-    else if($isinstance(other,float)){return float(this.value-other.value)}
-    else{$UnsupportedOpType("-",int,other.__class__)}
+// operations
+var $op_func = function(other){
+    if(isinstance(other,int)){
+        var res = this.valueOf()-other.valueOf()
+        if(isinstance(res,int)){return res}
+        else{return float(res)}
+    }
+    else if(isinstance(other,float)){return float(this.valueOf()-other.value)}
+    else{$raise('TypeError',
+        "unsupported operand type(s) for -: "+this.value+" (float) and '"+str(other.__class__)+"'")
+    }
 }
-
-$IntegerClass.prototype.__truediv__ = function(other){
-    if($isinstance(other,list(int,float))){return float(this.value/other.value)}
-    else{$UnsupportedOpType("/",int,other.__class__)}
-}
-
-var $augm_op_func = function(other){
-    if($isinstance(other,list(int,float))){this.value -= other.value}
-    else{$UnsupportedOpType("-=",int,other.__class__)}
-}
-$augm_op_func += '' // source code
-var $ops = {'+=':'iadd','-=':'isub','*=':'imul','/=':'itruediv'}
+$op_func += '' // source code
+var $ops = {'+':'add','-':'sub','/':'truediv','%':'mod'}
 for($op in $ops){
-    eval('$IntegerClass.prototype.__'+$ops[$op]+'__ = '+$augm_op_func.replace(/-=/gm,$op))
+    eval('Number.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
 }
 
 // comparison methods
 var $comp_func = function(other){
-    if($isinstance(other,list(int,float))){return $bool_conv(this.value > other.value)}
+    if(isinstance(other,int)){return this.valueOf() > other.valueOf()}
+    else if(isinstance(other,float)){return this.valueOf() > other.value}
     else{$raise('TypeError',
-        "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")}
+        "unorderable types: "+str(this.__class__)+'() > '+str(other.__class__)+"()")}
 }
 $comp_func += '' // source code
 var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
 for($op in $comps){
-    eval("$IntegerClass.prototype.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
+    eval("Number.prototype.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
 }
 
 // unsupported operations
 var $notimplemented = function(other){
     $raise('TypeError',
-        "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
+        "unsupported operand types for OPERATOR: '"+str(this.__class__)+"' and '"+str(other.__class__)+"'")
 }
 $notimplemented += '' // coerce to string
 for($op in $operators){
     var $opfunc = '__'+$operators[$op]+'__'
-    if(!($opfunc in $IntegerClass.prototype)){
-        eval('$IntegerClass.prototype.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
+    if(!($opfunc in Number.prototype)){
+        eval('Number.prototype.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
     }
 }
 
 function int(value){
-    if(typeof value=="number"){return new $IntegerClass(parseInt(value))}
-    else if(typeof value=="string" && parseInt(value)!=NaN){return new $IntegerClass(parseInt(value))}
-    else if($isinstance(value,int)){return value}
-    else if($isinstance(value,float)){return new $IntegerClass(parseInt(value.value))}
-    else if($isinstance(value,str) && !isNaN(parseInt(value.value))){
-        return new $IntegerClass(parseInt(value.value))
-    } else { $raise('ValueError',
-        "Invalid literal for int() with base 10: '"+$str(value)+"'")
-    }   
+    if(typeof value=="number" ||
+        (typeof value=="string" && parseInt(value)!=NaN)){
+        return parseInt(value)
+    }else if(isinstance(value,float)){
+        return parseInt(value.value)
+    }else{ $raise('ValueError',
+        "Invalid literal for int() with base 10: '"+str(value)+"'")
+    }
 }
 
-function $isinstance(obj,arg){
-    if(arg.__class__ === list || arg.__class__ === tuple){
-        var $i=0
-        for($i=0;$i<arg.items.length;$i++){
-            if(obj.__class__===arg.items[$i]){return true}
+function isinstance(obj,arg){
+    if(arg.constructor===Array){
+        for(var i=0;i<arg.length;i++){
+            if(isinstance(obj,arg[i])){return true}
         }
         return false
-    } else {
-        return obj.__class__ === arg
+    }else{
+        if(arg===int){
+            return (typeof obj=="number"||obj.constructor===Number)&&(obj.valueOf()%1===0)
+        }
+        if(arg===float){
+            return ((typeof obj=="number")&&(obj.valueOf()%1!==0))||
+                (obj.__class__===float)}
+        if(arg===str){return (typeof obj=="string")}
+        if(arg===list){return (obj.constructor===Array)}
+        if(obj.__class__!==undefined){return obj.__class__===arg}
+        return obj.constructor===arg
     }
 }
-function isinstance(obj,arg){return $bool_conv($isinstance(obj,arg))}
 
 function iter(obj){
-    if('__next__' in obj){
-        obj.iter=null // reset iteration counter
+    if('__item__' in obj){
+        obj.__counter__= 0 // reset iteration counter
         return obj
     }
-    $raise('TypeError',"'"+$str(obj.__class__)+"' object is not iterable")
+    $raise('TypeError',"'"+str(obj.__class__)+"' object is not iterable")
 }
 
 function len(obj){
-    if('__len__' in obj){return obj.__len__()} 
-    else {$raise('TypeError',"object of type "+$str(obj.__class__)+" has no len()")}
-}
-
-function $ListClass(items){
-
-    var x = null,i = null;
-    this.iter = null
-    this.__class__ = list
-    this.items = items // JavaScript array
-}
-
-$ListClass.prototype.__add__ = function(other){
-    return list(this.items.concat(other.items))
-}
-
-$ListClass.prototype.__contains__ = function(item){
-    for(var i=0;i<this.items.length;i++){
-        try{if(this.items[i].__eq__(item)===True){return True}
-        }catch(err){void(0)}
-    }
-    return False
-}
-
-$ListClass.prototype.__delitem__ = function(arg){
-    if($isinstance(arg,int)){
-        var pos = arg.value
-        if(arg.value<0){pos=this.items.length+pos}
-        if(pos>=0 && pos<this.items.length){
-            this.items.splice(pos,1)
-            return
-        }
-        else{$raise('IndexError','list index out of range')}
-    } else if($isinstance(arg,slice)) {
-        var start = arg.start || int(0)
-        var stop = arg.stop || this.__len__()
-        var step = arg.step || int(1)
-        if(start.value<0){start=int(this.__len__()+start.value)}
-        if(stop.value<0){stop=int(this.__len__()+stop.value)}
-        var res = [],i=null
-        if(step.value>0){
-            if(stop.value>start.value){
-                for(i=start.value;i<stop.value;i+=step.value){
-                    if(this.items[i]!==undefined){res.push(i)}
-                }
-            }
-        } else {
-            if(stop.value<start.value){
-                for(i=start.value;i>stop.value;i+=step.value){
-                    if(this.items[i]!==undefined){res.push(i)}
-                }
-                res.reverse() // must be in ascending order
-            }
-        }
-        // delete items from left to right
-        for(var i=res.length-1;i>=0;i--){
-            this.items.splice(res[i],1)
-        }
-        return
-    } else {
-        $raise('TypeError','list indices must be integer, not '+$str(arg.__class__))
-    }
-}
-
-$ListClass.prototype.__eq__ = function(other){
-    if($isinstance(other,list)){
-        if(other.items.length==this.items.length){
-            for(var i=0;i<this.items.length;i++){
-                if(this.items[i].__eq__(other.items[i])===False){return False}
-            }
-            return True
-        }
-    }
-    return False
-}
-
-$ListClass.prototype.__getattr__ = function(attr){return $getattr(this,attr)}
-
-$ListClass.prototype.__getitem__ = function(arg){
-    if($isinstance(arg,int)){
-        var pos = arg.value
-        if(arg.value<0){pos=this.items.length+pos}
-        if(pos>=0 && pos<this.items.length){return this.items[pos]}
-        else{$raise('IndexError','list index out of range')}
-    } else if($isinstance(arg,slice)) {
-        var start = arg.start || int(0)
-        if(arg.stop===null){stop=int(this.items.length)}else{stop=arg.stop}
-        var step = arg.step || int(1)
-        if(start.value<0){start=int(this.items.length+start.value)}
-        if(stop.value<0){stop=int(this.items.length+stop.value)}
-        var res = list(),i=null
-        if(step.value>0){
-            if(stop.value<=start.value){return res}
-            else {
-                for(i=start.value;i<stop.value;i+=step.value){
-                    if(this.items[i]!==undefined){res.append(this.items[i])}
-                }
-                return res
-            }
-        } else {
-            if(stop.value>=start.value){return res}
-            else {
-                for(i=start.value;i>stop.value;i+=step.value){
-                    if(this.items[i]!==undefined){res.append(this.items[i])}
-                }
-                return res
-            }
-        } 
-    } else {
-        $raise('TypeError','list indices must be integer, not '+$str(arg.__class__))
-    }
-}
-
-$ListClass.prototype.__in__ = function(item){return item.__contains__(this)}
-
-$ListClass.prototype.__len__ = function(){return int(this.items.length)}
-    
-$ListClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
-    
-$ListClass.prototype.__next__ = function(){
-    if(this.iter===null){this.iter=0}
-    if(this.iter<this.items.length){
-        this.iter++
-        return this.items[this.iter-1]
-    } else {
-        this.iter = null
-        $raise('StopIteration')
-    }
-}
-
-$ListClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
-
-$ListClass.prototype.__setitem__ = function(arg,value){
-    if($isinstance(arg,int)){
-        var pos = arg.value
-        if(arg.value<0){pos=this.items.length+pos}
-        if(pos>=0 && pos<this.items.length){this.items[pos]=value}
-        else{$raise('IndexError','list index out of range')}
-    } else if($isinstance(arg,slice)) {
-        var start = arg.start || int(0)
-        if(arg.stop===null){stop=this.__len__()}else{stop=arg.stop}
-        var step = arg.step || int(1)
-        if(start.value<0){start=int(this.items.length+start.value)}
-        if(stop.value<0){stop=int(this.items.length+stop.value)}
-        this.items.splice(start.value,stop.value-start.value)
-        // copy items in a temporary JS array
-        // otherwise, a[:0]=a fails
-        var $temp = []
-        for(var i=0;i<value.items.length;i++){$temp.push(value.items[i])}
-        for(var i=value.items.length-1;i>=0;i--){
-            this.items.splice(start.value,0,$temp[i])
-        }
-    }else {
-        $raise('TypeError','list indices must be integer, not '+$str(arg.__class__))
-    }
-}
-
-$ListClass.prototype.__str__ = function(){
-    var res = "[",i=null
-    for(i=0;i<this.items.length;i++){
-        var x = this.items[i]
-        if($isinstance(x,str)){res += x.__repr__().value} 
-        else{res += x.__str__().value}
-        if(i<this.items.length-1){res += ','}
-    }
-    return str(res+']')
-}
-
-$ListClass.prototype.append = function(item){this.items.push(item)}
-
-$ListClass.prototype.count = function(elt){
-    var res = 0
-    for(var i=0;i<this.items.length;i++){
-        if($bool(this.items[i].__eq__(elt))){res++}
-    }
-    return int(res)
-}
-
-$ListClass.prototype.extend = function(other){
-    if(arguments.length!=1){$raise('TypeError',
-        "extend() takes exactly one argument ("+arguments.length+" given)")}
-    var other = iter(other)
-    while(true){
-        try{this.items.push(next(other))}
-        catch(err){
-            if(err.name=="StopIteration"){break}
-            else{throw err}
-        }
-    }
-}
-
-$ListClass.prototype.index = function(elt){
-    for(var i=0;i<this.items.length;i++){
-        if($bool(this.items[i].__eq__(elt))){return int(i)}
-    }
-    $raise('ValueError',$str(elt)+" is not in list")
-}
-
-$ListClass.prototype.reverse = function(){
-    for(var i=0;i<parseInt(this.items.length/2);i++){
-        buf = this.items[i]
-        this.items[i] = this.items[this.items.length-i-1]
-        this.items[this.items.length-i-1] = buf
-    }
-}
-    
-// QuickSort implementation found at http://en.literateprograms.org/Quicksort_(JavaScript)
-function $partition(arg,array,begin,end,pivot)
-{
-    var piv=array[pivot];
-    array.swap(pivot, end-1);
-    var store=begin;
-    var ix;
-    for(ix=begin;ix<end-1;++ix) {
-        if($bool(arg(array[ix]).__le__(arg(piv)))) {
-            array.swap(store, ix);
-            ++store;
-        }
-    }
-    array.swap(end-1, store);
-    return store;
-}
-
-Array.prototype.swap=function(a, b)
-{
-    var tmp=this[a];
-    this[a]=this[b];
-    this[b]=tmp;
-}
-
-function $qsort(arg,array, begin, end)
-{
-    if(end-1>begin) {
-        var pivot=begin+Math.floor(Math.random()*(end-begin));
-        pivot=$partition(arg,array, begin, end, pivot);
-        $qsort(arg,array, begin, pivot);
-        $qsort(arg,array, pivot+1, end);
-    }
-}
-
-$ListClass.prototype.sort = function(arg){
-    if(!arg){arg=function(x){return x}}
-    else if($isinstance(arg,str)){arg=function(x){return x.__getitem__(arg)}}
-    if(this.items.length==0){return}
-    $qsort(arg,this.items,0,this.items.length)
-}
-
-function $list(){
-    // used for list displays
-    // different from list : $list(1) is valid (matches [1])
-    // but list(1) is invalid (integer 1 is not iterable)
-    var args = new Array(),i=0
-    for(i=0;i<arguments.length;i++){args.push(arguments[i])}
-    return new $ListClass(args)
-}
-
-function list(){
-    var args = new Array(),i=0
-    for(i=0;i<arguments.length;i++){args.push(arguments[i])}
-    if(args.length==1){    // must be an iterable
-        if('__next__' in args[0]){
-            var new_args = []
-            while(true){
-                try{new_args.push(args[0].__next__())}
-                catch(err){
-                    if(err.name=="StopIteration"){break}
-                }
-            }
-            return new $ListClass(new_args)
-        }else if(typeof args[0]=="object" && args[0].constructor===Array){
-            return new $ListClass(args[0])
-        } else{
-            $raise('TypeError',"'"+$str(args[0].__class__)+"' object is not iterable")
-        }
-    } else {
-        return new $ListClass(args)
-    }
+    try{return obj.__len__()}
+    catch(err){$raise('TypeError',"object of type "+str(obj.__class__)+" has no len()")}
 }
 
 function log(){
-    $ns = $MakeArgs("log",arguments,[],{},'args','kw')
-    var res = ''
-    for(var i=0;i<$ns['args'].items.length;i++){
-        res += str($ns['args'].items[i]).value+' '
-    }
-    console.log(res+'\n')
-}
-
-
-function $MapClass(func,iterables){
-    var iterable = null
-    this.func = func
-    this.iterables = iterables
-    this.__next__ = function(){
-        while(true){
-            var args = [],src=''
-            for(var i=0;i<this.iterables.length;i++){
-                args.push(next(this.iterables[i]))
-                src += 'args['+i+'],'
-            }
-            if(src){src = src.substr(0,src.length-1)}
-            return eval('this.func('+src+')')
-        }
+    $ns = $MakeArgs(arguments,[],{},'args')
+    if(!('end' in $ns)){$ns['end']='\n'}
+    for(var i=0;i<$ns['args'].length;i++){
+        console.log(str($ns['args'][i])+str($ns['end']))
     }
 }
 
 function map(){
-    var func = arguments[0]
-    var iterables = []
-    for(var i=1;i<arguments.length;i++){
-        var iterable = arguments[i]
-        if(!'__next__' in iterable){$raise('TypeError',
-             "'"+$str(iterable.__class__)+"' object is not iterable")}
-        iterables.push(iterable)
+    var func = arguments[0],res=[],rank=0
+    while(true){
+        var args = [],flag=true
+        for(var i=1;i<arguments.length;i++){
+            var x = arguments[i].__item__(rank)
+            if(x===undefined){flag=false;break}
+            args.push(x)
+        }
+        if(!flag){break}
+        res.push(func.apply(null,args))
+        rank++
     }
-    return new $MapClass(func,iterables)
+    return res
 }
 
 function $extreme(args,op){ // used by min() and max()
+    console.log(args.length+' arguments')
     if(op==='__gt__'){var $op_name = "max"}
     else{var $op_name = "min"}
     if(args.length==0){$raise('TypeError',$op_name+" expected 1 argument, got 0")}
     var last_arg = args[args.length-1]
     var last_i = args.length-1
     var has_key = false
-    if($isinstance(last_arg,$Kw)){
+    if(isinstance(last_arg,$Kw)){
         if(last_arg.name === 'key'){
             var func = last_arg.value
             has_key = true
@@ -938,13 +553,12 @@ function $extreme(args,op){ // used by min() and max()
     }else{var func = function(x){return x}}
     if((has_key && args.length==2)||(!has_key && args.length==1)){
         var arg = args[0]
-        if(!('__next__' in arg)){$raise('TypeError',"'"+$str(arg)+"' object is not iterable")}
+        var $iter = iter(arg)
         var res = null
         while(true){
             try{
-                var x = next(arg)
-                if(res!==null){alert($str(func(x))+op+$str(func(res))+'?'+$bool($getattr(func(x),op)(func(res))))}
-                if(res===null || $bool($getattr(func(x),op)(func(res)))){res = x}
+                var x = next($iter)
+                if(res===null || bool(func(x)[op](func(res)))){res = x}
             }catch(err){
                 if(err.name=="StopIteration"){return res}
                 throw err
@@ -954,7 +568,7 @@ function $extreme(args,op){ // used by min() and max()
         var res = null
         for(var i=0;i<=last_i;i++){
             var x = args[i]
-            if(res===null || $bool($getattr(func(x),op)(func(res)))){res = x}
+            if(res===null || bool(func(x)[op](func(res)))){res = x}
         }
         return res
     }
@@ -973,13 +587,16 @@ function min(){
 }
 
 function next(obj){
-    if('__next__' in obj){return obj.__next__()}
-    $raise('TypeError',"'"+$str(obj.__class__)+"' object is not iterable")
+    if('__item__' in obj){
+        if(obj.__counter__===undefined){obj.__counter__=0}
+        var res = obj.__item__(obj.__counter__)
+        if(res!==undefined){obj.__counter__++;return res}
+        $raise('StopIteration')
+    }
+    $raise('TypeError',"'"+str(obj.__class__)+"' object is not iterable")
 }
 
-function $not(obj){
-    if($bool(obj)){return False}else{return True}
-}
+function $not(obj){return !bool(obj)}
 
 function $ObjectClass(){
 }
@@ -994,24 +611,16 @@ function object(){
     return new $ObjectClass()
 }
 
-function $prompt(src){return str(prompt(src.value))}
+function $prompt(src){return str(prompt(src))}
 
 // range
-function $RangeClass(start,stop,step){
-    var pos = start.value
-    this.__next__ = function(){
-        var res = int(pos)
-        if((step.value>0 && pos<stop.value) || (step.value<0 && pos>stop.value)){
-            pos += step.value
-            return res
-        }else{$raise('StopIteration')}
-    }
-}
-
 function range(){
-    var start=int(0)
-    var stop=int(0)
-    var step=int(1)
+    if(arguments.length>3){$raise('TypeError',
+        "range expected at most 3 arguments, got "+arguments.length)
+    }
+    var start=0
+    var stop=0
+    var step=1
     if(arguments.length==1){
         stop = arguments[0]
     } else if(arguments.length>=2){
@@ -1021,36 +630,37 @@ function range(){
     if(arguments.length>=3){
         step=arguments[2]
     }
-    return new $RangeClass(start,stop,step)
-}
-
-
-function $ReversedClass(seq){
-    this.iter = null
-    this.__next__ = function(){
-        if(this.iter===null){this.iter=len(seq)}
-        if(this.iter.value===0){$raise('StopIteration')}
-        this.iter.value--
-        return seq.__getitem__(this.iter)
+    if(step==0){$raise('ValueError',"range() arg 3 must not be zero")}
+    var res=[]
+    if(step>0){
+        for(var i=start;i<stop;i+=step){res.push(i)}
+    }else if(step<0){
+        for(var i=start;i>stop;i+=step){res.push(i)}
     }
+    return res
 }
+
 function reversed(seq){
     // returns an iterator with elements in the reverse order from seq
     // only implemented for strings and lists
-    if(!$isinstance(seq,list(str,list))){$raise('TypeError',
+    if(isinstance(seq,list)){seq.reverse();return seq}
+    else if(isinstance(seq,str)){
+        var res=''
+        for(var i=seq.length-1;i>=0;i--){res+=seq.charAt(i)}
+        return res
+    }else{$raise('TypeError',
         "argument to reversed() must be a sequence")}
-    return new $ReversedClass(seq)
 }
 
 function round(arg,n){
-    if(!$isinstance(arg,(int,float))){
-        $raise('TypeError',"type "+$str(arg.__class__)+" doesn't define __round__ method")
+    if(!isinstance(arg,[int,float])){
+        $raise('TypeError',"type "+str(arg.__class__)+" doesn't define __round__ method")
     }
-    if(n===undefined){n=int(0)}
-    if(!$isinstance(n,int)){$raise('TypeError',
+    if(n===undefined){n=0}
+    if(!isinstance(n,int)){$raise('TypeError',
         "'"+n.__class__+"' object cannot be interpreted as an integer")}
-    var mult = Math.pow(10,n.value)
-    return int(Math.round(arg.value*mult)).__truediv__(int(mult))
+    var mult = Math.pow(10,n)
+    return Number(Math.round(arg*mult)).__truediv__(mult)
 }
 
 // set
@@ -1061,28 +671,32 @@ function $SetClass(){
     this.__class__ = set
     this.items = [] // JavaScript array
 }
-$SetClass.prototype.__len__ = function(){return int(this.items.length)}
     
-$SetClass.prototype.__str__ = function(){
+$SetClass.prototype.toString = function(){
     var res = "["
     for(var i=0;i<this.items.length;i++){
         var x = this.items[i]
-        if($isinstance(x,str)){
-            res += x.__repr__().value
-        } else {
-            res += x.__str__().value
-        }
+        if(isinstance(x,str)){res += "'"+x+"'"} 
+        else{res += x.toString()}
         if(i<this.items.length-1){res += ','}
     }
-    return str(res+']')
+    return res+']'
 }
     
 $SetClass.prototype.__add__ = function(other){
     return set(this.items.concat(other.items))
 }
 
+$SetClass.prototype.__contains__ = function(item){
+    for(var i=0;i<this.items.length;i++){
+        try{if(this.items[i].__eq__(item)){return True}
+        }catch(err){void(0)}
+    }
+    return False
+}
+
 $SetClass.prototype.__eq__ = function(other){
-    if($isinstance(other,set)){
+    if(isinstance(other,set)){
         if(other.items.length==this.items.length){
             for(var i=0;i<this.items.length;i++){
                 if(this.__contains__(other.items[i])===False){
@@ -1095,29 +709,15 @@ $SetClass.prototype.__eq__ = function(other){
     return False
 }
 
-$SetClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
-
-$SetClass.prototype.__next__ = function(){
-    if(this.iter==null){this.iter==0}
-    if(this.iter<this.items.length){
-        this.iter++
-        return this.items[this.iter-1]
-    } else {
-        this.iter = null
-        $raise('StopIteration')
-    }
-}
-
 $SetClass.prototype.__in__ = function(item){return item.__contains__(this)}
-$SetClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
 
-$SetClass.prototype.__contains__ = function(item){
-    for(var i=0;i<this.items.length;i++){
-        try{if(this.items[i].__eq__(item)){return True}
-        }catch(err){void(0)}
-    }
-    return False
-}
+$SetClass.prototype.__len__ = function(){return int(this.items.length)}
+
+$SetClass.prototype.__ne__ = function(other){return !(this.__eq__(other))}
+
+$SetClass.prototype.__item__ = function(i){return this.items[i]}
+
+$SetClass.prototype.__not_in__ = function(item){return !(item.__contains__(this))}
 
 $SetClass.prototype.add = function(item){
     var i=0
@@ -1128,521 +728,38 @@ $SetClass.prototype.add = function(item){
     this.items.push(item)
 }
 
-
-
 function set(){
     var i=0
     if(arguments.length==0){return new $SetClass()}
     else if(arguments.length==1){    // must be an iterable
-        if('__next__' in arguments[0]){
-            var iterable = arguments[0]
-            var obj = new $SetClass()
-            while(true){
-                try{obj.add(next(iterable))}
-                catch(err){if(err.name=="StopIteration"){break}}
+        var arg=arguments[0]
+        if(isinstance(arg,set)){return arg}
+        var obj = new $SetClass()
+        try{
+            for(var i=0;i<arg.__len__();i++){
+                obj.items.push(arg.__getitem__(i))
             }
             return obj
-        } else{
-            $raise('TypeError',"'"+$str(args[0].__class__)+"' object is not iterable")
+        }catch(err){
+            $raise('TypeError',"'"+str(args[0].__class__)+"' object is not iterable")
         }
     } else {
         $raise('TypeError',"set expected at most 1 argument, got "+arguments.length)
     }
 }
-function $setattr(obj,attr,value){obj[attr]=value}
 
 function setattr(obj,attr,value){
-    if(!$isinstance(attr,str)){$raise('TypeError',"setattr(): attribute name must be string")}
-    obj[attr.value]=value
-}
-
-function $StringClass(value){
-
-    var i = null
-
-    this.__class__ = str
-    this.value = value
-    this.iter = null
-}
-    
-$StringClass.prototype.__add__ = function(other){
-        if(!$isinstance(other,str)){
-            try{return other.__radd__(this)}
-            catch(err){$raise('TypeError',
-                "Can't convert "+other.__class__+" to str implicitely")}
-        }else{return str(this.value+other.value)}
-    }
-
-$StringClass.prototype.__contains__ = function(item){
-        if(!$isinstance(item,str)){$raise('TypeError',
-         "'in <string>' requires string as left operand, not "+item.__class__)}
-        var nbcar = item.value.length
-        for(var i=0;i<this.value.length;i++){
-            if(this.value.substr(i,nbcar)==item.value){return True}
-        }
-        return False
-    }
-
-$StringClass.prototype.__float__ = function(){
-        var $float = parseFloat(this.value)
-        if($float==NaN){$raise('ValueError',
-            "could not convert string to float(): '"+this.value+"'")}
-        else{return float($float)}
-    }
-
-$StringClass.prototype.__getattr__ = function(attr){return $getattr(this,attr)}
-
-$StringClass.prototype.__getitem__ = function(arg){
-        if($isinstance(arg,int)){
-            var pos = arg.value
-            if(arg.value<0){pos=this.value.length+pos}
-            if(pos>=0 && pos<this.value.length){return str(this.value.charAt(pos))}
-            else{$raise('IndexError','string index out of range')}
-        } else if($isinstance(arg,slice)) {
-            var start = arg.start || int(0)
-            if(arg.stop===null){stop=int(this.value.length)}else{stop=arg.stop}
-            var step = arg.step || int(1)
-            if(start.value<0){start=int(this.value.length+start.value)}
-            if(stop.value<0){stop=int(this.value.length+stop.value)}
-            var res = '',i=null
-            if(step.value>0){
-                if(stop.value<=start.value){return str('')}
-                else {
-                    for(i=start.value;i<stop.value;i+=step.value){
-                        res += this.value.charAt(i)
-                    }
-                }
-            } else {
-                if(stop.value>=start.value){return str('')}
-                else {
-                    for(i=start.value;i>stop.value;i+=step.value){
-                        res += this.value.charAt(i)
-                    }
-                }
-            }            
-            return str(res)
-        }
-    }
-
-$StringClass.prototype.__iadd__ = function(other){
-    if(!isinstance(other,str)){$raise('TypeError',
-        "Can't convert "+$str(other.__class__)+" to str implicitely")}
-    this.value += other.value
-}
-
-$StringClass.prototype.__imul__ = function(other){
-    if(!$isinstance(other,int)){$raise('TypeError',
-        "Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")}
-    $res = ''
-    for(var i=0;i<other.value;i++){$res+=this.value}
-    this.value = $res
-}
-
-$StringClass.prototype.__in__ = function(item){return item.__contains__(this)}
-
-$StringClass.prototype.__int__ = function(){
-    var $int = parseInt(this.value)
-    if($int==NaN){$raise('ValueError',
-        "invalid literal for int() with base 10: '"+this.value+"'")}
-    else{return int($int)}
-}
-
-$StringClass.prototype.__len__ = function(){return int(this.value.length)}
-
-$StringClass.prototype.__mod__ = function(args){
-    // string formatting (old style with %)
-    var flags = $List2Dict('#','0','-',' ','+')
-    var ph = [] // placeholders for replacements
-    
-    function format(s){
-        var conv_flags = '([#\\+\\- 0])*'
-        var conv_types = '[diouxXeEfFgGcrsa%]'
-        var re = new RegExp('\\%(\\(.+\\))*'+conv_flags+'(\\*|\\d*)(\\.\\*|\\.\\d*)*(h|l|L)*('+conv_types+'){1}')
-        var res = re.exec(s)
-        this.is_format = true
-        if(res===undefined){this.is_format = false;return}
-        this.src = res[0]
-        if(res[1]){this.mapping_key=str(res[1].substr(1,res[1].length-2))}
-        else{this.mapping_key=null}
-    this.flag = res[2]
-    this.min_width = res[3]
-    this.precision = res[4]
-    this.length_modifier = res[5]
-    this.type = res[6]
-        
-    this.toString = function(){
-            var res = 'type '+this.type+' key '+this.mapping_key+' min width '+this.min_width
-            res += ' precision '+this.precision
-            return res
-        }
-    this.format = function(src){
-            if(this.mapping_key!==null){
-                if(!$isinstance(src,dict)){$raise('TypeError',"format requires a mapping")}
-                src=src.__getitem__(this.mapping_key)
-            }
-            if(this.type=="s"){return $str(src)}
-            else if(this.type=="i" || this.type=="d"){
-                if(!$isinstance(src,list(int,float))){$raise('TypeError',
-                    "%"+this.type+" format : a number is required, not "+$str(src.__class__))}
-                return $str(int(src))
-            }else if(this.type=="f" || this.type=="F"){
-                if(!$isinstance(src,list(int,float))){$raise('TypeError',
-                    "%"+this.type+" format : a number is required, not "+$str(src.__class__))}
-                return $str(float(src))
-            }
-        }
-    }
-    
-    // elts is an Array ; items of odd rank are string format objects
-    var elts = []
-    var pos = 0, start = 0, nb_repl = 0
-    while(pos<this.value.length){
-        if(this.value.charAt(pos)=='%'){
-            var f = new format(this.value.substr(pos))
-            if(f.is_format){
-                elts.push(this.value.substring(start,pos))
-                elts.push(f)
-                start = pos+f.src.length
-                pos = start
-                nb_repl++
-            }else{pos++}
-        }else{pos++}
-    }
-    elts.push(this.value.substr(start))
-    if(!$isinstance(args,tuple)){
-        if(nb_repl>1){$raise('TypeError','not enough arguments for format string')}
-        else{elts[1]=elts[1].format(args)}
-    }else{
-        if(nb_repl==args.items.length){
-            for(var i=0;i<args.items.length;i++){
-                var fmt = elts[1+2*i]
-                elts[1+2*i]=fmt.format(args.items[i])
-            }
-        }else if(nb_repl<args.items.length){$raise('TypeError',
-            "not all arguments converted during string formatting")
-        }else{$raise('TypeError','not enough arguments for format string')}
-    }
-    var res = ''
-    for(var i=0;i<elts.length;i++){res+=elts[i]}
-    return str(res)
-}
-    
-$StringClass.prototype.__mul__ = function(other){
-    if(!$isinstance(other,int)){$raise('TypeError',
-        "Can't multiply sequence by non-int of type '"+$str(other.__class__)+"'")}
-    $res = ''
-    for(var i=0;i<other.value;i++){$res+=this.value}
-    return str($res)
-}
-
-$StringClass.prototype.__next__ = function(){
-    if(this.iter==null){this.iter==0}
-    if(this.iter<this.value.length){
-        this.iter++
-        return str(this.value.charAt(this.iter-1))
-    } else {
-        this.iter = null
-        $raise('StopIteration')
-    }
-}
-
-$StringClass.prototype.__not_in__ = function(item){return $not(item.__contains__(this))}
-
-$StringClass.prototype.__or__ = function(other){
-    if(this.value.length==0){return other}
-    else{return this}
-}
-
-$StringClass.prototype.__repr__ = function(){
-    res = "'"
-    res += this.value.replace('\n','\\\n')
-    res += "'"
-    return str(res)
-}
-
-$StringClass.prototype.__setattr__ = function(attr,value){$setattr(this,attr,value)}
-
-$StringClass.prototype.__setitem__ = function(attr,value){
-    if($isinstance(attr,int)){
-        $raise('TypeError',"'str' object does not support item assignment")
-    }else if($isinstance(attr,slice)){
-        $raise('TypeError',"'str' object does not support slice assignment")
-    }else{
-        $raise('TypeError',"string indices must be integer")
-    }
-}
-$StringClass.prototype.__str__ = function(){return this}
-
-// generate comparison methods
-var $comp_func = function(other){
-    if(!$isinstance(other,str)){$raise('TypeError',
-        "unorderable types: "+$str(this.__class__)+'() > '+$str(other.__class__)+"()")}
-    return $bool_conv(this.value > other.value)
-}
-$comp_func += '' // source code
-var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
-for($op in $comps){
-    eval("$StringClass.prototype.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
-}
-
-// unsupported operations
-var $notimplemented = function(other){
-    $raise('TypeError',
-        "unsupported operand types for OPERATOR: '"+$str(this.__class__)+"' and '"+$str(other.__class__)+"'")
-}
-$notimplemented += '' // coerce to string
-for($op in $operators){
-    var $opfunc = '__'+$operators[$op]+'__'
-    if(!($opfunc in $StringClass.prototype)){
-        eval('$StringClass.prototype.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
-    }
-}
-
-$StringClass.prototype.capitalize = function(){
-    if(this.value.length==0){return str('')}
-    return str(this.value.charAt(0).toUpperCase()+this.value.substr(1).toLowerCase())
-}
-
-$StringClass.prototype.center = function(width,fillchar){
-    if(fillchar===undefined){fillchar=' '}else{fillchar=fillchar.value}
-    width=width.value
-    if(width<=this.value.length){return this}
-    else{
-        var pad = parseInt((width-this.value.length)/2)
-        res = ''
-        for(var i=0;i<pad;i++){res+=fillchar}
-        res += this.value
-        for(var i=0;i<pad;i++){res+=fillchar}
-        if(res.length<width){res += fillchar}
-        return str(res)
-    }
-}
-
-$StringClass.prototype.count = function(elt){
-    if(!$isinstance(elt,str)){$raise('TypeError',
-        "Can't convert '"+$str(elt.__class__)+"' object to str implicitly")}
-    var res = 0
-    for(var i=0;i<this.value.length-elt.value.length+1;i++){
-        if(this.value.substr(i,elt.value.length)===elt.value){res++}
-    }
-    return int(res)
-}
-
-$StringClass.prototype.endswith = function(){
-    // Return True if the string ends with the specified suffix, otherwise 
-    // return False. suffix can also be a tuple of suffixes to look for. 
-    // With optional start, test beginning at that position. With optional 
-    // end, stop comparing at that position.
-    $ns[0]={}
-    $MakeArgs(0,arguments,['suffix'],{'start':null,'end':null},null,null)
-    var suffixes = $ns[0]['suffix']
-    if(!$isinstance(suffixes,tuple)){suffixes=$list(suffixes)}
-    var start = $ns[0]['start'] || int(0)
-    var end = $ns[0]['end'] || int(this.value.length-1)
-    var s = this.value.substr(start.value,end.value+1)
-    for(var i=0;i<suffixes.items.length;i++){
-        suffix = suffixes.items[i]
-        if(suffix.value.length<=s.length &&
-            s.substr(s.length-suffix.value.length)==suffix.value){return True}
-    }
-    return False
-}
-
-$StringClass.prototype.find = function(){
-    // Return the lowest index in the string where substring sub is found, 
-    // such that sub is contained in the slice s[start:end]. Optional 
-    // arguments start and end are interpreted as in slice notation. 
-    // Return -1 if sub is not found.
-    $ns[0]={}
-    $MakeArgs(0,arguments,['sub'],{'start':int(0),'end':int(this.value.length)},null,null)
-    var sub = $ns[0]['sub'],start=$ns[0]['start'],end=$ns[0]['end']
-    if(!$isinstance(sub,str)){$raise('TypeError',
-        "Can't convert '"+$str(sub.__class__)+"' object to str implicitly")}
-    if(!$isinstance(start,int)||!$isinstance(end,int)){$raise('TypeError',
-        "slice indices must be integers or None or have an __index__ method")}
-    var s = this.value.substring(start.value,end.value)
-    var res = s.search(sub.value)
-    if(res==-1){return int(-1)}
-    else{return int(start.value+res)}
-}
-
-$StringClass.prototype.index = function(){
-    // Like find(), but raise ValueError when the substring is not found.
-    var args = []
-    for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-    var res = this.find.apply(this,args)
-    if(res.value==-1){$raise('ValueError',"substring not found")}
-    else{return res}
-}
-
-$StringClass.prototype.join = function(iterable){
-    if(!'__next__' in iterable){$raise('TypeError',
-         "'"+$str(iterable.__class__)+"' object is not iterable")}
-    var res = '',count=0
-    while(true){
-        try{
-            var obj = next(iterable)
-            if(!$isinstance(obj,str)){$raise('TypeError',
-                "sequence item "+count+": expected str instance, "+$str(obj.__class__)+"found")}
-            res += obj.value+this.value
-            count++
-        }catch(err){
-            if(err.name=='StopIteration'){break}
-            throw err
-        }
-    }
-    if(count==0){return str('')}
-    res = res.substr(0,res.length-this.value.length)
-    return str(res)
-}
-
-$StringClass.prototype.lower = function(){return str(this.value.toLowerCase())}
-
-$StringClass.prototype.lstrip = function(x){
-    if(x==undefined){pattern="\\s*"}
-    else{pattern = "["+x.value+"]*"}
-    sp = new RegExp("^"+pattern)
-    return str(this.value.replace(sp,""))
-}
-
-$StringClass.prototype.replace = function(old,_new,count){
-    if(count!==undefined){
-        if(!$isinstance(count,list(int,float))){$raise('TypeError',
-            "'"+$str(count.__class__)+"' object cannot be interpreted as an integer")}
-        count=count.value
-        var re = new RegExp(old.value)
-        var res = this.value
-        while(count>0){
-            if(this.value.search(re)==-1){return str(res)}
-            res = res.replace(re,_new.value)
-            count--
-        }
-        return str(res)
-    }else{
-        var re = new RegExp(old.value,"g")
-        return str(this.value.replace(re,_new.value))
-    }
-}
-
-$StringClass.prototype.rfind = function(){
-    // Return the highest index in the string where substring sub is found, 
-    // such that sub is contained within s[start:end]. Optional arguments 
-    // start and end are interpreted as in slice notation. Return -1 on failure.
-    $ns[0]={}
-    $MakeArgs(0,arguments,['sub'],{'start':int(0),'end':int(this.value.length)},null,null)
-    var sub = $ns[0]['sub'],start=$ns[0]['start'],end=$ns[0]['end']
-    if(!$isinstance(sub,str)){$raise('TypeError',
-        "Can't convert '"+$str(sub.__class__)+"' object to str implicitly")}
-    if(!$isinstance(start,int)||!$isinstance(end,int)){$raise('TypeError',
-        "slice indices must be integers or None or have an __index__ method")}
-    var s = this.value.substring(start.value,end.value)
-    var reversed = ''
-    for(var i=s.length-1;i>=0;i--){reversed += s.charAt(i)}
-    var res = reversed.search(sub.value)
-    if(res==-1){return int(-1)}
-    else{return int(start.value+s.length-1-res)}
-}
-    
-$StringClass.prototype.rindex = function(){
-    // Like rfind() but raises ValueError when the substring sub is not found
-    var args = []
-    for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-    var res = this.rfind.apply(this,args)
-    if(res.value==-1){$raise('ValueError',"substring not found")}
-    else{return res}
-}
-
-$StringClass.prototype.rstrip = function(x){
-    if(x==undefined){pattern="\\s*"}
-    else{pattern = "["+x.value+"]*"}
-    sp = new RegExp(pattern+'$')
-    return str(this.value.replace(sp,""))
-}
-
-$StringClass.prototype.split = function(){
-    $ns[0]={}
-    $MakeArgs(0,arguments,['sep'],{'sep':None,'maxsplit':int(-1)},null,null)
-    var sep=$ns[0]['sep'],maxsplit=$ns[0]['maxsplit'].value
-    var res = [],pos=0,spos=0
-    if($isinstance(sep,str)){
-        var sep = sep.value
-        while(true){
-            spos = this.value.substr(pos).search(sep)
-            if(spos==-1){break}
-            res.push(str(this.value.substr(pos,spos)))
-            if(maxsplit != -1 && res.length==maxsplit){break}
-            pos += spos+sep.length
-        }
-        res.push(str(this.value.substr(pos)))
-        return list(res)
-    }
-}
-
-$StringClass.prototype.startswith = function(){
-    // Return True if string starts with the prefix, otherwise return False. 
-    // prefix can also be a tuple of prefixes to look for. With optional 
-    // start, test string beginning at that position. With optional end, 
-    // stop comparing string at that position.
-    $ns[0]={}
-    $MakeArgs(0,arguments,['prefix'],{'start':null,'end':null},null,null)
-    var prefixes = $ns[0]['prefix']
-    if(!$isinstance(prefixes,tuple)){prefixes=$list(prefixes)}
-    var start = $ns[0]['start'] || int(0)
-    var end = $ns[0]['end'] || int(this.value.length-1)
-    var s = this.value.substr(start.value,end.value+1)
-    for(var i=0;i<prefixes.items.length;i++){
-        prefix = prefixes.items[i]
-        if(prefix.value.length<=s.length &&
-            s.substr(0,prefix.value.length)==prefix.value){return True}
-    }
-    return False
-}
-
-$StringClass.prototype.strip = function(x){
-    if(x==undefined){
-        x = "\\s"
-    }
-    pattern = "["+x+"]"
-    sp = new RegExp("^"+pattern+"+|"+pattern+"+$","g")
-    return str(this.value.replace(sp,""))
-}
-
-$StringClass.prototype.upper = function(){return str(this.value.toUpperCase())}
-
-function $str(obj){ // JS string for obj
-    return str(obj).value
-}
-
-function str(arg){
-    if(arg===undefined){return str('--undefined--')}
-    // compute value = JS string
-    var value = ""
-    try{
-        // value is a Python type
-        value = arg.__str__().value
-    } catch(err) {
-        if(arg.constructor==Function){
-            var src = arg+'' // coerce to string
-            pattern = new RegExp("function (.*?)\\(")
-            var res = pattern.exec(src)
-            value = '<function '+res[1]+'>'
-        } else {
-            value = arg.toString()
-        }
-    }
-    return new $StringClass(value)
+    if(!isinstance(attr,str)){$raise('TypeError',"setattr(): attribute name must be string")}
+    obj[attr]=value
 }
 
 function sum(iterable,start){
-    if(start===undefined){start=int(0)}
-    var res = start
-    while(true){
-        try{res.__add__(next(iterable))}
-        catch(err){
-            if(err.name=="StopIteration"){return res}
-            else{throw err}
-        }
+    if(start===undefined){start=0}
+    var res = 0
+    for(var i=start;i<iterable.__len__();i++){
+        res += iterable.__item__(i)
     }
+    return res
 }
 
 function $tuple(arg){return arg} // used for parenthesed expressions
@@ -1650,58 +767,41 @@ function $tuple(arg){return arg} // used for parenthesed expressions
 function tuple(){
     var args = new Array(),i=0
     for(i=0;i<arguments.length;i++){args.push(arguments[i])}
-    var obj = new $ListClass(args)
+    var obj = list(args)
     obj.__class__ = tuple
     return obj
 }
 
-function $ZipClass(args){
-    this.args = args
-    this.__next__ = function(){
-        if(this.iter===null){
-            this.iter=0
-            for(var i=0;i<this.args.length;i++){this.args[i].iter=0}
+function zip(){
+    var rank=0,res=[]
+    while(true){
+        var line=[],flag=true
+        for(var i=0;i<arguments.length;i++){
+            var x=arguments[i].__item__(rank)
+            if(x===undefined){flag=false;break}
+            line.push(x)
         }
-        var $res = list(),i=0
-        for(var i=0;i<this.args.length;i++){
-            z = this.args[i].__next__()
-            if(z===undefined){this.iter=null;$raise('StopIteration')}
-            $res.append(z)
-        }
-        return $res
+        if(!flag){return res}
+        res.push(line)
+        rank++
     }
 }
 
-function zip(){
-    var i=null, args = new Array()
-    for(i=0;i<arguments.length;i++){args.push(arguments[i])}
-    return new $ZipClass(args)
-}
-
 // built-in constants : True, False, None
-function $TrueClass(){
-    this.__class__ = "True"
-    this.value = true
-    this.__bool__ = function(){return True}
-    this.__eq__ = function(other){return $bool(other)}
-    this.__str__ = function(){return str('True')}
-}
-True = new $TrueClass()
 
-function $FalseClass(){
-    this.__class__ = "False"
-    this.value = false
-    this.__bool__ = function(){return False}
-    this.__eq__ = function(other){return $not($bool(other))}
-    this.__str__ = function(){return str('False')}
+True = true //new $TrueClass()
+
+False = false //new $FalseClass()
+
+Boolean.prototype.toString = function(){
+    if(this.valueOf()){return "True"}else{return "False"}
 }
-False = new $FalseClass()
 
 function $NoneClass(){
     this.__class__ = "None"
     this.value = null
     this.__bool__ = function(){return False}
-    this.__eq__ = function(other){return $bool_conv(other.__class__=="None")}
+    this.__eq__ = function(other){return other.__class__=="None"}
     this.__str__ = function(){return str('None')}
 }
 None = new $NoneClass()
@@ -1714,17 +814,19 @@ function $SliceClass(start,stop,step){
     this.step = step
 }
 function slice(){
+    console.log('slice arguments '+arguments[0]+' '+arguments[1]+' '+arguments[2])
     var start = arguments[0] || null
-    var stop = arguments[1] || null
+    var stop = arguments[1]
+    if(typeof stop!=="number"){stop=null}
     var step = arguments[2] || null
     var indices = [start,stop,step]
     for(var i=0;i<indices.length;i++){
         if(indices[i]===null){continue}
-        if(!$isinstance(indices[i],int)){$raise('TypeError',
+        if(!isinstance(indices[i],int)){$raise('TypeError',
             "slice indices must be integers or None or have an __index__ method")}
     }
     if(step!==null){
-        if(step.value===0){$raise('ValueError','slice step cannot be zero')}
+        if(step===0){$raise('ValueError','slice step cannot be zero')}
     }
     return new $SliceClass(start,stop,step)
 }
