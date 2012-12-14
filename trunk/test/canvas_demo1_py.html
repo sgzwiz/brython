@@ -103,7 +103,6 @@ def C():
         g=sqrt(c*c+k*k) or 0.001
         c=c/g
         k=k/g
-        log('first a %s b %s g %s' %(a,b,g))
         if w and g<m:
             dfg = 9
             s=14*(1-g/m)
@@ -117,8 +116,6 @@ def C():
             c=2.6e-4*(1-g/l)*f
             a+=x*c
             b+=y*c
-        if not isinstance(a,float):
-            return
         a*=B
         b*=B
         c=abs(a)
@@ -147,7 +144,6 @@ def C():
             b*=-1
         h.a=a
         h.b=b
-        log('end %s %s' %(h.a,h.b))
         h.x=i
         h.y=j
         e.fillStyle=h.color

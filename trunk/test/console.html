@@ -13,6 +13,12 @@
 <script src="/py_ajax.js"></script>
 
 <script type="text/python">
+import sys
+def to_str(x):
+    return str(x)
+
+doc['version'].text = '.'.join(map(to_str,sys.version_info))
+
 # override log to send output to textarea
 def log(data):
     doc["console"].value = doc["console"].value+str(data)+'\n'
@@ -84,6 +90,7 @@ function run(){
 <tr><td colspan=2>
 <i>- Python classes and list comprehensions are not supported
 <br>- use "log" instead of "print"</i>
+<p>Brython version <span id="version"></span>
 </td></tr>
 </table>
 </center>
