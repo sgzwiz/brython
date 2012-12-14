@@ -1,5 +1,6 @@
 <html>
 <head>
+<meta charset="iso-8859-1">
 <title>Brython</title>
 <link rel="stylesheet" href="brython.css">
 </head>
@@ -11,7 +12,9 @@ Le fichier <b>brython.js</b> est généré par compilation de plusieurs scripts :
 <li><b>py_tokenizer.js</b> : découpe le code source Python en jetons (tokens) : identifiants, littéraux, opérateurs, délimiteurs, etc
 <li><b>py2js.js</b> : opère la conversion entre les jetons et le code Javascript
 <li><b>py_utils.js</b> : fonctions utilitaires (manipulation des jetons, conversion de types entre Javascript et Python)
-<li><b>py_classes.js</b> : regroupe toutes les fonctions intégrées de Python, implémentées sous forme de fonctions Javascript
+<li><b>py_string.js</b> : implémentation de la classe str de Python à partir de l'objet Javascript String
+<li><b>py_classes.js</b> : implémentation de la classe list de Python à partir de l'objet Javascript Array
+<li><b>py_list.js</b> : regroupe tous les autres types et fonctions intégrés de Python
 <li><b>py_dom.js</b> : interaction avec le document HTML (DOM)
 <li><b>py_ajax.js</b> : implémentation d'Ajax
 <li><b>py_local_storage.js</b> : implémentation du stockage local HTML5
@@ -36,7 +39,7 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 <li><tt>["bracket",<em>value</em>]</tt> : parenthèse, crochet ou accolade ouvrante ou fermante. La valeur peut être <em>()[]{}</em>
 <li><tt>["point","."]</tt> : le point
 <li><tt>["delimiter",<em>string</em>]</tt> : un délimiteur, valeur <em>:</em>, <em>,</em> ou <em>=</em> à l'intérieur d'une parenthèse (syntaxe <tt>foo(x=0)</tt>
-<li><tt>["assign","="]</tt> : le signe = quand il n'est pas à l'intérieur d'une parenthèse
+<li><tt>["assign",<em>string</em>]</tt> : le signe = quand il n'est pas à l'intérieur d'une parenthèse, et les opérateurs d'assignation augmentée : +=, *= etc.
 <li><tt>["operator",<em>string</em>]</tt> : un opérateur
 </ul>
 <p>Dans cette étape, des erreurs peuvent être signalées : 
@@ -57,7 +60,7 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 <li>conversion des arguments dans la définition des fonctions (<tt>def foo(x,y=1,*args,**kw)</tt>)
 <li>conversion des arguments sous forme de mots-clés dans les appels de fonctions (<tt>foo(b=1)</tt>)
 <li>résolution des suites de + et de - (++ devient +, -+- devient -, etc.) et des opérateurs unaires - et +
-<li>remplacement de <tt>import foo</tt> par <tt>Import(foo)</tt>
+<li>remplacement de <tt>import foo</tt> par <tt>$import(foo)</tt>
 <li>traduction des suites <tt>try / except / finally / else</tt>
 <li>traduction de <tt>assert</tt>
 <li>traduction de l'indentation en accolades pour les blocs commençant par <tt>if, else, elif, def, for, try, finally</tt>
