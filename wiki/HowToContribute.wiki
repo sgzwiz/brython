@@ -1,7 +1,7 @@
-#summary Guide for programers wanting to contribute to Brython development
+#summary Tips for programers who want to contribute to Brython development
 #labels Featured
 
-Development process
+= Development process =
 
 The documentation page on the Brython site explains the compilation and execution model of Brython
 
