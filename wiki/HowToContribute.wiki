@@ -3,7 +3,7 @@
 
 = Development process =
 
-The documentation page on the Brython site explains the compilation and execution model of Brython
+The documentation page on the [http://www.brython.info Brython site] explains the compilation and execution model of Brython
 
 The core Javascript programs are *py`_`tokenizer.js, py2js.js* and *py`_`utils.js* ; they are in charge of translating Python code into Javascript. For the moment I wish to keep control on these scripts, but I'm of course open to suggestions on how to improve them. They will be modified to extend the coverage of Python syntax (list comps, classes etc.)
 
