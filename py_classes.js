@@ -414,7 +414,7 @@ Number.prototype.__not_in__ = function(item){
 }
 
 Number.prototype.__pow__ = function(other){
-    if(typeof other==="number"){return int(Math.floor(this.valueOf()/other.valueOf()))}
+    if(typeof other==="number"){return int(Math.pow(this.valueOf(),other.valueOf()))}
     else{$UnsupportedOpType("//",int,other.__class__)}
 }
 

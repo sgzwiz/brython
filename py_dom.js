@@ -215,8 +215,9 @@ function $Document(){
         } else {document.body.appendChild(other.elt)}
     }
 
-    this.__setattr__ = function(attr,other){
-        document[attr]=other
+    this.__setattr__ = function(attr,value){
+        if(attr in $events){document.addEventListener(attr.substr(2),value)}
+        else{document[attr]=value}
     }
 
     this.insert_before = function(other,ref_elt){
@@ -301,7 +302,10 @@ $events = $List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'onpaste','onpropertychange','onreadystatechange','onreset','onresize',
 'onresizeend','onresizestart','onrowenter','onrowexit','onrowsdelete',
 'onrowsinserted','onscroll','onsearch','onselect','onselectionchange',
-'onselectstart','onstart','onstop','onsubmit','onunload')
+'onselectstart','onstart','onstop','onsubmit','onunload',
+// for smartphones
+'ontouchstart','ontouchmove','ontouchend'
+)
 
 function $TagClass(class_name,args){
     // represents an HTML tag
@@ -413,7 +417,7 @@ $TagClass.prototype.__radd__ = function(other){ // add to a string
 }
 
 $TagClass.prototype.__setattr__ = function(attr,value){
-    if(attr in $events){eval('this.elt.'+attr.toLowerCase()+'=value')}
+    if(attr in $events){this.elt.addEventListener(attr.substr(2),value)}
     else if('set_'+attr in this){return this['set_'+attr](value)}
     else if(attr in this.elt){this.elt[attr]=value.value}
     else{$setattr(this,attr,value)}
