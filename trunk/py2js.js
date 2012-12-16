@@ -547,28 +547,20 @@ function $py2js(src,context,debug){
     }
 
     // "assert condition" becomes "if condition: pass else: raise AssertionError"
-    var pos = 0
+    var pos = stack.list.length-1
     while(true){
-        var assert_pos = stack.find_next(pos,"keyword","assert")
+        var assert_pos = stack.find_previous(pos,"keyword","assert")
         if(assert_pos===null){break}
-        var assert_indent = 0
-        if(assert_pos==0){assert_indent=0}
-        else if(stack.list[assert_pos-1][0]=='indent'){assert_indent = stack.list[assert_pos-1][1]}
-        var end = stack.find_next(assert_pos,"newline")
-        if(end===null){end=stack.list.length-1}
-        var cond_block = stack.list.slice(assert_pos+1,end+1)
-        alert(cond_block)
-        // replace assert by if
-        stack.list.splice(assert_pos,1,['keyword','if'])
-        stack.dump()
-        stack.list.splice(end-1,0,['delimiter',':'],['newline','\n'],
-            ['indent',assert_indent+4],['keyword','pass'],['newline','\n'])
-        stack.dump()
-        if(assert_indent>0){stack.list.splice(end+4,0,['indent',assert_indent]);end++}
-        stack.list.splice(end+4,0,['keyword','else'],['delimiter',':'],['newline','\n'],
+        var assert_indent = stack.indent(assert_pos)
+        var end = stack.line_end(assert_pos)
+        var cond_block = stack.list.slice(assert_pos+1,end)
+        stack.list[assert_pos][1]="if"
+        stack.list.splice(end,0,['delimiter',':'],['newline','\n'],
+            ['indent',assert_indent+4],['keyword','pass'],['newline','\n'],
+            ['indent',assert_indent],['keyword','else'],['delimiter',':'],['newline','\n'],
             ['indent',assert_indent+4],['code','$raise("AssertionError")'])
-        stack.dump()
-        pos = assert_pos+1
+        
+        pos = assert_pos-1
     }
 
     // replace if,elif,else,def,for,try,catch,finally by equivalents

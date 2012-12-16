@@ -1,5 +1,5 @@
 # numbers
-log(2+2)
+assert 2+2==4
 log((50-5*6)/4)
 log(8/5)
 log(7//3)
