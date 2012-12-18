@@ -126,6 +126,18 @@ Array.prototype.__getitem__ = function(arg){
     }
 }
 
+Array.prototype.__init__ = function(){
+    this.splice(0,this.length)
+    if(arguments.length===0){return}
+    var arg = arguments[0]
+    console.log('__ini__'+arg)
+    for(var i=0;i<arg.__len__();i++){
+        console.log(arg.__item__(i))
+        this.push(arg.__item__(i))
+    }
+    console.log('value '+this.valueOf())
+}
+
 Array.prototype.__item__ = function(i){return this[i]}
 
 Array.prototype.__in__ = function(item){return item.__contains__(this)}
@@ -274,6 +286,15 @@ function $list(){
 }
 
 function list(){
+    if(arguments.length===0){return []}
+    else if(arguments.length>1){
+        $raise('TypeError',"list() takes at most 1 argument ("+args.length+" given)")
+    }
+    console.log('create list'+arguments[0])
+    var res = []
+    res.__init__(arguments[0])
+    return res
+    if(arguments.length==0){return []}
     if(arguments.length==1){    // must be an iterable
         if(isinstance(arguments[0],list)){return arguments[0]}
         var res=[]
