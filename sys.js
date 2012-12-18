@@ -3,5 +3,5 @@ sys = {
         if(attr in this){return this[attr]}
         else{$raise('AttributeError','module sys has no attribute '+attr)}},
     has_local_storage:typeof(Storage)!=="undefined",
-    version_info:tuple(1,0,"20121216-202649")
+    version_info:[1,0,"20121218-203137"]
 }
