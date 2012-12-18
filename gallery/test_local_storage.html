@@ -1,0 +1,17 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta charset="ascii">
+<script src="../brython.js"></script>
+
+</head>
+<body onLoad="brython(2)">
+<script type="text/python">
+local_storage['foo']='bar'
+log(local_storage['foo'])
+del local_storage['foo']
+log(local_storage['foo'])
+
+</script>
+</body>
+</html>
