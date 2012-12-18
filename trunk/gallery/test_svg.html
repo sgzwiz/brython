@@ -1,0 +1,66 @@
+<html>
+<head>
+<script src="../brython.js"></script>
+<script type="text/python">
+import random
+rand = random.random
+svgNS = "http://www.w3.org/2000/svg"
+xlinkNS = "http://www.w3.org/1999/xlink"
+
+def createRect():
+  newRect = SVG.rect(x=rand()*250)
+  newRect.width = rand()*100
+  newRect.height = rand()*100
+  #newRect.x = rand()*250
+  newRect.y = rand()*180 + 60
+  newRect.fill_opacity = rand()
+  red = round(rand() * 255)
+  green = round(rand() * 255)
+  blue = round(rand() * 255)
+  newRect.fill = "rgb(%s,%s,%s)" %(red,green,blue)
+  doc["firstGroup"] <= newRect
+
+def createText():
+  newText = SVG.text(x=rand()*200+50,
+      y=rand()*180+60,
+      font_size="13px",
+      text_anchor="middle",
+      fill_opacity=rand())
+  red = round(rand() * 255)
+  green = round(rand() * 255)
+  blue = round(rand() * 255)
+  newText.fill = "rgb(%s,%s,%s)" %(red,green,blue)
+  newText <= "a new text"
+  doc["firstGroup"] <= newText
+
+def createUseElement():
+  newUseEl = SVG.use(x=rand()*200+50,y=rand()*180+80)
+  newUseEl.href = "#mySymbol"
+  newUseEl.fill_opacity=rand()
+  doc["firstGroup"] <= newUseEl
+
+</script>
+
+</head>
+<body onLoad="brython()">
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="300" height="300">
+  <defs>
+    <symbol id="mySymbol" overflow="visible">
+      <rect id="redRect" fill="red" stroke="none" x="-10" y="-10" width="20" height="20" />
+        <use transform="rotate(45)" xlink:href="#redRect" />
+    </symbol>
+  </defs>
+
+  <g id="firstGroup">
+    <text x="20" y="30" onclick="createRect()" font-size="+13px">Click on this text to create a new rectangle.</text>
+    <text x="20" y="45" onclick="createText()" font-size="+13px">Click on this text to create a new text.</text>
+    <text x="20" y="60" onclick="createUseElement()" font-size="+13px">Click on this text to create a new use element.</text>
+  </g>
+</svg>
+
+
+
+</body>
+</html>
+
