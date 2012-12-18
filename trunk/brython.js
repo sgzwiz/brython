@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20121216-202649
+// version 1.0.20121218-203137
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -428,7 +428,7 @@ try{return obj.__len__()}
 catch(err){$raise('TypeError',"object of type "+str(obj.__class__)+" has no len()")}
 }
 function log(){
-$ns=$MakeArgs(arguments,[],{},'args')
+$ns=$MakeArgs('log',arguments,[],{},'args')
 if(!('end' in $ns)){$ns['end']='\n'}
 for(var i=0;i<$ns['args'].length;i++){
 console.log(str($ns['args'][i])+str($ns['end']))
@@ -518,21 +518,20 @@ return new $ObjectClass()
 }
 function $prompt(src){return str(prompt(src))}
 function range(){
-if(arguments.length>3){$raise('TypeError',
-"range expected at most 3 arguments, got "+arguments.length)
+var $ns=$MakeArgs('range',arguments,[],{},'args',null)
+var args=$ns['args']
+if(args.length>3){$raise('TypeError',
+"range expected at most 3 arguments, got "+args.length)
 }
 var start=0
 var stop=0
 var step=1
-if(arguments.length==1){
-stop=arguments[0]
-}else if(arguments.length>=2){
-start=arguments[0]
-stop=arguments[1]
+if(args.length==1){stop=args[0]}
+else if(args.length>=2){
+start=args[0]
+stop=args[1]
 }
-if(arguments.length>=3){
-step=arguments[2]
-}
+if(args.length>=3){step=args[2]}
 if(step==0){$raise('ValueError',"range() arg 3 must not be zero")}
 var res=[]
 if(step>0){
@@ -687,6 +686,9 @@ this.stop=stop
 this.step=step
 }
 function slice(){
+var $ns=$MakeArgs('slice',[],
+{'start':null,'stop':null,'step':null},null,null)
+console.log('slice '+$ns['start']+' '+$ns['stop']+' '+$ns['step'])
 var start=arguments[0]|| null
 var stop=arguments[1]
 if(typeof stop!=="number"){stop=null}
@@ -701,14 +703,6 @@ if(step!==null){
 if(step===0){$raise('ValueError','slice step cannot be zero')}
 }
 return new $SliceClass(start,stop,step)
-}
-function $KwClass(name,value){
-this.__class__=$Kw
-this.name=name
-this.value=value
-}
-function $Kw(name,value){
-return new $KwClass(name,value)
 }
 function $ListClass(items){
 var x=null,i=null
@@ -828,6 +822,17 @@ return res
 }else{
 $raise('TypeError','list indices must be integer, not '+str(arg.__class__))
 }
+}
+Array.prototype.__init__=function(){
+this.splice(0,this.length)
+if(arguments.length===0){return}
+var arg=arguments[0]
+console.log('__ini__'+arg)
+for(var i=0;i<arg.__len__();i++){
+console.log(arg.__item__(i))
+this.push(arg.__item__(i))
+}
+console.log('value '+this.valueOf())
 }
 Array.prototype.__item__=function(i){return this[i]}
 Array.prototype.__in__=function(item){return item.__contains__(this)}
@@ -954,6 +959,15 @@ for(i=0;i<arguments.length;i++){args.push(arguments[i])}
 return new $ListClass(args)
 }
 function list(){
+if(arguments.length===0){return[]}
+else if(arguments.length>1){
+$raise('TypeError',"list() takes at most 1 argument ("+args.length+" given)")
+}
+console.log('create list'+arguments[0])
+var res=[]
+res.__init__(arguments[0])
+return res
+if(arguments.length==0){return[]}
 if(arguments.length==1){
 if(isinstance(arguments[0],list)){return arguments[0]}
 var res=[]
@@ -1210,7 +1224,7 @@ return res
 }
 function $string_endswith(obj){
 return function(){
-var $ns=$MakeArgs(arguments,['suffix'],
+var $ns=$MakeArgs("str.endswith",arguments,['suffix'],
 {'start':null,'end':null},null,null)
 var suffixes=$ns['suffix']
 if(!isinstance(suffixes,tuple)){suffixes=[suffixes]}
@@ -1227,7 +1241,7 @@ return False
 }
 function $string_find(obj){
 return function(){
-var $ns=$MakeArgs(arguments,['sub'],
+var $ns=$MakeArgs("str.find",arguments,['sub'],
 {'start':0,'end':obj.length},null,null)
 var sub=$ns['sub'],start=$ns['start'],end=$ns['end']
 if(!isinstance(sub,str)){$raise('TypeError',
@@ -1304,7 +1318,7 @@ return obj.replace(re,_new)
 }
 function $string_rfind(obj){
 return function(){
-var $ns=$MakeArgs(arguments,['sub'],
+var $ns=$MakeArgs("str.find",arguments,['sub'],
 {'start':0,'end':obj.length},null,null)
 var sub=$ns['sub'],start=$ns['start'],end=$ns['end']
 if(!isinstance(sub,str)){$raise('TypeError',
@@ -1336,7 +1350,7 @@ return str(this.value.replace(sp,""))
 }
 function $string_split(obj){
 return function(){
-var $ns=$MakeArgs(arguments,['sep'],
+var $ns=$MakeArgs("str.split",arguments,['sep'],
 {'maxsplit':-1},null,null)
 var sep=$ns['sep'],maxsplit=$ns['maxsplit']
 var res=[],pos=0,spos=0
@@ -1355,11 +1369,10 @@ return res
 }
 function $string_startswith(obj){
 return function(){
-$ns=$MakeArgs(arguments,['prefix'],
+$ns=$MakeArgs("str.startswith",arguments,['prefix'],
 {'start':null,'end':null},null,null)
 var prefixes=$ns['prefix']
 if(!isinstance(prefixes,tuple)){prefixes=[prefixes]}
-console.log(prefixes)
 var start=$ns['start']|| 0
 var end=$ns['end']|| obj.length-1
 var s=obj.substr(start,end+1)
@@ -1381,18 +1394,46 @@ return obj.replace(sp,"")
 }
 function $string_upper(obj){return function(){return obj.toUpperCase()}}
 function str(arg){return arg.toString()}
-function $MakeArgs($args,$required,$defaults,$other_args,$other_kw){
-var i=null
-var $PyVars={}
-var $def_names=[]
-var $ns={}
-for(k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
+function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
+var i=null,$PyVars={},$def_names=[],$ns={}
+for(var k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
 if($other_args !=null){$ns[$other_args]=[]}
 if($other_kw !=null){$dict_items=[]}
-for(i=0;i<$args.length;i++){
-$arg=$args[i]
+var upargs=[]
+for(var i=0;i<$args.length;i++){
+if(isinstance($args[i],$ptuple)){
+for(var j=0;j<$args[i].arg.length;j++){
+upargs.push($args[i].arg[j])
+}
+}else if(isinstance($args[i],$pdict)){
+for(var j=0;j<$args[i].arg.$keys.length;j++){
+upargs.push($Kw($args[i].arg.$keys[j],$args[i].arg.$values[j]))
+}
+}else{
+upargs.push($args[i])
+}
+}
+for(i=0;i<upargs.length;i++){
+$arg=upargs[i]
 $PyVar=$JS2Py($arg)
-if(!isinstance($arg,$Kw)){
+if(isinstance($arg,$Kw)){
+$PyVar=$arg.value
+if($arg.name in $PyVars){
+throw new TypeError($fname+"() got multiple values for argument '"+$arg.name+"'")
+}else if($required.indexOf($arg.name)>-1){
+var ix=$required.indexOf($arg.name)
+eval($required[ix]+"=$PyVar")
+$ns[$required[ix]]=$PyVar
+}else if($arg.name in $defaults){
+$ns[$arg.name]=$PyVar
+console.log('set '+$arg.name+' to '+$arg)
+}else if($other_kw!=null){
+$dict_items.push([$arg.name,$PyVar])
+}else{
+throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"'")
+}
+if($arg.name in $defaults){delete $defaults[$arg.name]}
+}else{
 if(i<$required.length){
 eval($required[i]+"=$PyVar")
 $ns[$required[i]]=$PyVar
@@ -1405,22 +1446,6 @@ msg=$fname+"() takes "+$required.length+' positional arguments '
 msg +='but more were given'
 throw TypeError(msg)
 }
-}else{
-$PyVar=$arg.value
-if($arg.name in $PyVars){
-throw new TypeError($fname+"() got multiple values for argument '"+$arg.name+"'")
-}else if($required.indexOf($arg.name)>-1){
-var ix=$required.indexOf($arg.name)
-eval($required[ix]+"=$PyVar")
-$ns[$required[ix]]=$PyVar
-}else if($arg.name in $defaults){
-$ns[$arg.name]=$arg
-}else if($other_kw!=null){
-$dict_items.push([$arg.name,$PyVar])
-}else{
-throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"'")
-}
-if($arg.name in $defaults){delete $defaults[$arg.name]}
 }
 }
 if($other_kw!=null){$ns[$other_kw]=dict($dict_items)}
@@ -1677,7 +1702,7 @@ var end_def=stack.find_next_at_same_level(def_pos,"delimiter",":")
 if(end_def==null){
 $raise("SyntaxError","Unable to find definition end "+end_def)
 }
-var arg_code='arguments,'
+var arg_code='"'+func_token[1]+'",arguments,'
 if(required.length==0){arg_code+='[],'}
 else{
 arg_code +='['
@@ -1720,6 +1745,7 @@ var s=new Stack(stack.list.slice(br_pos+1,end_call))
 var args=s.split(',')
 for(i=args.length-1;i>=0;i--){
 var arg=args[i]
+if(arg.list.length==0){continue}
 var elts=arg.split('=')
 if(elts.length==2){
 var src_pos=elts[0].list[0][2]
@@ -1731,6 +1757,12 @@ code +=elts[1].to_js()+')'
 stack.list.splice(br_pos+1+arg.start,arg.end-arg.start+1)
 tail=stack.list.slice(br_pos+1+arg.start,stack.list.length)
 stack.list=stack.list.slice(0,br_pos+1+arg.start).concat(seq).concat(tail)
+}else if(arg.list[0][0]=="operator" &&
+["*","**"].indexOf(arg.list[0][1]>-1)){
+if(arg.list[0][1]=='*'){var uf="$ptuple"}else{var uf="$pdict"}
+stack.list.splice(br_pos+2+arg.end,0,['bracket',')'])
+stack.list.splice(br_pos+1+arg.start,1,
+["code",uf],['bracket','('])
 }
 }
 }
@@ -1765,6 +1797,7 @@ if(sign==null){break}
 var op=stack.list[sign]
 if(sign>0 && 
 (stack.list[sign-1][0]in $List2Dict("delimiter","newline","indent","assign","operator")||
+(stack.list[sign-1].match(["keyword","return"]))||
 (stack.list[sign-1][0]=="bracket" &&("({[".indexOf(stack.list[sign-1][1])>-1)))){
 if(sign<stack.list.length-1){
 var next=stack.list[sign+1]
@@ -2691,6 +2724,27 @@ function $UnsupportedOpType(op,class1,class2){
 $raise('TypeError',
 "unsupported operand type(s) for "+op+": '"+class1+"' and '"+class2+"'")
 }
+function $KwClass(name,value){
+this.__class__=$Kw
+this.name=name
+this.value=value
+}
+$KwClass.prototype.toString=function(){
+return '<kw '+this.name+' : '+this.value.toString()+'>'
+}
+function $Kw(name,value){
+return new $KwClass(name,value)
+}
+function $ptuple_class(arg){
+this.__class__=$ptuple
+this.arg=arg
+}
+function $ptuple(arg){return new $ptuple_class(arg)}
+function $pdict_class(arg){
+this.__class__=$pdict
+this.arg=arg
+}
+function $pdict(arg){return new $pdict_class(arg)}
 function $test_item(expr){
 document.$test_result=expr
 return bool(expr)
@@ -3513,7 +3567,7 @@ return res
 $TagClass.prototype.__setattr__=function(attr,value){
 if(attr in $events){this.elt.addEventListener(attr.substr(2),value)}
 else if('set_'+attr in this){return this['set_'+attr](value)}
-else if(attr in this.elt){this.elt[attr]=value.value}
+else if(attr in this.elt){this.elt[attr]=value}
 else{$setattr(this,attr,value)}
 }
 $TagClass.prototype.__setitem__=function(key,value){

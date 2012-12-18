@@ -12,8 +12,8 @@ sources = ['py_classes','py_list','py_string',
 # update version number in module sys
 sys_src = open('sys.js').read()
 
-sys_src = re.sub('version_info:tuple\(1,0,".*?"\)',
-    'version_info:tuple(1,0,"%s")' %now,sys_src)
+sys_src = re.sub('version_info:\[1,0,".*?"\]',
+    'version_info:[1,0,"%s"]' %now,sys_src)
 out = open('sys.js','w')
 out.write(sys_src)
 out.close()
