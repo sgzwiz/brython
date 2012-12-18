@@ -268,7 +268,7 @@ function $string_endswith(obj){
     // With optional start, test beginning at that position. With optional 
     // end, stop comparing at that position.
     return function(){
-        var $ns=$MakeArgs(arguments,['suffix'],
+        var $ns=$MakeArgs("str.endswith",arguments,['suffix'],
             {'start':null,'end':null},null,null)
         var suffixes = $ns['suffix']
         if(!isinstance(suffixes,tuple)){suffixes=[suffixes]}
@@ -290,7 +290,7 @@ function $string_find(obj){
     // arguments start and end are interpreted as in slice notation. 
     // Return -1 if sub is not found.
     return function(){
-        var $ns=$MakeArgs(arguments,['sub'],
+        var $ns=$MakeArgs("str.find",arguments,['sub'],
             {'start':0,'end':obj.length},null,null)
         var sub = $ns['sub'],start=$ns['start'],end=$ns['end']
         if(!isinstance(sub,str)){$raise('TypeError',
@@ -377,7 +377,7 @@ function $string_rfind(obj){
     // such that sub is contained within s[start:end]. Optional arguments 
     // start and end are interpreted as in slice notation. Return -1 on failure.
     return function(){
-        var $ns=$MakeArgs(arguments,['sub'],
+        var $ns=$MakeArgs("str.find",arguments,['sub'],
             {'start':0,'end':obj.length},null,null)
         var sub = $ns['sub'],start=$ns['start'],end=$ns['end']
         if(!isinstance(sub,str)){$raise('TypeError',
@@ -413,7 +413,7 @@ function $string_rstrip(x){
 
 function $string_split(obj){
     return function(){
-        var $ns=$MakeArgs(arguments,['sep'],
+        var $ns=$MakeArgs("str.split",arguments,['sep'],
             {'maxsplit':-1},null,null)
         var sep=$ns['sep'],maxsplit=$ns['maxsplit']
         var res = [],pos=0,spos=0
@@ -437,11 +437,10 @@ function $string_startswith(obj){
     // start, test string beginning at that position. With optional end, 
     // stop comparing string at that position.
     return function(){
-        $ns=$MakeArgs(arguments,['prefix'],
+        $ns=$MakeArgs("str.startswith",arguments,['prefix'],
             {'start':null,'end':null},null,null)
         var prefixes = $ns['prefix']
         if(!isinstance(prefixes,tuple)){prefixes=[prefixes]}
-        console.log(prefixes)
         var start = $ns['start'] || 0
         var end = $ns['end'] || obj.length-1
         var s = obj.substr(start,end+1)
