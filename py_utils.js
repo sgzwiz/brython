@@ -24,7 +24,6 @@ function $JS2Py(src){
 }
 
 // exceptions
-
 function $raise(name,msg) {
     // raises exception with specified name and message
     if(document.$debug==0){return}
@@ -42,6 +41,35 @@ function $UnsupportedOpType(op,class1,class2){
     $raise('TypeError',
         "unsupported operand type(s) for "+op+": '"+class1+"' and '"+class2+"'")
 }
+
+// classes used for passing parameters to functions
+// keyword arguments : foo(x=1)
+function $KwClass(name,value){
+    this.__class__ = $Kw
+    this.name = name
+    this.value = value
+}
+$KwClass.prototype.toString = function(){
+    return '<kw '+this.name+' : '+this.value.toString()+'>'
+}
+function $Kw(name,value){
+    return new $KwClass(name,value)
+}
+
+// packed tuple : foo(*args)
+function $ptuple_class(arg){
+    this.__class__ = $ptuple
+    this.arg=arg
+}
+function $ptuple(arg){return new $ptuple_class(arg)}
+
+// packed dict : foo(**kw)
+function $pdict_class(arg){
+    this.__class__ = $pdict
+    this.arg=arg
+}
+function $pdict(arg){return new $pdict_class(arg)}
+
 
 function $test_item(expr){
     // used to evaluate expressions with "and" or "or"
