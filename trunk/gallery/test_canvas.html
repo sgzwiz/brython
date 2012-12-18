@@ -1,0 +1,22 @@
+<html>
+<head>
+<meta charset="iso-8859-1">
+<script src="../brython.js"></script>
+</head>
+<body onload="brython()">
+
+
+<script type="text/python">
+canvas = doc["myCanvas"]
+
+# draw clock border
+ctx = canvas.getContext("2d")
+ctx.beginPath()
+log(ctx.fillText)
+ctx.fillText("essai",100,100)
+
+</script> 
+<canvas id="myCanvas" width="400" height="400" style="border:1px solid #000000;">
+</canvas> 
+</body>
+</html>

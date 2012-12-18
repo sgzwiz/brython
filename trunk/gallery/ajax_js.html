@@ -1,0 +1,89 @@
+<html>
+<head>
+<style>
+body,td,th{font-family:sans-serif}
+a.sort_link{margin-left:10px;text-decoration:none}
+</style>
+
+<script src="../py_tokenizer.js"></script>
+<script src="../py_utils.js"></script>
+<script src="../py_classes.js"></script>
+<script src="../py_dom.js"></script>
+<script src="../py2js.js"></script>
+<script src="../py_ajax.js"></script>
+
+<script id="ascript">
+document.line_num=1 
+function on_complete(){
+    $ns=$MakeArgs(arguments,['req'],{},null,null)
+    for($var in $ns){eval("var "+$var+"=$ns[$var]")} 
+    document.line_num=2 
+    if(req.__getattr__('status').__eq__(Number(200))){
+        document.line_num=3 
+        doc.__getitem__("result").__setattr__('html',req.__getattr__('text'))
+    }
+    else{
+        document.line_num=5 
+        doc.__getitem__("result").__setattr__('html',"error ".__add__(req.__getattr__('text')))
+    }
+}
+window.on_complete=on_complete
+document.line_num=7 
+function err_msg(){
+    document.line_num=8 
+    doc.__getitem__("result").__setattr__('html',"server didn't reply after %s seconds".__mod__(timeout))
+}
+window.err_msg=err_msg
+document.line_num=10 
+timeout =Number(4) 
+document.line_num=12 
+function go(){
+    $ns=$MakeArgs(arguments,['url'],{},null,null)
+    for($var in $ns){eval("var "+$var+"=$ns[$var]")} 
+    document.line_num=13 
+    var req =ajax()
+    document.line_num=14 
+    req.__setattr__('on_complete',on_complete)
+    document.line_num=15 
+    req.__getattr__('set_timeout')(timeout,err_msg)
+    document.line_num=16 
+    req.__getattr__('open')('GET',url,True)
+    document.line_num=17 
+    req.__getattr__('send')()
+}
+window.go=go
+document.line_num=19 
+function post(){
+    console.log('post !')
+    $ns=$MakeArgs(arguments,['url'],{},null,null)
+    for($var in $ns){eval("var "+$var+"=$ns[$var]")} 
+    document.line_num=20 
+    var req =ajax()
+    document.line_num=21 
+    req.__setattr__('on_complete',on_complete)
+    document.line_num=22 
+    req.__getattr__('set_timeout')(timeout,err_msg)
+    document.line_num=23 
+    req.__getattr__('open')('POST',url,True)
+    document.line_num=24 
+    req.__getattr__('set_header')('content-type','application/x-www-form-urlencoded')
+    document.line_num=25 
+    req.__getattr__('send')(dict([['foo',Number(34)]]))
+}
+window.post=post
+
+</script>
+
+</head>
+<body onLoad="brython(2)">
+
+<div id="result">(empty)</div>
+<button onClick="go('ajax_data.txt')">get text file</button>
+<button onClick="go('i_dont_exist.txt')">file not found</button>
+<button onClick="go('/cgi-bin/get_test.py')">GET request</button>
+<button onClick="post('/cgi-bin/post_test.py')">POST request</button>
+<button onClick="go('/cgi-bin/timeout.py')">timeout</button>
+
+
+</body>
+</html>

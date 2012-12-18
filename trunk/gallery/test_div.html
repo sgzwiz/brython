@@ -1,0 +1,18 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<script src="brython.js"></script>
+
+</head>
+<body onLoad="brython()">
+<script type="text/python">
+items = ['uno','due','tre']
+
+for i,_item in enumerate(items):
+    x = DIV(_item)
+    x.style = {'position':'absolute','left':10,'top':10+50*i,'width':30,'height':25}
+    doc <= x
+
+</script>
+</body>
+</html>
