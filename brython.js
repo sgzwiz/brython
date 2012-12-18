@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20121218-203137
+// version 1.0.20121218-222709
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -2233,6 +2233,7 @@ var assign=stack.find_previous(pos,"assign","=")
 if(assign==null){break}
 var left=stack.atom_before(assign,true)
 var right=stack.atom_at(assign+1,true)
+log(left.list())
 if(left.type=="tuple" || 
 (left.type=="function_call" && left.list()[0][1]=="tuple")){
 var list=left.list()
@@ -2251,6 +2252,8 @@ pos=left.start+seq.length-1
 pos=left.list()[0][2]
 document.line_num=pos2line[pos]
 $raise("SyntaxError","can't assign to literal")
+}else if(left.type=='id' && $tags.indexOf(left.list()[0][1])>-1){
+$raise("SyntaxError","can't assign to reserved word "+left.list()[0][1])
 }else if(left.type=='qualified_id' || left.type=='slicing' || left.type=="function_call"){
 pos=assign-1
 }else{
