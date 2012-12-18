@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="iso-8859-1">
+<script src="/brython.js"></script>
+</head>
+<body onload="brython()">
+<script type="text/python">
+def reload(url):
+    f=doc['f']
+    f.src = url
+    
+doc<=IFRAME(Id='f',src="hello.html")
+</script>
+<button onclick="reload('goodbye.html')">reload</button>
+</body>
+</html>
+
+
