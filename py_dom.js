@@ -419,7 +419,7 @@ $TagClass.prototype.__radd__ = function(other){ // add to a string
 $TagClass.prototype.__setattr__ = function(attr,value){
     if(attr in $events){this.elt.addEventListener(attr.substr(2),value)}
     else if('set_'+attr in this){return this['set_'+attr](value)}
-    else if(attr in this.elt){this.elt[attr]=value.value}
+    else if(attr in this.elt){this.elt[attr]=value}
     else{$setattr(this,attr,value)}
 }
     
