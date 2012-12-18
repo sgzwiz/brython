@@ -512,7 +512,7 @@ function len(obj){
 }
 
 function log(){
-    $ns = $MakeArgs(arguments,[],{},'args')
+    $ns = $MakeArgs('log',arguments,[],{},'args')
     if(!('end' in $ns)){$ns['end']='\n'}
     for(var i=0;i<$ns['args'].length;i++){
         console.log(str($ns['args'][i])+str($ns['end']))
@@ -613,21 +613,20 @@ function $prompt(src){return str(prompt(src))}
 
 // range
 function range(){
-    if(arguments.length>3){$raise('TypeError',
-        "range expected at most 3 arguments, got "+arguments.length)
+    var $ns=$MakeArgs('range',arguments,[],{},'args',null)
+    var args = $ns['args']
+    if(args.length>3){$raise('TypeError',
+        "range expected at most 3 arguments, got "+args.length)
     }
     var start=0
     var stop=0
     var step=1
-    if(arguments.length==1){
-        stop = arguments[0]
-    } else if(arguments.length>=2){
-        start = arguments[0]
-        stop = arguments[1]
+    if(args.length==1){stop = args[0]}
+    else if(args.length>=2){
+        start = args[0]
+        stop = args[1]
     }
-    if(arguments.length>=3){
-        step=arguments[2]
-    }
+    if(args.length>=3){step=args[2]}
     if(step==0){$raise('ValueError',"range() arg 3 must not be zero")}
     var res=[]
     if(step>0){
@@ -812,6 +811,9 @@ function $SliceClass(start,stop,step){
     this.step = step
 }
 function slice(){
+    var $ns=$MakeArgs('slice',[],
+        {'start':null,'stop':null,'step':null},null,null)
+    console.log('slice '+$ns['start']+' '+$ns['stop']+' '+$ns['step'])
     var start = arguments[0] || null
     var stop = arguments[1]
     if(typeof stop!=="number"){stop=null}
@@ -828,13 +830,4 @@ function slice(){
     return new $SliceClass(start,stop,step)
 }
 
-// used in function calls for keyword arguments
-function $KwClass(name,value){
-    this.__class__ = $Kw
-    this.name = name
-    this.value = value
-}
-function $Kw(name,value){
-    return new $KwClass(name,value)
-}
 
