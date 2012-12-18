@@ -1,22 +1,51 @@
 
-function $MakeArgs($args,$required,$defaults,$other_args,$other_kw){
+function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     // builds a namespace from the arguments provided in $args
     // in a function call like foo(x,y,z=1,*args,**kw) the parameters are
     // $required : ['x','y']
     // $defaults : {'z':int(1)}
     // $other_args = 'args'
     // $other_kw = 'kw'
-    var i=null
-    var $PyVars = {}
-    var $def_names = []
-    var $ns = {}
-    for(k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
+    var i=null,$PyVars = {},$def_names = [],$ns = {}
+    for(var k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
     if($other_args != null){$ns[$other_args]=[]}
     if($other_kw != null){$dict_items=[]}
-    for(i=0;i<$args.length;i++){
-        $arg=$args[i]
+    // create new list of arguments in case some are packed
+    var upargs = []
+    for(var i=0;i<$args.length;i++){
+        if(isinstance($args[i],$ptuple)){
+            for(var j=0;j<$args[i].arg.length;j++){
+                upargs.push($args[i].arg[j])
+            }
+        }else if(isinstance($args[i],$pdict)){
+            for(var j=0;j<$args[i].arg.$keys.length;j++){
+                upargs.push($Kw($args[i].arg.$keys[j],$args[i].arg.$values[j]))
+            }
+        }else{
+            upargs.push($args[i])
+        }
+    }
+    for(i=0;i<upargs.length;i++){
+        $arg=upargs[i]
         $PyVar=$JS2Py($arg)
-        if(!isinstance($arg,$Kw)){ // positional arguments
+        if(isinstance($arg,$Kw)){ // keyword argument
+            $PyVar = $arg.value
+            if($arg.name in $PyVars){
+                throw new TypeError($fname+"() got multiple values for argument '"+$arg.name+"'")
+            } else if($required.indexOf($arg.name)>-1){
+                var ix = $required.indexOf($arg.name)
+                eval($required[ix]+"=$PyVar")
+                $ns[$required[ix]]=$PyVar
+            } else if($arg.name in $defaults){
+                $ns[$arg.name]=$PyVar
+                console.log('set '+$arg.name+' to '+$arg)
+            } else if($other_kw!=null){
+                $dict_items.push([$arg.name,$PyVar])
+            } else {
+                throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"'")
+            }
+            if($arg.name in $defaults){delete $defaults[$arg.name]}
+        }else{ // positional arguments
             if(i<$required.length){
                 eval($required[i]+"=$PyVar")
                 $ns[$required[i]]=$PyVar
@@ -29,22 +58,6 @@ function $MakeArgs($args,$required,$defaults,$other_args,$other_kw){
                 msg += 'but more were given'
                 throw TypeError(msg)
             }
-        } else{ // keyword arguments
-            $PyVar = $arg.value
-            if($arg.name in $PyVars){
-                throw new TypeError($fname+"() got multiple values for argument '"+$arg.name+"'")
-            } else if($required.indexOf($arg.name)>-1){
-                var ix = $required.indexOf($arg.name)
-                eval($required[ix]+"=$PyVar")
-                $ns[$required[ix]]=$PyVar
-            } else if($arg.name in $defaults){
-                $ns[$arg.name]=$arg
-            } else if($other_kw!=null){
-                $dict_items.push([$arg.name,$PyVar])
-            } else {
-                throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"'")
-            }
-            if($arg.name in $defaults){delete $defaults[$arg.name]}
         }
     }
     if($other_kw!=null){$ns[$other_kw]=dict($dict_items)}
@@ -335,7 +348,7 @@ function $py2js(src,context,debug){
             if(end_def==null){
                 $raise("SyntaxError","Unable to find definition end "+end_def)
             }
-            var arg_code = 'arguments,'
+            var arg_code = '"'+func_token[1]+'",arguments,'
             
             if(required.length==0){arg_code+='[],'}
             else{
@@ -383,6 +396,7 @@ function $py2js(src,context,debug){
             var args = s.split(',')
             for(i=args.length-1;i>=0;i--){
                 var arg = args[i]
+                if(arg.list.length==0){continue}
                 var elts = arg.split('=')
                 if(elts.length==2){
                     // keyword argument
@@ -397,6 +411,13 @@ function $py2js(src,context,debug){
                     // insert keyword arg
                     tail = stack.list.slice(br_pos+1+arg.start,stack.list.length)
                     stack.list = stack.list.slice(0,br_pos+1+arg.start).concat(seq).concat(tail)
+                }else if(arg.list[0][0]=="operator" &&
+                    ["*","**"].indexOf(arg.list[0][1]>-1)){
+                    // tuple or dict unpacking
+                    if(arg.list[0][1]=='*'){var uf="$ptuple"}else{var uf="$pdict"}
+                    stack.list.splice(br_pos+2+arg.end,0,['bracket',')'])
+                    stack.list.splice(br_pos+1+arg.start,1,
+                        ["code",uf],['bracket','('])
                 }
             }
         }
@@ -435,6 +456,7 @@ function $py2js(src,context,debug){
         var op = stack.list[sign]
         if(sign>0 && 
             (stack.list[sign-1][0] in $List2Dict("delimiter","newline","indent","assign","operator") ||
+                (stack.list[sign-1].match(["keyword","return"])) ||
                 (stack.list[sign-1][0]=="bracket" && ("({[".indexOf(stack.list[sign-1][1])>-1)))){
             if(sign<stack.list.length-1){
                 var next = stack.list[sign+1]
