@@ -54,10 +54,15 @@ function run(){
     var src_elt = document.getElementById("src")
     var src = src_elt.value
     if(has_ls){localStorage["py_src"]=src}
+    t0 = new Date()
+    t0 = t0.getTime()
     var stack = $py2js(src,null,1)
     var js = stack.to_js()
     try{$run(js)}
     catch(err){log(err.message)}
+    t1 = new Date()
+    t1 = t1.getTime()
+    log('<done in '+(t1-t0)+' ms>')
 }
 </script>
 </head>
@@ -96,7 +101,7 @@ function run(){
 <i>- Python classes and list comprehensions are not supported
 <br>- use "log" instead of "print"</i>
 <p>Brython version <span id="version"></span>
-<p>Report bug in the <a href="http://code.google.com/p/brython/issues/list">Issue Tracker</a>
+<p>Report bugs in the <a href="http://code.google.com/p/brython/issues/list">Issue Tracker</a>
 </td></tr>
 </table>
 </center>
