@@ -201,10 +201,12 @@ Stack.prototype.find_next_at_same_level = function(){
         if(this.list[pos][0]==_type){
             if(values==null){return pos}
             else if(this.list[pos][1] in values){return pos}
-        }else if(this.list[pos][0]=="bracket" 
-            && this.list[pos][1] in $OpeningBrackets){
-            // opening bracket
-            pos = this.find_next_matching(pos)
+        }else if(this.list[pos][0]=="bracket"){
+            if(this.list[pos][1] in $OpeningBrackets){
+                pos = this.find_next_matching(pos)
+            }else if(this.list[pos][1] in $ClosingBrackets){
+                return null
+            }
         } 
         pos++
         if (pos>this.list.length-1){return null}
@@ -406,11 +408,8 @@ Stack.prototype.atom_before = function(pos,implicit_tuple){
     
 Stack.prototype.indent = function(pos){
     // return indentation of the line of the item at specified position
-    var nl = this.find_previous(pos,"newline")
-    if(nl==null){nl=0}
-    if(nl<this.list.length-1 && this.list[nl+1][0]=="indent"){
-        return this.list[nl+1][1]
-    }else{return 0}    
+    var ipos = this.find_previous(pos,"indent")
+    return this.list[ipos][1]  
 }
 
 Stack.prototype.line_end = function(pos){
@@ -470,12 +469,7 @@ Stack.prototype.find_block = function(pos){
         if(closing_pos!=null){
             // find block end : the newline before the first indentation equal
             // to the indentation of the line beginning with the keyword
-            var kw_indent = 0
-            var line_start = this.find_previous(pos,"newline")
-            if(line_start==null){kw_indent=0}
-            else if(this.list[line_start+1][0]=="indent"){
-                kw_indent = this.list[line_start+1][1]
-            }
+            var kw_indent = this.indent(pos)
             var stop = closing_pos
             while(true){
                 nl = this.find_next(stop,"newline")
