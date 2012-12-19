@@ -498,55 +498,6 @@ $TagClass.prototype.get_html = function(){return this.elt.innerHTML}
 
 $TagClass.prototype.get_value = function(value){return this.elt.value}
 
-$TagClass.prototype.make_draggable = function(target){
-    // make element draggable and droppable into target
-    // use HTML5 drag and drop features
-    if(target===undefined){
-        if(this.elt.parentElement){target=new $DomElement(this.elt.parentElement)}
-        else{target=doc}
-    }
-    this.elt.draggable = true
-    this.elt.onmouseover = function(ev){this.style.cursor="move"}
-    this.elt.ondragstart = function(ev){
-        ev.dataTransfer.setData("Text",ev.target.id)
-        // some browsers disable access to data store in dragover
-        // so we have to put dragged id in a global variable
-        document.$drag_id = ev.target.id 
-        doc.mouse = $mouseCoords(ev)
-        if('ondragstart' in ev.target.$parent){
-            ev.target.$parent['ondragstart'](ev.target.$parent)
-        }
-    }
-    // $accepted is a dictionnary mapping ids of accepted elements to 0
-    if(!('$accepted' in target.elt)){target.elt.$accepted={}}
-    target.elt.$accepted[this.elt.id]=0
-    target.elt.ondragover = function(ev){
-        var elt_id=document.$drag_id
-        ev.preventDefault()
-        if(!(elt_id in this.$accepted)){
-            ev.dataTransfer.dropEffect='none'
-        }else if('on_drag_over' in ev.target.$parent){
-            var dropped = document.getElementById(elt_id)
-            doc.mouse = $mouseCoords(ev)
-            ev.target.$parent['on_drag_over'](ev.target.$parent,dropped.$parent)
-        }
-    }
-    target.elt.ondrop = function(ev){
-        ev.preventDefault();
-        var elt_id=document.$drag_id
-        if(elt_id in this.$accepted){ // dropping the item is accepted
-            var dropped = document.getElementById(elt_id)
-            if(dropped !== ev.target && dropped.parentElement!==ev.target && dropped.parentElement!==ev.target.parentElement){
-                //ev.target.appendChild(dropped)
-            }
-            doc.mouse = $mouseCoords(ev)
-            if('on_drop' in ev.target.$parent){
-                ev.target.$parent['on_drop'](ev.target.$parent,dropped.$parent)
-            }
-        }
-    }
-}
-
 $TagClass.prototype.set_html = function(value){this.elt.innerHTML=str(value)}
 
 $TagClass.prototype.set_text = function(value){
