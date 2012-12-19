@@ -55,7 +55,9 @@ function $tokenize(src){
     var name = ""
     var _type = null
     var pos = 0
-    var indent_stack = [0]
+    while(pos<src.length && src.charAt(pos)==' '){pos++}
+    var indent_stack = [pos]
+    stack.push(['indent',pos,0])
 
     var pos2line = {}
     var lnum=1
