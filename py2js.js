@@ -38,7 +38,6 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
                 $ns[$required[ix]]=$PyVar
             } else if($arg.name in $defaults){
                 $ns[$arg.name]=$PyVar
-                console.log('set '+$arg.name+' to '+$arg)
             } else if($other_kw!=null){
                 $dict_items.push([$arg.name,$PyVar])
             } else {
@@ -64,6 +63,26 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     return $ns
 }
 
+function $list_comp(loops,expr,cond){
+    var py = 'res = []\n'
+    for(i=0;i<loops.length;i++){
+        for(j=0;j<4*i;j++){py += ' '} // indent
+        py += 'for '+loops[i][0]+' in '+loops[i][1]+':\n'
+    }
+    if(cond){
+        for(j=0;j<4*i;j++){py += ' '} // indent
+        py += 'if '+cond+':\n'
+        i++
+    }
+    for(j=0;j<4*i;j++){py += ' '} // indent
+    py += 'tvar = '+expr+'\n'
+    for(j=0;j<4*i;j++){py += ' '} // indent
+    py += 'res.append(tvar)'
+    var js = $py2js(py).to_js()
+    eval(js)
+    return res
+}
+
 function $multiple_assign(indent,targets,right_expr,assign_pos){
     var i=0,target=null
     // for local variables inside functions, insert "var"
@@ -71,10 +90,11 @@ function $multiple_assign(indent,targets,right_expr,assign_pos){
         var left = targets[i]
         if(left.list[0][3]==="local"){left.list[0][1]="var "+left.list[0][1]}
     }
-    var rlist = right_expr.list()
+    var rlist = right_expr.list
     if(rlist[0][0]=="bracket"){rlist=rlist.slice(1,rlist.length-1)}
     var rs = new Stack(rlist)
     var rs_items = rs.split(',')
+    var seq = []
     if(rs_items.length>1){
         if(rs_items.length>targets.length){
             $raise("ValueError","Too many values to unpack (expected "+targets.length+")")
@@ -96,9 +116,8 @@ function $multiple_assign(indent,targets,right_expr,assign_pos){
             }
         }        
     } else {
-        var seq = [['code',"var $var",assign_pos],
-            ['assign','=']]
-        seq = seq.concat(right_expr.list())
+        seq.push(['code',"var $var",assign_pos],['assign','='])
+        seq = seq.concat(right_expr.list)
         seq.push(['newline','\n',assign_pos])
         for(var i=0;i<targets.length;i++){
             target = targets[i]
@@ -111,7 +130,8 @@ function $multiple_assign(indent,targets,right_expr,assign_pos){
     return seq
 }
 
-$OpeningBrackets = $List2Dict('(','[','{')
+var $OpeningBrackets = $List2Dict('(','[','{')
+var $ClosingBrackets = $List2Dict(')',']','}')
 
 function $py2js(src,context,debug){
     // context is "main" for the main script, the module name if import   
@@ -182,6 +202,57 @@ function $py2js(src,context,debug){
             }
             pos = op_pos-2
         }
+    }
+
+    // list comprenhensions
+    var pos = 0
+    while(true){
+        var br_pos = stack.find_next(pos,'bracket','[')
+        if(br_pos===null){break}
+        var end = stack.find_next_matching(br_pos)
+        if(end-br_pos<5){pos=br_pos+1;continue}
+        var for_pos = stack.find_next_at_same_level(br_pos+1,'keyword','for')
+        if(for_pos===null){pos = br_pos+1;continue}
+        var expr = stack.list.slice(br_pos+1,for_pos)
+        var in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
+        if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
+        var loops = []
+        var lvar = stack.list[for_pos+1][1] // XXX should check length of var !
+        // there may be other for ... in ...
+        while(true){
+            for_pos = stack.find_next_at_same_level(in_pos+1,'keyword','for')
+            if(for_pos===null){break}
+            // close previous loop
+            loops.push([lvar,stack.list.slice(in_pos+1,for_pos)])
+            in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
+            if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
+            lvar = stack.list[for_pos+1][1]
+        }
+        var if_pos = stack.find_next_at_same_level(in_pos+2,'keyword','if')
+        if(if_pos===null){
+            var s = new Stack(stack.list.slice(in_pos+1,end))
+            loops.push([lvar,s.to_js()])
+            var cond=[]
+        }else{
+            var s = new Stack(stack.list.slice(in_pos+1,if_pos))
+            loops.push([lvar,s.to_js()])
+            var cond=stack.list.slice(if_pos+1,end)
+        }
+        seq = '$list_comp(['
+        for(var i=0;i<loops.length;i++){
+            seq += '["'+loops[i][0]+'","'+loops[i][1]+'"]'
+            if(i<loops.length-1){seq += ','}
+        }
+        seq += '],'
+        s = new Stack(expr)
+        seq += '"'+s.to_js()+'",'
+        if(cond){
+            s=new Stack(cond)
+            seq += '"'+s.to_js()+'")'
+        }else{seq += '"")'}
+        var tail = stack.list.slice(end+1,stack.list.length)
+        stack.list = stack.list.slice(0,br_pos).concat([['code',seq]]).concat(tail)
+        pos = br_pos+1
     }
 
     // for each opening bracket, define after which token_types[,token values] 
@@ -276,7 +347,6 @@ function $py2js(src,context,debug){
             pos = br_elt - 1
         }    
     }
-    
     var dobj = new Date()
     times['displays'] = dobj.getTime()-t0
 
@@ -585,6 +655,27 @@ function $py2js(src,context,debug){
         pos = assert_pos-1
     }
 
+    // ternary operator
+    var pos = stack.list.length-1
+    while(true){
+        var if_pos = stack.find_previous(pos,'keyword','if')
+        if(if_pos===null){break}
+        var line_end = stack.line_end(if_pos)
+        var else_pos = stack.find_next(if_pos+1,'keyword','else')
+        if(else_pos===null || else_pos>line_end){pos=if_pos-1;continue}
+        var r1 = stack.atom_before(if_pos,true)
+        var cond = stack.list.slice(if_pos+1,else_pos)
+        var r2 = stack.atom_at(else_pos+1)
+        var tail = stack.list.slice(r2.end+1,stack.list.length)
+        var seq = cond
+        seq.push(['delimiter','?'])
+        seq = seq.concat(r1.list())
+        seq.push(['delimiter',':'])
+        seq = seq.concat(r2.list())
+        stack.list = stack.list.slice(0,if_pos-r1.end+r1.start-1).concat(seq).concat(tail)
+        pos = if_pos-1
+    }
+    
     // replace if,elif,else,def,for,try,catch,finally by equivalents
     var kws = {'if':'if','else':'else','elif':'else if',
         'def':'function','for':'for','while':'while',
@@ -602,6 +693,11 @@ function $py2js(src,context,debug){
             var src_pos = stack.list[kw_pos][2]
             var block = stack.find_block(kw_pos)
             if(block===null){
+                if(kw==='if' || kw==='else'){
+                    // might be ternary : x = r1 if cond else r2
+                    pos = kw_pos+1
+                    continue
+                }
                 document.line_num = pos2line[stack.list[kw_pos][2]]
                 $raise('SyntaxError')
             }
@@ -723,7 +819,6 @@ function $py2js(src,context,debug){
             pos = kw_pos+1
         }
     }
-
     var dobj = new Date()
     times['if def class for'] = dobj.getTime()-t0
 
@@ -763,7 +858,7 @@ function $py2js(src,context,debug){
         }
         pos = assign-1
     }
-                    
+
     // operators with authorized left operand types
     var ops_order = ["**","*","/","//","%","-","+",
         "<","<=",">",">=","!=","==",
@@ -843,7 +938,7 @@ function $py2js(src,context,debug){
             pos = op+1
         }
     }
-
+                    
     // for "and" and "or", rely on JS to avoid useless evaluations
     // eg don't evaluate "x[5]==3" in "5 in x and x[5]==3" if 5 is not in x
 
@@ -894,7 +989,7 @@ function $py2js(src,context,debug){
         stack.list.splice(test_end,0,['bracket',')'])
         stack.list.splice(test_pos,0,['code','$test_expr'],['bracket','('])
         pos = test_end
-   }
+    }
 
     var dobj = new Date()
     times['operators'] = dobj.getTime()-t0
@@ -962,8 +1057,9 @@ function $py2js(src,context,debug){
         var assign = stack.find_previous(pos,"assign","=")
         if(assign==null){break}
         var left = stack.atom_before(assign,true)
-        var right = stack.atom_at(assign+1,true)
-        log(left.list())
+        // right expression is the rest of the line
+        var line_end = stack.line_end(assign)
+        var right = new Stack(stack.list.slice(assign+1,line_end))
         if(left.type=="tuple" || 
             (left.type=="function_call" && left.list()[0][1]=="tuple")){
             // for multiple assignments
@@ -976,7 +1072,7 @@ function $py2js(src,context,debug){
             document.line_num = pos2line[stack.list[assign][2]]
             var indent = stack.indent(assign)
             var seq = $multiple_assign(indent,targets,right,stack.list[assign][2])
-            var tail = stack.list.slice(right.end+1,stack.list.length)
+            var tail = stack.list.slice(line_end+1,stack.list.length)
             stack.list = stack.list.slice(0,left.start).concat(seq).concat(tail)
             pos = left.start+seq.length-1
         } else if(left.type=='str' || left.type=='int' || left.type=='float'){
