@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20121218-222709
+// version 1.0.20121219-221409
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -283,15 +283,19 @@ $xmlhttp.send()
 if(is_js){
 try{eval(res)}catch(err){$raise('ImportError',err.message)}
 }else{
+alert('import '+module)
 var stack=$py2js(res,module)
+console.log('stack '+stack.to_js())
 stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
 var $pos=0 
 while(true){
 var $mlname_pos=stack.find_next_at_same_level($pos,"keyword","function")
 if($mlname_pos===null){break}
 var $func_name=stack.list[$mlname_pos+1][1]
+console.log('func name '+$func_name)
 stack.list.splice($mlname_pos,2,['code',module+'.'+$func_name+"=function"])
 var $fend=stack.find_next_at_same_level($mlname_pos,"func_end")
+console.log('fend '+$fend)
 var $fend_code=stack.list[$fend][1]
 $fend_code=module+'.'+$fend_code.substr(1)
 $pv_pos=$fend_code.search(';')
@@ -306,6 +310,7 @@ if($mlname_pos===null){break}
 stack.list[$mlname_pos][1]=module+'.'+stack.list[$mlname_pos][1]
 $pos=$mlname_pos+1
 }
+alert(stack.to_js())
 eval(stack.to_js())
 }
 }
@@ -1426,7 +1431,6 @@ eval($required[ix]+"=$PyVar")
 $ns[$required[ix]]=$PyVar
 }else if($arg.name in $defaults){
 $ns[$arg.name]=$PyVar
-console.log('set '+$arg.name+' to '+$arg)
 }else if($other_kw!=null){
 $dict_items.push([$arg.name,$PyVar])
 }else{
@@ -1451,16 +1455,36 @@ throw TypeError(msg)
 if($other_kw!=null){$ns[$other_kw]=dict($dict_items)}
 return $ns
 }
+function $list_comp(loops,expr,cond){
+var py='res = []\n'
+for(i=0;i<loops.length;i++){
+for(j=0;j<4*i;j++){py +=' '}
+py +='for '+loops[i][0]+' in '+loops[i][1]+':\n'
+}
+if(cond){
+for(j=0;j<4*i;j++){py +=' '}
+py +='if '+cond+':\n'
+i++
+}
+for(j=0;j<4*i;j++){py +=' '}
+py +='tvar = '+expr+'\n'
+for(j=0;j<4*i;j++){py +=' '}
+py +='res.append(tvar)'
+var js=$py2js(py).to_js()
+eval(js)
+return res
+}
 function $multiple_assign(indent,targets,right_expr,assign_pos){
 var i=0,target=null
 for(var i=0;i<targets.list;i++){
 var left=targets[i]
 if(left.list[0][3]==="local"){left.list[0][1]="var "+left.list[0][1]}
 }
-var rlist=right_expr.list()
+var rlist=right_expr.list
 if(rlist[0][0]=="bracket"){rlist=rlist.slice(1,rlist.length-1)}
 var rs=new Stack(rlist)
 var rs_items=rs.split(',')
+var seq=[]
 if(rs_items.length>1){
 if(rs_items.length>targets.length){
 $raise("ValueError","Too many values to unpack (expected "+targets.length+")")
@@ -1481,9 +1505,8 @@ seq.push(['assign','=',assign_pos],
 }
 }
 }else{
-var seq=[['code',"var $var",assign_pos],
-['assign','=']]
-seq=seq.concat(right_expr.list())
+seq.push(['code',"var $var",assign_pos],['assign','='])
+seq=seq.concat(right_expr.list)
 seq.push(['newline','\n',assign_pos])
 for(var i=0;i<targets.length;i++){
 target=targets[i]
@@ -1495,7 +1518,8 @@ seq.push(['assign','='],['code','$var.__item__('+i+')'],
 }
 return seq
 }
-$OpeningBrackets=$List2Dict('(','[','{')
+var $OpeningBrackets=$List2Dict('(','[','{')
+var $ClosingBrackets=$List2Dict(')',']','}')
 function $py2js(src,context,debug){
 document.$debug=debug
 var i=0
@@ -1554,6 +1578,53 @@ stack.list.splice(op_pos-1,2,['operator',seq[0]+'_'+seq[1],stack.list[op_pos][2]
 }
 pos=op_pos-2
 }
+}
+var pos=0
+while(true){
+var br_pos=stack.find_next(pos,'bracket','[')
+if(br_pos===null){break}
+var end=stack.find_next_matching(br_pos)
+if(end-br_pos<5){pos=br_pos+1;continue}
+var for_pos=stack.find_next_at_same_level(br_pos+1,'keyword','for')
+if(for_pos===null){pos=br_pos+1;continue}
+var expr=stack.list.slice(br_pos+1,for_pos)
+var in_pos=stack.find_next_at_same_level(for_pos+1,'operator','in')
+if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
+var loops=[]
+var lvar=stack.list[for_pos+1][1]
+while(true){
+for_pos=stack.find_next_at_same_level(in_pos+1,'keyword','for')
+if(for_pos===null){break}
+loops.push([lvar,stack.list.slice(in_pos+1,for_pos)])
+in_pos=stack.find_next_at_same_level(for_pos+1,'operator','in')
+if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
+lvar=stack.list[for_pos+1][1]
+}
+var if_pos=stack.find_next_at_same_level(in_pos+2,'keyword','if')
+if(if_pos===null){
+var s=new Stack(stack.list.slice(in_pos+1,end))
+loops.push([lvar,s.to_js()])
+var cond=[]
+}else{
+var s=new Stack(stack.list.slice(in_pos+1,if_pos))
+loops.push([lvar,s.to_js()])
+var cond=stack.list.slice(if_pos+1,end)
+}
+seq='$list_comp(['
+for(var i=0;i<loops.length;i++){
+seq +='["'+loops[i][0]+'","'+loops[i][1]+'"]'
+if(i<loops.length-1){seq +=','}
+}
+seq +='],'
+s=new Stack(expr)
+seq +='"'+s.to_js()+'",'
+if(cond){
+s=new Stack(cond)
+seq +='"'+s.to_js()+'")'
+}else{seq +='"")'}
+var tail=stack.list.slice(end+1,stack.list.length)
+stack.list=stack.list.slice(0,br_pos).concat([['code',seq]]).concat(tail)
+pos=br_pos+1
 }
 var not_a_display={
 '[':[["id"],["assign_id"],['str'],['int'],['float'],["qualifier"],["bracket",$List2Dict("]",")")]], 
@@ -1908,6 +1979,25 @@ stack.list.splice(end,0,['delimiter',':'],['newline','\n'],
 ['indent',assert_indent+4],['code','$raise("AssertionError")'])
 pos=assert_pos-1
 }
+var pos=stack.list.length-1
+while(true){
+var if_pos=stack.find_previous(pos,'keyword','if')
+if(if_pos===null){break}
+var line_end=stack.line_end(if_pos)
+var else_pos=stack.find_next(if_pos+1,'keyword','else')
+if(else_pos===null || else_pos>line_end){pos=if_pos-1;continue}
+var r1=stack.atom_before(if_pos,true)
+var cond=stack.list.slice(if_pos+1,else_pos)
+var r2=stack.atom_at(else_pos+1)
+var tail=stack.list.slice(r2.end+1,stack.list.length)
+var seq=cond
+seq.push(['delimiter','?'])
+seq=seq.concat(r1.list())
+seq.push(['delimiter',':'])
+seq=seq.concat(r2.list())
+stack.list=stack.list.slice(0,if_pos-r1.end+r1.start-1).concat(seq).concat(tail)
+pos=if_pos-1
+}
 var kws={'if':'if','else':'else','elif':'else if',
 'def':'function','for':'for','while':'while',
 'try':'try','catch':'catch','finally':'finally'}
@@ -1924,6 +2014,10 @@ var kw_indent=stack.indent(kw_pos)
 var src_pos=stack.list[kw_pos][2]
 var block=stack.find_block(kw_pos)
 if(block===null){
+if(kw==='if' || kw==='else'){
+pos=kw_pos+1
+continue
+}
 document.line_num=pos2line[stack.list[kw_pos][2]]
 $raise('SyntaxError')
 }
@@ -2232,8 +2326,8 @@ while(true){
 var assign=stack.find_previous(pos,"assign","=")
 if(assign==null){break}
 var left=stack.atom_before(assign,true)
-var right=stack.atom_at(assign+1,true)
-log(left.list())
+var line_end=stack.line_end(assign)
+var right=new Stack(stack.list.slice(assign+1,line_end))
 if(left.type=="tuple" || 
 (left.type=="function_call" && left.list()[0][1]=="tuple")){
 var list=left.list()
@@ -2245,7 +2339,7 @@ var targets=t_stack.split(',')
 document.line_num=pos2line[stack.list[assign][2]]
 var indent=stack.indent(assign)
 var seq=$multiple_assign(indent,targets,right,stack.list[assign][2])
-var tail=stack.list.slice(right.end+1,stack.list.length)
+var tail=stack.list.slice(line_end+1,stack.list.length)
 stack.list=stack.list.slice(0,left.start).concat(seq).concat(tail)
 pos=left.start+seq.length-1
 }else if(left.type=='str' || left.type=='int' || left.type=='float'){
@@ -2456,7 +2550,9 @@ var stack=new Array()
 var name=""
 var _type=null
 var pos=0
-var indent_stack=[0]
+while(pos<src.length && src.charAt(pos)==' '){pos++}
+var indent_stack=[pos]
+stack.push(['indent',pos,0])
 var pos2line={}
 var lnum=1
 for(i=0;i<src.length;i++){
@@ -2851,9 +2947,12 @@ while(true){
 if(this.list[pos][0]==_type){
 if(values==null){return pos}
 else if(this.list[pos][1]in values){return pos}
-}else if(this.list[pos][0]=="bracket" 
-&& this.list[pos][1]in $OpeningBrackets){
+}else if(this.list[pos][0]=="bracket"){
+if(this.list[pos][1]in $OpeningBrackets){
 pos=this.find_next_matching(pos)
+}else if(this.list[pos][1]in $ClosingBrackets){
+return null
+}
 }
 pos++
 if(pos>this.list.length-1){return null}
@@ -3036,11 +3135,8 @@ atom.start++
 return this.atom_at(atom.start,implicit_tuple)
 }
 Stack.prototype.indent=function(pos){
-var nl=this.find_previous(pos,"newline")
-if(nl==null){nl=0}
-if(nl<this.list.length-1 && this.list[nl+1][0]=="indent"){
-return this.list[nl+1][1]
-}else{return 0}
+var ipos=this.find_previous(pos,"indent")
+return this.list[ipos][1]
 }
 Stack.prototype.line_end=function(pos){
 var nl=this.find_next(pos,"newline")
@@ -3090,12 +3186,7 @@ Stack.prototype.find_block=function(pos){
 var item=this.list[pos]
 var closing_pos=this.find_next_at_same_level(pos+1,'delimiter',':')
 if(closing_pos!=null){
-var kw_indent=0
-var line_start=this.find_previous(pos,"newline")
-if(line_start==null){kw_indent=0}
-else if(this.list[line_start+1][0]=="indent"){
-kw_indent=this.list[line_start+1][1]
-}
+var kw_indent=this.indent(pos)
 var stop=closing_pos
 while(true){
 nl=this.find_next(stop,"newline")
@@ -3632,48 +3723,6 @@ return str(this.elt.innerText || this.elt.textContent)
 }
 $TagClass.prototype.get_html=function(){return this.elt.innerHTML}
 $TagClass.prototype.get_value=function(value){return this.elt.value}
-$TagClass.prototype.make_draggable=function(target){
-if(target===undefined){
-if(this.elt.parentElement){target=new $DomElement(this.elt.parentElement)}
-else{target=doc}
-}
-this.elt.draggable=true
-this.elt.onmouseover=function(ev){this.style.cursor="move"}
-this.elt.ondragstart=function(ev){
-ev.dataTransfer.setData("Text",ev.target.id)
-document.$drag_id=ev.target.id 
-doc.mouse=$mouseCoords(ev)
-if('ondragstart' in ev.target.$parent){
-ev.target.$parent['ondragstart'](ev.target.$parent)
-}
-}
-if(!('$accepted' in target.elt)){target.elt.$accepted={}}
-target.elt.$accepted[this.elt.id]=0
-target.elt.ondragover=function(ev){
-var elt_id=document.$drag_id
-ev.preventDefault()
-if(!(elt_id in this.$accepted)){
-ev.dataTransfer.dropEffect='none'
-}else if('on_drag_over' in ev.target.$parent){
-var dropped=document.getElementById(elt_id)
-doc.mouse=$mouseCoords(ev)
-ev.target.$parent['on_drag_over'](ev.target.$parent,dropped.$parent)
-}
-}
-target.elt.ondrop=function(ev){
-ev.preventDefault()
-var elt_id=document.$drag_id
-if(elt_id in this.$accepted){
-var dropped=document.getElementById(elt_id)
-if(dropped !==ev.target && dropped.parentElement!==ev.target && dropped.parentElement!==ev.target.parentElement){
-}
-doc.mouse=$mouseCoords(ev)
-if('on_drop' in ev.target.$parent){
-ev.target.$parent['on_drop'](ev.target.$parent,dropped.$parent)
-}
-}
-}
-}
 $TagClass.prototype.set_html=function(value){this.elt.innerHTML=str(value)}
 $TagClass.prototype.set_text=function(value){
 this.elt.innerText=str(value)
