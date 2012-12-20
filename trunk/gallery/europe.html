@@ -26,11 +26,11 @@
 <script type="text/python">
 import time
 
-countries = []
+countries = [area.id for area in doc[AREA]]
+
 for i,area in enumerate(doc[AREA]):
     # create a DIV for each AREA (ie each country)
     ctag = DIV(area.id,draggable=True,id=i,Class="rounded-corners")
-    countries.append(area.id) # country name
     left = 10+110*(i//15)
     _top = 100+30*(i-15*(i//15))
     ctag.style= {'position':'absolute','left':left,'top':_top,
