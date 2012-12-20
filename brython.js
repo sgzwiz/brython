@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20121219-221409
+// version 1.0.20121220-205850
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -283,19 +283,17 @@ $xmlhttp.send()
 if(is_js){
 try{eval(res)}catch(err){$raise('ImportError',err.message)}
 }else{
-alert('import '+module)
 var stack=$py2js(res,module)
-console.log('stack '+stack.to_js())
 stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
 var $pos=0 
 while(true){
 var $mlname_pos=stack.find_next_at_same_level($pos,"keyword","function")
 if($mlname_pos===null){break}
 var $func_name=stack.list[$mlname_pos+1][1]
-console.log('func name '+$func_name)
 stack.list.splice($mlname_pos,2,['code',module+'.'+$func_name+"=function"])
-var $fend=stack.find_next_at_same_level($mlname_pos,"func_end")
-console.log('fend '+$fend)
+var br_pos=stack.find_next($mlname_pos,'bracket','{')
+var br_end=stack.find_next_matching(br_pos)
+var $fend=stack.find_next(br_end,"func_end")
 var $fend_code=stack.list[$fend][1]
 $fend_code=module+'.'+$fend_code.substr(1)
 $pv_pos=$fend_code.search(';')
@@ -310,7 +308,6 @@ if($mlname_pos===null){break}
 stack.list[$mlname_pos][1]=module+'.'+stack.list[$mlname_pos][1]
 $pos=$mlname_pos+1
 }
-alert(stack.to_js())
 eval(stack.to_js())
 }
 }
@@ -832,12 +829,9 @@ Array.prototype.__init__=function(){
 this.splice(0,this.length)
 if(arguments.length===0){return}
 var arg=arguments[0]
-console.log('__ini__'+arg)
 for(var i=0;i<arg.__len__();i++){
-console.log(arg.__item__(i))
 this.push(arg.__item__(i))
 }
-console.log('value '+this.valueOf())
 }
 Array.prototype.__item__=function(i){return this[i]}
 Array.prototype.__in__=function(item){return item.__contains__(this)}
@@ -968,7 +962,6 @@ if(arguments.length===0){return[]}
 else if(arguments.length>1){
 $raise('TypeError',"list() takes at most 1 argument ("+args.length+" given)")
 }
-console.log('create list'+arguments[0])
 var res=[]
 res.__init__(arguments[0])
 return res
@@ -1595,7 +1588,8 @@ var lvar=stack.list[for_pos+1][1]
 while(true){
 for_pos=stack.find_next_at_same_level(in_pos+1,'keyword','for')
 if(for_pos===null){break}
-loops.push([lvar,stack.list.slice(in_pos+1,for_pos)])
+var s=new Stack(stack.list.slice(in_pos+1,for_pos))
+loops.push([lvar,s.to_js()])
 in_pos=stack.find_next_at_same_level(for_pos+1,'operator','in')
 if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
 lvar=stack.list[for_pos+1][1]
@@ -1725,7 +1719,9 @@ var f_indent='\n'
 while(indent>0){f_indent+=' ';indent--}
 document.line_num=pos2line[func_token[2]]
 if(!func_token[0]=='id'){$raise("SyntaxError","wrong type after def")}
-if(arg_start[0]!='bracket' || arg_start[1]!='('){$raise("SyntaxError","missing ( after function name")}
+if(arg_start[0]!='bracket' || arg_start[1]!='('){
+$raise("SyntaxError","missing ( after function name")
+}
 if(func_token[0]=='id' && arg_start[0]=='bracket'
 && arg_start[1]=='(' && 
 !(stack.list[def_pos+3].match(["bracket",")"]))){
@@ -1829,7 +1825,7 @@ stack.list.splice(br_pos+1+arg.start,arg.end-arg.start+1)
 tail=stack.list.slice(br_pos+1+arg.start,stack.list.length)
 stack.list=stack.list.slice(0,br_pos+1+arg.start).concat(seq).concat(tail)
 }else if(arg.list[0][0]=="operator" &&
-["*","**"].indexOf(arg.list[0][1]>-1)){
+["*","**"].indexOf(arg.list[0][1])>-1){
 if(arg.list[0][1]=='*'){var uf="$ptuple"}else{var uf="$pdict"}
 stack.list.splice(br_pos+2+arg.end,0,['bracket',')'])
 stack.list.splice(br_pos+1+arg.start,1,
@@ -2352,6 +2348,12 @@ $raise("SyntaxError","can't assign to reserved word "+left.list()[0][1])
 pos=assign-1
 }else{
 if(left.list()[0][3]==="local"){left.list()[0][1]="var "+left.list()[0][1]}
+var r_elts=right.split(',')
+if(r_elts.length>1){
+stack.list.splice(line_end,0,['bracket',']'])
+stack.list.splice(assign+1,0,['bracket','['])
+assign--
+}
 pos=assign-1
 }
 }
