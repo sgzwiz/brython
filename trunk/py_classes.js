@@ -350,7 +350,9 @@ function $import(){
                 var $func_name = stack.list[$mlname_pos+1][1]
                 stack.list.splice($mlname_pos,2,['code',module+'.'+$func_name+"=function"])
                 // modify declaration at the end of function
-                var $fend = stack.find_next_at_same_level($mlname_pos,"func_end")
+                var br_pos = stack.find_next($mlname_pos,'bracket','{')
+                var br_end = stack.find_next_matching(br_pos)
+                var $fend = stack.find_next(br_end,"func_end")
                 var $fend_code = stack.list[$fend][1]
                 $fend_code = module+'.'+$fend_code.substr(1)
                 $pv_pos = $fend_code.search(';')
