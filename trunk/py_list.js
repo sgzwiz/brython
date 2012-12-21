@@ -74,7 +74,10 @@ Array.prototype.__getattr__ = function(attr){
     obj=this
     switch(attr){
         case 'append':
-            return function(other){obj.push(list(other))}
+            return function(other){
+                if(isinstance(other,list)){obj.push(list(other))}
+                else{obj.push(other)}
+            }
         case 'count':
             return $list_count(obj)
         case 'extend':
@@ -292,10 +295,9 @@ function list(){
     else if(arguments.length>1){
         $raise('TypeError',"list() takes at most 1 argument ("+args.length+" given)")
     }
-    if(!hasattr(arguments[0],'__item__')){
-        $raise('TypeError',arguments[0].__class__+' is not iterable')
-    }
+
     var res = []
+    console.log('init list with '+arguments[0])
     res.__init__(arguments[0])
     return res
 }
