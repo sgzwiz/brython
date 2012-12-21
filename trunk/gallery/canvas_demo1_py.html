@@ -93,7 +93,7 @@ def C():
     l=0.125*f
     m=0.5*f
     for o in range(z-1,0,-1):
-        h=A[o]
+        h=points[o]
         i=h.x
         j=h.y
         a=h.a
@@ -116,8 +116,8 @@ def C():
             c=2.6e-4*(1-g/l)*f
             a+=x*c
             b+=y*c
-        a*=B
-        b*=B
+        a*=coef
+        b*=coef
         c=abs(a)
         k=abs(b)
         g=0.5*(c+k)
@@ -181,8 +181,8 @@ D=2*math.pi
 f=1000
 p=560
 z=20
-B=0.96
-A=[]
+coef=0.96
+points=[]
 
 o=doc["mainCanvas"]
 w=None
@@ -199,7 +199,7 @@ if o.getContext:
         l.y=0.5*p
         l.a=34*math.cos(d)*rand()
         l.b=34*math.sin(d)*rand()
-        A.append(l)
+        points.append(l)
     q=0.5*f
     u=q
     r=0.5*p
