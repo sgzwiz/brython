@@ -88,18 +88,16 @@ $DictClass.prototype.__eq__ = function(other){
     if(!isinstance(other,dict)){return False}
     if(!other.$keys.length==this.$keys.length){return False}
     for(var i=0;i<this.$keys.length;i++){
-        test = false
         var key = this.$keys[i]
         for(j=0;j<other.$keys.length;j++){
             try{
                 if(other.$keys[j].__eq__(key)){
-                    if(other.$values[j].__eq__($values[i])){
-                        test = true;break
+                    if(!other.$values[j].__eq__(this.$values[i])){
+                        return False
                     }
                 }
             }catch(err){void(0)}
         }
-        if(!test){return False}
     }
     return True
 }
