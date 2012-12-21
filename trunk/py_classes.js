@@ -168,13 +168,12 @@ $DictClass.prototype.values = function(){return this.$values}
 function dict(){
     if(arguments.length==0){return new $DictClass([],[])}
     var iterable = arguments[0]
-    var keys=[],values=[]
+    var obj = new $DictClass([],[])
     for(var i=0;i<iterable.__len__();i++){
         var elt = iterable.__item__(i)
-        keys.push(elt.__item__(0))
-        values.push(elt.__item__(1))
+        obj.__setitem__(elt.__item__(0),elt.__item__(1))
     }
-    return new $DictClass(keys,values)
+    return obj
 }
 
 function enumerate(iterator){
@@ -639,6 +638,8 @@ function range(){
     return res
 }
 
+function repr(obj){return obj.toString()}
+
 function reversed(seq){
     // returns an iterator with elements in the reverse order from seq
     // only implemented for strings and lists
@@ -752,6 +753,33 @@ function setattr(obj,attr,value){
     obj[attr]=value
 }
 
+// slice
+function $SliceClass(start,stop,step){
+    this.__class__ = slice
+    this.start = start
+    this.stop = stop
+    this.step = step
+}
+function slice(){
+    var $ns=$MakeArgs('slice',arguments,[],{},'args',null)
+    var args = $ns['args']
+    if(args.length>3){$raise('TypeError',
+        "slice expected at most 3 arguments, got "+args.length)
+    }
+    var start=0
+    var stop=0
+    var step=1
+    if(args.length==1){stop = args[0]}
+    else if(args.length>=2){
+        start = args[0]
+        stop = args[1]
+    }
+    if(args.length>=3){step=args[2]}
+    if(step==0){$raise('ValueError',"slice step must not be zero")}
+    return new $SliceClass(start,stop,step)
+}
+
+
 function sum(iterable,start){
     if(start===undefined){start=0}
     var res = 0
@@ -804,32 +832,5 @@ function $NoneClass(){
     this.__str__ = function(){return str('None')}
 }
 None = new $NoneClass()
-
-// slice
-function $SliceClass(start,stop,step){
-    this.__class__ = slice
-    this.start = start
-    this.stop = stop
-    this.step = step
-}
-function slice(){
-    var $ns=$MakeArgs('slice',[],
-        {'start':null,'stop':null,'step':null},null,null)
-    console.log('slice '+$ns['start']+' '+$ns['stop']+' '+$ns['step'])
-    var start = arguments[0] || null
-    var stop = arguments[1]
-    if(typeof stop!=="number"){stop=null}
-    var step = arguments[2] || null
-    var indices = [start,stop,step]
-    for(var i=0;i<indices.length;i++){
-        if(indices[i]===null){continue}
-        if(!isinstance(indices[i],int)){$raise('TypeError',
-            "slice indices must be integers or None or have an __index__ method")}
-    }
-    if(step!==null){
-        if(step===0){$raise('ValueError','slice step cannot be zero')}
-    }
-    return new $SliceClass(start,stop,step)
-}
 
 
