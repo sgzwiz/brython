@@ -74,7 +74,7 @@ Array.prototype.__getattr__ = function(attr){
     obj=this
     switch(attr){
         case 'append':
-            return function(other){obj.push(other)}
+            return function(other){obj.push(list(other))}
         case 'count':
             return $list_count(obj)
         case 'extend':
@@ -163,6 +163,7 @@ Array.prototype.__setitem__ = function(arg,value){
         if(pos>=0 && pos<this.length){this[pos]=value}
         else{$raise('IndexError','list index out of range')}
     } else if(isinstance(arg,slice)){
+        console.log('slice')
         var start = arg.start || 0
         if(arg.stop===null){stop=this.__len__()}else{stop=arg.stop}
         var step = arg.step || 1
@@ -171,9 +172,13 @@ Array.prototype.__setitem__ = function(arg,value){
         this.splice(start,stop-start)
         // copy items in a temporary JS array
         // otherwise, a[:0]=a fails
-        var $temp = value.slice(0,value.length)
-        for(var i=value.length-1;i>=0;i--){
-            this.splice(start,0,$temp[i])
+        if(hasattr(value,'__item__')){
+            var $temp = list(value)
+            for(var i=$temp.length-1;i>=0;i--){
+                this.splice(start,0,$temp[i])
+            }
+        }else{
+            this.splice(start,0,value)
         }
     }else {
         $raise('TypeError','list indices must be integer, not '+str(arg.__class__))
@@ -287,22 +292,10 @@ function list(){
     else if(arguments.length>1){
         $raise('TypeError',"list() takes at most 1 argument ("+args.length+" given)")
     }
+    if(!hasattr(arguments[0],'__item__')){
+        $raise('TypeError',arguments[0].__class__+' is not iterable')
+    }
     var res = []
     res.__init__(arguments[0])
     return res
-    if(arguments.length==0){return []}
-    if(arguments.length==1){    // must be an iterable
-        if(isinstance(arguments[0],list)){return arguments[0]}
-        var res=[]
-        try{
-            for(var i=0;i<arguments[0].__len__();i++){
-                res.push(arguments[0].__getitem__(i))
-            }
-            return res
-        }catch(err){
-            $raise('TypeError',"'"+str(args[0].__class__)+"' object is not iterable")
-        }
-    } else {
-        $raise('TypeError',"list() takes at most 1 argument ("+args.length+" given)")
-    }
 }
