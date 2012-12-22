@@ -21,11 +21,8 @@ function $SVGTagClass(tag_name,args){
         // if first argument is not a keyword, it's the tag content
         if(!isinstance($first,$Kw)){
             $start = 1
-            if(isinstance($first,str)){
-                txt = document.createTextNode($first.value)
-                this.elt.appendChild(txt)
-            } else if(isinstance($first,int) || isinstance($first,float)){
-                txt = document.createTextNode($first.value.toString())
+            if(isinstance($first,[str,int,float])){
+                txt = document.createTextNode(str($first))
                 this.elt.appendChild(txt)
             } else if(isinstance($first,$AbstractTag)){
                 for($i=0;$i<$first.children.length;$i++){
@@ -42,13 +39,13 @@ function $SVGTagClass(tag_name,args){
             $arg = args[$i]
             if(isinstance($arg,$Kw)){
                 if($arg.name.toLowerCase() in $events){ // events
-                    eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value.value+'}')
+                    eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){
                     this.set_style($arg.value)
                 } else {
-                    if($arg.value.value!==false){
+                    if($arg.value!==false){
                         // option.selected=false sets it to true :-)
-                        this.elt.setAttributeNS(null,$arg.name.replace('_','-'),$arg.value.value)
+                        this.elt.setAttributeNS(null,$arg.name.replace('_','-'),$arg.value)
                     }
                 }
             }
@@ -64,15 +61,14 @@ $SVGTagClass.prototype.__add__ = $TagClass.prototype.__add__
 $SVGTagClass.prototype.__eq__ = $TagClass.prototype.__eq__
 $SVGTagClass.prototype.__getattr__ = $TagClass.prototype.__getattr__
 $SVGTagClass.prototype.__getitem__ = $TagClass.prototype.__getitem__
-$SVGTagClass.prototype.__iadd__ = $TagClass.prototype.__iadd__
 $SVGTagClass.prototype.__le__ = $TagClass.prototype.__le__
 $SVGTagClass.prototype.__ne__ = $TagClass.prototype.__ne__
 $SVGTagClass.prototype.__radd__ = $TagClass.prototype.__radd__
 $SVGTagClass.prototype.__setattr__ = function(key,value){
     if(key=="href"){
-        this.elt.setAttributeNS($xlinkNS,key.replace('_','-'),value.value)
+        this.elt.setAttributeNS($xlinkNS,key.replace('_','-'),value)
     }else{
-        this.elt.setAttributeNS(null,key.replace('_','-'),value.value)
+        this.elt.setAttributeNS(null,key.replace('_','-'),value)
     }
 }
 $SVGTagClass.prototype.__setitem__ = $TagClass.prototype.__setitem__
