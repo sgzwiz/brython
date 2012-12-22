@@ -8,6 +8,7 @@ var $operators = {
     "^":"pow","<":"lt",">":"gt",
     "<=":"le",">=":"ge","==":"eq","!=":"ne",
     "or":"or","and":"and","in":"in","not":"not",
+    "in":"in","not":"not",
     "not_in":"not_in","is_not":"is_not" // fake
     }
 
