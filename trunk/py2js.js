@@ -13,7 +13,8 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     // create new list of arguments in case some are packed
     var upargs = []
     for(var i=0;i<$args.length;i++){
-        if(isinstance($args[i],$ptuple)){
+        if($args[i]===null){upargs.push(null)}
+        else if(isinstance($args[i],$ptuple)){
             for(var j=0;j<$args[i].arg.length;j++){
                 upargs.push($args[i].arg[j])
             }
