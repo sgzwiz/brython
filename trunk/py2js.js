@@ -134,7 +134,7 @@ function $multiple_assign(indent,targets,right_expr,assign_pos){
 var $OpeningBrackets = $List2Dict('(','[','{')
 var $ClosingBrackets = $List2Dict(')',']','}')
 
-function $py2js(src,context,debug){
+function $py2js(src,debug){
     // context is "main" for the main script, the module name if import   
     document.$debug = debug
     var i = 0
@@ -143,9 +143,8 @@ function $py2js(src,context,debug){
         src = src.substr(1)
     }
     if(src.charAt(src.length-1)!="\n"){src+='\n'}
-    if(!context){context='__main__';document.$py_src={'__main__':src}}
-    else{document.$py_src[context] = src}
-    document.$context = context
+    if(document.$py_src){document.$py_src.push(src)}
+    else{document.$py_src=[src]}
     
     // map position to line number
     var pos2line = {}
@@ -218,26 +217,26 @@ function $py2js(src,context,debug){
         var in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
         if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
         var loops = []
-        var lvar = stack.list[for_pos+1][1] // XXX should check length of var !
+        var lvar = new Stack(stack.list.slice(for_pos+1,in_pos))
         // there may be other for ... in ...
         while(true){
             for_pos = stack.find_next_at_same_level(in_pos+1,'keyword','for')
             if(for_pos===null){break}
             // close previous loop
             var s = new Stack(stack.list.slice(in_pos+1,for_pos))
-            loops.push([lvar,s.to_js()])
+            loops.push([lvar.to_js(),s.to_js()])
             in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
             if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
-            lvar = stack.list[for_pos+1][1]
+            lvar = stack.list.slice(for_pos+1,in_pos)
         }
         var if_pos = stack.find_next_at_same_level(in_pos+2,'keyword','if')
         if(if_pos===null){
             var s = new Stack(stack.list.slice(in_pos+1,end))
-            loops.push([lvar,s.to_js()])
+            loops.push([lvar.to_js(),s.to_js()])
             var cond=[]
         }else{
             var s = new Stack(stack.list.slice(in_pos+1,if_pos))
-            loops.push([lvar,s.to_js()])
+            loops.push([lvar.to_js(),s.to_js()])
             var cond=stack.list.slice(if_pos+1,end)
         }
         seq = '$list_comp(['
@@ -1254,7 +1253,7 @@ function brython(debug){
         var elt = elts[$i]
         if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
-            js = $py2js(src,null,debug).to_js()
+            js = $py2js(src,debug).to_js()
             if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
             try{
                 $run(js)
