@@ -1,9 +1,9 @@
 // transform native JS types into Brython types
 function $JS2Py(src){
-    if(isinstance(src,[str,int,float,list,dict,set])){return src}
     if(src===null){return None}
     if(src===false){return False}
     if(src===true){return True}
+    if(isinstance(src,[str,int,float,list,dict,set])){return src}
     htmlelt_pattern = new RegExp(/\[object HTML(.*)Element\]/)
     if(["string","number"].indexOf(typeof src)>-1){
         return src
