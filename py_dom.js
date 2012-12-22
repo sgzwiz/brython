@@ -93,9 +93,10 @@ $DomWrapper.prototype.__setattr__ = function(attr,value){
 
 function $Clipboard(data){ // drag and drop dataTransfer
     this.data = data
+    this.__class__ = "Clipboard"
 }
 $Clipboard.prototype.__getitem__ = function(name){
-    return $JS2Py(this.data.getData(name))
+    return this.data.getData(name)
 }
 $Clipboard.prototype.__setitem__ = function(name,value){
     this.data.setData(name,value)
@@ -265,15 +266,17 @@ $AbstractTagClass.prototype.appendChild = function(child){
 $AbstractTagClass.prototype.__add__ = function(other){
     if(isinstance(other,$AbstractTag)){
         this.children = this.children.concat(other.children)
-    } else {this.children.push(other.elt)}
+    }else if(isinstance(other,str)){
+        this.children = this.children.concat(document.createTextNode(other))
+    }else{this.children.push(other.elt)}
     return this
-}        
+}
 
-$AbstractTagClass.prototype.__iadd__ = function(other){
-    if(isinstance(other,$AbstractTag)){
-        this.children = this.children.concat(other.children)
-    } else {this.children.push(other.elt)}
-}        
+$AbstractTagClass.prototype.__radd__ = function(other){
+    var res = $AbstractTag()
+    res.children = this.children.concat(document.createTextNode(other))
+    return res
+}
 
 $AbstractTagClass.prototype.clone = function(){
     var res = $AbstractTag(), $i=0
@@ -381,16 +384,6 @@ $TagClass.prototype.__getattr__ = function(attr){
 
 $TagClass.prototype.__getitem__ = function(key){
     return $DomElement(this.elt.childNodes[key.value])
-}
-    
-$TagClass.prototype.__iadd__ = function(other){
-    this.__class__ = $AbstractTag // change to abstract tag
-    if(!('children' in this)){this.children = [this.elt]}
-    if(isinstance(other,$AbstractTag)){
-        for(var $i=0;$i<other.children.length;$i++){
-        this.children.push(other.children[$i])
-        }
-    } else {this.children.push(other.elt)}
 }
 
 $TagClass.prototype.__le__ = function(other){
