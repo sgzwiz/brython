@@ -73,6 +73,8 @@ $SVGTagClass.prototype.__setattr__ = function(key,value){
 }
 $SVGTagClass.prototype.__setitem__ = $TagClass.prototype.__setitem__
 
+$SVGTagClass.prototype.set_style = $TagClass.prototype.set_style
+
 // SVG
 var $svg_tags = ['a',
 'altGlyph',
