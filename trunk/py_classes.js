@@ -335,7 +335,7 @@ function $import(){
             try{eval(res)}catch(err){$raise('ImportError',err.message)}
         }else{
             // if module was found, res is set to the Python source code
-            var stack = $py2js(res,module)
+            var stack = $py2js(res)
             // insert module name as a JS object
             stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
             // search for module-level names
@@ -366,6 +366,8 @@ function $import(){
                 $pos = $mlname_pos+1
             }
             eval(stack.to_js())
+            // remove from execution stack
+            document.$py_src.pop()
         }
     }
 }
@@ -770,15 +772,13 @@ function slice(){
     var step=1
     if(args.length==1){stop = args[0]}
     else if(args.length>=2){
-        if(args[0]===None){start=0}
-        else{start = args[0]}
+        start = args[0]
         stop = args[1]
     }
     if(args.length>=3){step=args[2]}
     if(step==0){$raise('ValueError',"slice step must not be zero")}
     return new $SliceClass(start,stop,step)
 }
-
 
 function sum(iterable,start){
     if(start===undefined){start=0}
@@ -823,13 +823,16 @@ False = false //new $FalseClass()
 Boolean.prototype.toString = function(){
     if(this.valueOf()){return "True"}else{return "False"}
 }
+Boolean.prototype.__eq__ = function(other){
+    if(this.valueOf()){return !!other}else{return !other}
+}
 
 function $NoneClass(){
     this.__class__ = "None"
     this.value = null
     this.__bool__ = function(){return False}
     this.__eq__ = function(other){return other.__class__=="None"}
-    this.__str__ = function(){return str('None')}
+    this.__str__ = function(){return 'None'}
 }
 None = new $NoneClass()
 
