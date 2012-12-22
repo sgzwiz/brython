@@ -86,7 +86,7 @@ $DictClass.prototype.__delitem__ = function(arg){
 
 $DictClass.prototype.__eq__ = function(other){
     if(!isinstance(other,dict)){return False}
-    if(!other.$keys.length==this.$keys.length){return False}
+    if(other.$keys.length!==this.$keys.length){return False}
     for(var i=0;i<this.$keys.length;i++){
         var key = this.$keys[i]
         for(j=0;j<other.$keys.length;j++){
@@ -263,7 +263,7 @@ for($op in $operators){
 
 function float(value){
     if(typeof value=="number" || (
-        typeof value=="string" && parseFloat(value)!=NaN)){
+        typeof value=="string" && !isNaN(value))){
         return new $FloatClass(parseFloat(value))
     }else if(isinstance(value,float)){return value}
     else{$raise('ValueError',"Could not convert to float(): '"+str(value)+"'")}
@@ -783,8 +783,8 @@ function slice(){
 function sum(iterable,start){
     if(start===undefined){start=0}
     var res = 0
-    for(var i=start;i<iterable.__len__();i++){
-        res += iterable.__item__(i)
+    for(var i=start;i<iterable.__len__();i++){        
+        res = res.__add__(iterable.__item__(i))
     }
     return res
 }
