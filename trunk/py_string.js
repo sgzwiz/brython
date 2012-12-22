@@ -196,7 +196,7 @@ String.prototype.__next__ = function(){
     }
 }
 
-String.prototype.__not_in__ = function(item){return !item.__contains__(this)}
+String.prototype.__not_in__ = function(item){return !item.__contains__(this.valueOf())}
 
 String.prototype.__setattr__ = function(attr,value){setattr(this,attr,value)}
 
