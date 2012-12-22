@@ -400,6 +400,19 @@ $TagClass.prototype.__le__ = function(other){
     }
 }
 
+$TagClass.prototype.__mul__ = function(other){
+    if(isinstance(other,int) && other.valueOf()>0){
+        var res = $AbstractTag()
+        for(var i=0;i<other.valueOf();i++){
+            var clone = this.get_clone()()
+            res.children.push(clone.elt)
+        }
+        return res
+    }else{
+        $raise('ValueError',"can't multiply "+this.__class__+"by "+other)
+    }
+}
+
 $TagClass.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
 
 $TagClass.prototype.__radd__ = function(other){ // add to a string
@@ -413,17 +426,19 @@ $TagClass.prototype.__setattr__ = function(attr,value){
     if(attr in $events){this.elt.addEventListener(attr.substr(2),value)}
     else if('set_'+attr in this){return this['set_'+attr](value)}
     else if(attr in this.elt){this.elt[attr]=value}
-    else{$setattr(this,attr,value)}
+    else{setattr(this,attr,value)}
 }
     
 $TagClass.prototype.__setitem__ = function(key,value){
     this.elt.childNodes[key.value]=value
 }
+
+$TagClass.prototype.toString = function(){return this.get_html()}
     
 $TagClass.prototype.get_clone = function(){
     res = new $TagClass(this.name)
     res.elt = this.elt.cloneNode(true)
-    // copy events
+    // copy events - may not work since there is no getEventListener()
     for(var evt in $events){    
         if(this.elt[evt]){res.elt[evt]=this.elt[evt]}
     }
@@ -474,7 +489,7 @@ $TagClass.prototype.get_style = function(){
     
 $TagClass.prototype.set_style = function(style){ // style is a dict
     for(var i=0;i<style.$keys.length;i++){
-        this.elt.style[str(style.$keys[i])] = style.$values[i]
+        this.elt.style[style.$keys[i]] = style.$values[i]
     }
 }
 
