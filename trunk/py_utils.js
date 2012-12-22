@@ -26,10 +26,13 @@ function $JS2Py(src){
 // exceptions
 function $raise(name,msg) {
     // raises exception with specified name and message
-    if(document.$debug==0){return}
     if(msg===undefined){msg=''}
-    var lines = document.$py_src[document.$context].split('\n')
-    msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    if(document.$debug){
+        var lines = document.$py_src[document.$py_src.length-1].split('\n')
+        msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
+    }else{
+        msg += '\nFor more information call brython with argument 1 : <body onload="brython(1)">'
+    }
     err = new Error(name+": "+msg)
     err.name = name
     err.message = name+": "+msg;
