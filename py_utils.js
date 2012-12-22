@@ -30,8 +30,6 @@ function $raise(name,msg) {
     if(document.$debug){
         var lines = document.$py_src[document.$py_src.length-1].split('\n')
         msg += '\nLine '+document.line_num+'\n'+lines[document.line_num-1]
-    }else{
-        msg += '\nFor more information call brython with argument 1 : <body onload="brython(1)">'
     }
     err = new Error(name+": "+msg)
     err.name = name
