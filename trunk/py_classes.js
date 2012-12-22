@@ -478,6 +478,7 @@ function int(value){
 }
 
 function isinstance(obj,arg){
+    if(obj===null){return arg===None}
     if(arg.constructor===Array){
         for(var i=0;i<arg.length;i++){
             if(isinstance(obj,arg[i])){return true}
@@ -769,7 +770,8 @@ function slice(){
     var step=1
     if(args.length==1){stop = args[0]}
     else if(args.length>=2){
-        start = args[0]
+        if(args[0]===None){start=0}
+        else{start = args[0]}
         stop = args[1]
     }
     if(args.length>=3){step=args[2]}
