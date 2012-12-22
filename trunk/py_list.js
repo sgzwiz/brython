@@ -166,10 +166,9 @@ Array.prototype.__setitem__ = function(arg,value){
         if(pos>=0 && pos<this.length){this[pos]=value}
         else{$raise('IndexError','list index out of range')}
     } else if(isinstance(arg,slice)){
-        console.log('slice')
-        var start = arg.start || 0
-        if(arg.stop===null){stop=this.__len__()}else{stop=arg.stop}
-        var step = arg.step || 1
+        var start = arg.start===None ? 0 : arg.start
+        var stop = arg.stop===None ? this.__len__() : arg.stop
+        var step = arg.step===None ? 1 : arg.step
         if(start<0){start=this.length+start}
         if(stop<0){stop=this.length+stop}
         this.splice(start,stop-start)
@@ -295,9 +294,7 @@ function list(){
     else if(arguments.length>1){
         $raise('TypeError',"list() takes at most 1 argument ("+args.length+" given)")
     }
-
     var res = []
-    console.log('init list with '+arguments[0])
     res.__init__(arguments[0])
     return res
 }
