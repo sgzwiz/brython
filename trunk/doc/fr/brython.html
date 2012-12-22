@@ -44,14 +44,16 @@ def echo():
 <p>L'affichage est réalisé par une fonction intégrée de Brython, <code>alert()</code>, qui se comporte comme la fonction du même nom en Javascript
 <hr>
 <a name="syntaxe"><h3>Syntaxe</h3>
-Brython est conforme à la syntaxe de Python
+Brython est conforme à la syntaxe de Python 3
 <ul>
 <li>blocs délimités par l'indentation
 <li>définition de listes par <code>[]</code> ou <code>list()</code>, de tuples par <code>()</code> ou <code>tuple()</code>, de dictionnaires par <code>{}</code> ou <code>dict()</code>, d'ensembles par <code>set()</code>
+<li>listes en extansion : <code>[ expr for item in iterable if condition ]</code>
+<li>opérateur ternaire : <code>x = r1 if condition else r2</code>
 <li>la définition des fonctions peut comporter des valeurs par défaut et des arguments et mot-clés optionnels : <br><code>def foo(x,y=0,*args,**kw):</code>
+<li>décompactage de listes ou de dictionnaires dans l'appel de fonctions : <code>x = foo(*args,**kw)</code>
 </ul>
 
-<p>Dans l'immédiat les listes en extansion ne sont pas implémentées : <code>[ expr for item in iterable if condition ]</code>
 </ul>
 
 <a name="integr"><h3>Mots clés et fonction intégrées</h3>
@@ -65,7 +67,7 @@ Ne sont pas pris en charge :
 <ul>
 <li>les mots-clés <code>as class from is lambda nonlocal raise with yield</code>
 <li>parmi les fonctions intégrées :
-<ul><li>certaines seront peut-être intégrées dans des versions futures : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), dir(), divmod(), eval(), exec(), format(), frozenset(), globals() ,hex(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code>
+<ul><li>certaines seront peut-être intégrées dans des versions futures : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), dir(), divmod(), eval(), exec(), format(), frozenset(), globals() ,hex(), locals(), ord(), pow(), repr(), sorted(), type(), vars()</code>
 <li>d'autres ont peu de chances d'être intégrées : <code>bytearray(), bytes(), compile(), hash(), help(), id(), memoryview(), property(), super(), __import__() </code>
 <li>certaines ne sont pas pertinentes dans le contexte d'un navigateur : <code>input(), open(), print()</code>
 <li>le type des nombres complexes n'est pas supporté
