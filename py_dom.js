@@ -104,13 +104,6 @@ $Clipboard.prototype.__setitem__ = function(name,value){
 $Clipboard.prototype.__setattr__ = function(attr,value){
     eval("this.data."+attr+"=value")
 }
-function $DomObject(obj){
-    this.obj=obj
-    this.type = obj.constructor.toString()
-}
-$DomObject.prototype.__getattr__ = function(attr){
-    return getattr(this.obj,attr)
-}
 
 function $OptionsClass(parent){ // parent is a SELECT tag
     this.parent = parent
@@ -354,6 +347,8 @@ Node.prototype.__getattr__ = function(attr){
 Node.prototype.__getitem__ = function(key){
     return this.childNodes[key]
 }
+
+Node.prototype.__in__ = function(other){return other.__contains__(this)}
 
 Node.prototype.__item__ = function(key){ // for iteration
     return this.childNodes[key]
