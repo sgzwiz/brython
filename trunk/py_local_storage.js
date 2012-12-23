@@ -13,7 +13,7 @@ function $LocalStorageClass(){
         if(this.supported){
             res = localStorage[key]
             if(res===undefined){return None}
-            else{return $JS2Py(res)}
+            else{return res}
         }
         else{$raise('NameError',"local storage is not supported by this browser")}
    }
