@@ -319,10 +319,6 @@ function $Tag(class_name,args){
             }
         }
     }
-    // if id was not set, generate one
-    if(elt && !elt.getAttribute('id')){
-        elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
-    }
     return elt
 }
 
