@@ -28,8 +28,6 @@ title = SVG.text('',x=150,y=25,
     font_size=22,text_anchor="middle",
     style={"stroke":"black"})
 panel <= title
-log('title %s' %title.getAttribute('id'))
-
 
 paths = {}
 
@@ -37,10 +35,8 @@ def pie_chart():
     global paths,legend
     # clear SVG doc
     for child in panel: # iteration on child nodes
-        log('child %s' %child)
-        log('\n'.join(dir(child)))
         if child != title:
-            panel.removeChild(child)
+            panel.remove(child)
 
     # zone for legend
     legend = SVG.text('',Id="legend",x=350,y=150,
