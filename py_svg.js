@@ -46,7 +46,6 @@ function $SVGTag(tag_name,args){
             }
         }
     }
-    // if id was not set, generate one
     return elt
 }
 
