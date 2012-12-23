@@ -101,9 +101,9 @@ Array.prototype.__getitem__ = function(arg){
         if(pos>=0 && pos<items.length){return items[pos]}
         else{$raise('IndexError','list index out of range')}
     } else if(isinstance(arg,slice)) {
-        var start = arg.start || 0
-        var stop = arg.stop || this.length
-        var step = arg.step || 1
+        var start = arg.start===None ? 0 : arg.start
+        var stop = arg.stop===None ? this.__len__() : arg.stop
+        var step = arg.step===None ? 1 : arg.step
         if(start<0){start=int(this.length+start)}
         if(stop<0){stop=this.length+stop}
         var res = [],i=null,items=this.valueOf()
