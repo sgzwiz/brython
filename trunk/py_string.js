@@ -464,5 +464,7 @@ function $string_strip(obj){
 
 function $string_upper(obj){return function(){return obj.toUpperCase()}}
 
-function str(arg){return arg.toString()}
-
+function str(arg){
+    if(arg===undefined){return '<undefined>'}
+    else{return arg.toString()}
+}
