@@ -9,7 +9,7 @@ function $JS2Py(src){
         return src
     } else if(typeof src=="object"){
         if(src.constructor===Array){return src}
-        else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
+        else if(src.tagName!==undefined && src.nodeName!==undefined){return src}
         else{
             try{if(src.constructor==DragEvent){return new $MouseEvent(src)}}
             catch(err){void(0)}
