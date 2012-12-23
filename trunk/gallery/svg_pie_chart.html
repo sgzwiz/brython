@@ -2,13 +2,19 @@
 <html>
 <head>
 <meta charset="iso-8859-1">
-<script src="/brython.js"></script>
+<script src="/py_tokenizer.js"></script>
+<script src="/py_utils.js"></script>
+<script src="/py_classes.js"></script>
+<script src="/py_list.js"></script>
+<script src="/py_string.js"></script>
+<script src="/py_dom.js"></script>
+<script src="/py2js.js"></script>
+<script src="/py_ajax.js"></script>
+<script src="/py_svg.js"></script>
+
 <script type="text/python">
 import math
 
-def pie_chart():
-    for cell in cells:
-        log(cell.value)
 ray = 100
 values = [20,10,30,15,25]
 
@@ -16,13 +22,35 @@ colors = ["C8E0A2","A6BED1","E4CC85","D7D7D7","90AF97","698EA8",
         "BFA166","A8ADB0","FF6600"]
 
 panel = doc["panel"]
+legend = None
 
-legend = SVG.text('',Id="legend",x=250,y=150,
-    font_size=20,text_anchor="middle",
+title = SVG.text('',x=150,y=25,
+    font_size=22,text_anchor="middle",
     style={"stroke":"black"})
-panel <= legend
+panel <= title
+log('title %s' %title.getAttribute('id'))
+
+
+paths = {}
 
 def pie_chart():
+    global paths,legend
+    # clear SVG doc
+    for child in panel: # iteration on child nodes
+        log('child %s' %child)
+        log('\n'.join(dir(child)))
+        if child != title:
+            panel.removeChild(child)
+
+    # zone for legend
+    legend = SVG.text('',Id="legend",x=350,y=150,
+        font_size=20,text_anchor="middle",
+        style={"stroke":"black"})
+    panel <= legend
+
+    set_title()
+        
+    paths = {}
     data = {}
     for i,cell in enumerate(cells):
         data['Item %s' %(i+1)]=float(cell.value)
@@ -31,10 +59,6 @@ def pie_chart():
     height = 2.2*ray
     x_center = 150
     y_center = 160
-    txt = SVG.text(title.value,x=150,y=25,
-        font_size=22,text_anchor="middle",
-        style={"stroke":"black"})
-    panel <= txt
     x = x_center
     y = y_center-ray
     total = sum(data.values())
@@ -60,17 +84,25 @@ def pie_chart():
             onMouseOver="show_legend('%s')" %key,
             onMouseOut="hide_legend()")
         panel <= path
+        paths[key]=path
 
+def set_title():
+    title.text = title_input.value
+    
 def show_legend(key):
-    log(key)
-    doc['legend'].firstChild.data = key
+    legend.text = key
+
+def hide_legend():
+    legend.text = ''
 
 def update(cell):
     try:
         float(cell.value)
     except ValueError:
         alert('Numeric value requested')
-    
+        return
+    pie_chart()
+
 nb_cols = 2
 nb_lines = 5
 
@@ -78,8 +110,8 @@ t = TABLE()
 tb = TBODY()
 cells = []
 
-title = INPUT(value='Pie Chart')
-tb <= TD('Title')+TD(title)
+title_input = INPUT(value='Pie Chart',onchange="set_title()")
+tb <= TD('Title')+TD(title_input)
 
 for i in range(nb_lines):
     row = TR()
@@ -91,7 +123,7 @@ for i in range(nb_lines):
 t <= tb
 doc['data'] <= t
 
-doc <= BUTTON('pie',onclick="pie_chart()")
+pie_chart()
 </script>
 
 </head>
