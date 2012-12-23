@@ -174,6 +174,13 @@ function dict(){
     return obj
 }
 
+function dir(obj){
+    var res = []
+    for(var attr in obj){res.push(attr)}
+    res.sort()
+    return res
+}
+
 function enumerate(iterator){
     var res = []
     for(var i=0;i<iterator.__len__();i++){
@@ -481,6 +488,7 @@ function int(value){
 
 function isinstance(obj,arg){
     if(obj===null){return arg===None}
+    if(obj===undefined){return false}
     if(arg.constructor===Array){
         for(var i=0;i<arg.length;i++){
             if(isinstance(obj,arg[i])){return true}
