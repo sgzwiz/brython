@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20121222-222307
+// version 1.0.20121223-185037
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -73,7 +73,7 @@ $raise('KeyError',str(arg))
 }
 $DictClass.prototype.__eq__=function(other){
 if(!isinstance(other,dict)){return False}
-if(!other.$keys.length==this.$keys.length){return False}
+if(other.$keys.length!==this.$keys.length){return False}
 for(var i=0;i<this.$keys.length;i++){
 var key=this.$keys[i]
 for(j=0;j<other.$keys.length;j++){
@@ -144,6 +144,12 @@ var elt=iterable.__item__(i)
 obj.__setitem__(elt.__item__(0),elt.__item__(1))
 }
 return obj
+}
+function dir(obj){
+var res=[]
+for(var attr in obj){res.push(attr)}
+res.sort()
+return res
 }
 function enumerate(iterator){
 var res=[]
@@ -399,6 +405,7 @@ return parseInt(value.value)
 }
 function isinstance(obj,arg){
 if(obj===null){return arg===None}
+if(obj===undefined){return false}
 if(arg.constructor===Array){
 for(var i=0;i<arg.length;i++){
 if(isinstance(obj,arg[i])){return true}
@@ -1385,7 +1392,10 @@ return obj.replace(sp,"")
 }
 }
 function $string_upper(obj){return function(){return obj.toUpperCase()}}
-function str(arg){return arg.toString()}
+function str(arg){
+if(arg===undefined){return '<undefined>'}
+else{return arg.toString()}
+}
 function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
 var i=null,$PyVars={},$def_names=[],$ns={}
 for(var k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
@@ -2359,7 +2369,7 @@ br_pos=stack.find_previous(pos,'bracket','[')
 if(br_pos==null){break}
 if(br_pos==0){break}
 var previous=stack.list[br_pos-1]
-if(['id','qualifier','keyword'].indexOf(previous[0])==-1){pos=br_pos-1;continue}
+if(['id','qualifier','keyword','bracket'].indexOf(previous[0])==-1){pos=br_pos-1;continue}
 src_pos=stack.list[br_pos][2]
 var end=stack.find_next_matching(br_pos)
 var args=stack.list.slice(br_pos+1,end)
@@ -2792,7 +2802,7 @@ if(["string","number"].indexOf(typeof src)>-1){
 return src
 }else if(typeof src=="object"){
 if(src.constructor===Array){return src}
-else if(src.tagName!==undefined && src.nodeName!==undefined){return $DomElement(src)}
+else if(src.tagName!==undefined && src.nodeName!==undefined){return src}
 else{
 try{if(src.constructor==DragEvent){return new $MouseEvent(src)}}
 catch(err){void(0)}
@@ -3413,37 +3423,34 @@ return $JS2Py(obj)
 }
 this.__class__='options'
 this.__getitem__=function(arg){
-return $DomElement(parent.elt.options[arg])
+return parent.options[arg]
 }
 this.__delitem__=function(arg){
-parent.elt.options.remove(arg)
+parent.options.remove(arg)
 }
-this.__len__=function(){return parent.elt.options.length}
+this.__len__=function(){return parent.options.length}
 this.__setattr__=function(attr,value){
-eval('parent.elt.options.'+attr+'= str(value)')
+parent.options[attr]=value
 }
 this.__setitem__=function(attr,value){
-parent.elt.options[attr]=$JS2Py(value)
+parent.options[attr]=$JS2Py(value)
 }
 this.get_append=function(element){
-parent.elt.options.add(element.elt)
+parent.options.add(element)
 }
 this.get_insert=function(index,element){
-if(index===undefined){parent.elt.options.add(element.elt)}
-else{parent.elt.options.add(element.elt,index)}
+if(index===undefined){parent.options.add(element)}
+else{parent.options.add(element,index)}
 }
 this.get_item=function(index){
-return $DomElement(parent.elt.options.item(index))
+return parent.options.item(index)
 }
 this.get_namedItem=function(name){
-return $DomElement(parent.elt.options.namedItem(name))
+return parent.options.namedItem(name)
 }
-this.get_remove=function(arg){parent.elt.options.remove(arg)}
+this.get_remove=function(arg){parent.options.remove(arg)}
 }
-function $Document(){
-this.elt=document
-this.mouse=null
-this.__delitem__=function(key){
+HTMLDocument.prototype.__delitem__=function(key){
 if(typeof key==="string"){
 var res=document.getElementById(key)
 if(res){res.parentNode.removeChild(res)}
@@ -3451,30 +3458,30 @@ else{$raise("KeyError",key)}
 }else{
 try{
 var elts=document.getElementsByTagName(key),res=list()
-for(var $i=0;$i<elts.length;$i++){res.append($DomElement(elts[$i]))}
+for(var $i=0;$i<elts.length;$i++){res.append(elts[$i])}
 return res
 }catch(err){
 $raise("KeyError",key)
 }
 }
 }
-this.__getattr__=function(attr){return getattr(this.elt,attr)}
-this.__getitem__=function(key){
+HTMLDocument.prototype.__getattr__=function(attr){return getattr(this,attr)}
+HTMLDocument.prototype.__getitem__=function(key){
 if(typeof key==="string"){
 var res=document.getElementById(key)
-if(res){return $DomElement(res)}
+if(res){return res}
 else{$raise("KeyError",key)}
 }else{
 try{
 var elts=document.getElementsByTagName(key.name),res=[]
-for(var $i=0;$i<elts.length;$i++){res.push($DomElement(elts[$i]))}
+for(var $i=0;$i<elts.length;$i++){res.push(elts[$i])}
 return res
 }catch(err){
 $raise("KeyError",str(key))
 }
 }
 }
-this.__le__=function(other){
+HTMLDocument.prototype.__le__=function(other){
 if(isinstance(other,$AbstractTag)){
 var $i=0
 for($i=0;$i<other.children.length;$i++){
@@ -3483,37 +3490,16 @@ document.body.appendChild(other.children[$i])
 }else if(isinstance(other,[str,int,float,list,dict,set,tuple])){
 txt=document.createTextNode(str(other))
 document.body.appendChild(txt)
-}else{document.body.appendChild(other.elt)}
+}else{document.body.appendChild(other)}
 }
-this.__setattr__=function(attr,value){
+HTMLDocument.prototype.__setattr__=function(attr,value){
 if(attr in $events){document.addEventListener(attr.substr(2),value)}
 else{document[attr]=value}
 }
-this.insert_before=function(other,ref_elt){
-document.insertBefore(other.elt,ref_elt.elt)
-}
-}
-doc=new $Document()
+doc=document
 win={
 __getattr__ : function(attr){return getattr(window,attr)},
 location:{__getattr__:function(attr){return getattr(window.location,attr)}}
-}
-function $DomElement(elt){
-var i=null
-var elt_name=elt.tagName
-if(elt_name===undefined && elt.nodeName=="#text"){
-return str(elt.data)
-}
-var obj=new $TagClass()
-if(elt_name===undefined && elt.nodeName=="#document"){
-obj.__class__=$Document
-}else if($tags.indexOf(elt_name.toUpperCase())>-1){
-obj.__class__=eval(elt_name.toUpperCase())
-}else if($svg_tags.indexOf(elt_name)>-1){
-obj.__class__=eval('SVG.'+elt_name)
-}
-obj.elt=elt
-return obj
 }
 function $AbstractTagClass(){
 this.__class__=$AbstractTag
@@ -3528,7 +3514,7 @@ if(isinstance(other,$AbstractTag)){
 this.children=this.children.concat(other.children)
 }else if(isinstance(other,str)){
 this.children=this.children.concat(document.createTextNode(other))
-}else{this.children.push(other.elt)}
+}else{this.children.push(other)}
 return this
 }
 $AbstractTagClass.prototype.__radd__=function(other){
@@ -3564,14 +3550,13 @@ $events=$List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'onselectstart','onstart','onstop','onsubmit','onunload',
 'ontouchstart','ontouchmove','ontouchend'
 )
-function $TagClass(class_name,args){
+function $Tag(class_name,args){
 var $i=null
-var $obj=this
+var elt=null
 if(class_name!==undefined){
-this.name=class_name
-eval("this.__class__ ="+class_name)
-this.elt=document.createElement(this.name)
-this.elt.parent=this
+var elt=document.createElement(class_name)
+elt.parent=this
+elt.__class__=class_name
 }
 if(args!=undefined && args.length>0){
 $start=0
@@ -3580,162 +3565,166 @@ if(!isinstance($first,$Kw)){
 $start=1
 if(isinstance($first,[str,int,float])){
 txt=document.createTextNode($first.toString())
-this.elt.appendChild(txt)
+elt.appendChild(txt)
 }else if(isinstance($first,$AbstractTag)){
 for($i=0;$i<$first.children.length;$i++){
-this.elt.appendChild($first.children[$i])
+elt.appendChild($first.children[$i])
 }
 }else{
-try{this.elt.appendChild($first.elt)}
-catch(err){$raise('ValueError','wrong element '+$first.elt)}
+try{elt.appendChild($first)}
+catch(err){$raise('ValueError','wrong element '+$first)}
 }
 }
 for($i=$start;$i<args.length;$i++){
 $arg=args[$i]
 if(isinstance($arg,$Kw)){
-if($arg.name.toLowerCase()in $events){
-eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
+if($arg.name.toLowerCase().substr(0,2)==="on"){
+eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
 }else if($arg.name.toLowerCase()=="style"){
 this.set_style($arg.value)
 }else{
 if($arg.value!==false){
-this.elt.setAttribute($arg.name.toLowerCase(),$arg.value)
+elt.setAttribute($arg.name.toLowerCase(),$arg.value)
 }
 }
 }
 }
 }
-if('elt' in this && !this.elt.getAttribute('id')){
-this.elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
+if(elt && !elt.getAttribute('id')){
+elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
 }
+return elt
 }
-$TagClass.prototype.__add__=function(other){
+Node.prototype.__add__=function(other){
 var res=$AbstractTag()
-res.children=[this.elt]
+res.children=[this]
 if(isinstance(other,$AbstractTag)){
 for(var $i=0;$i<other.children.length;$i++){res.children.push(other.children[$i])}
 }else if(isinstance(other,[str,int,float,list,dict,set,tuple])){
 res.children.push(document.createTextNode(str(other)))
-}else{res.children.push(other.elt)}
+}else{res.children.push(other)}
 return res
 }
-$TagClass.prototype.__eq__=function(other){
-if(!('getAttribute' in other.elt)){return False}
-return this.elt.getAttribute('id')==other.elt.getAttribute('id')
-}
-$TagClass.prototype.__getattr__=function(attr){
+Node.prototype.__eq__=function(other){return this.isEqualNode(other)}
+Node.prototype.__getattr__=function(attr){
 if('get_'+attr in this){return this['get_'+attr]()}
-return getattr(this.elt,attr)
+return getattr(this,attr)
 }
-$TagClass.prototype.__getitem__=function(key){
-return $DomElement(this.elt.childNodes[key.value])
+Node.prototype.__getitem__=function(key){
+return this.childNodes[key]
 }
-$TagClass.prototype.__le__=function(other){
+Node.prototype.__item__=function(key){
+return this.childNodes[key]
+}
+Node.prototype.__le__=function(other){
 if(isinstance(other,$AbstractTag)){
 var $i=0
 for($i=0;$i<other.children.length;$i++){
-this.elt.appendChild(other.children[$i])
+this.appendChild(other.children[$i])
 }
 }else if(typeof other==="string" || typeof other==="number"){
 var $txt=document.createTextNode(other.toString())
-this.elt.appendChild($txt)
+this.appendChild($txt)
 }else{
-this.elt.appendChild(other.elt)
+this.appendChild(other)
 }
 }
-$TagClass.prototype.__mul__=function(other){
+Node.prototype.__len__=function(){return this.childNodes.length}
+Node.prototype.__mul__=function(other){
 if(isinstance(other,int)&& other.valueOf()>0){
 var res=$AbstractTag()
 for(var i=0;i<other.valueOf();i++){
 var clone=this.get_clone()()
-res.children.push(clone.elt)
+res.children.push(clone)
 }
 return res
 }else{
 $raise('ValueError',"can't multiply "+this.__class__+"by "+other)
 }
 }
-$TagClass.prototype.__ne__=function(other){return $not(this.__eq__(other))}
-$TagClass.prototype.__radd__=function(other){
+Node.prototype.__ne__=function(other){return $not(this.__eq__(other))}
+Node.prototype.__radd__=function(other){
 var res=$AbstractTag()
 var txt=document.createTextNode(other)
-res.children=[txt,this.elt]
+res.children=[txt,this]
 return res 
 }
-$TagClass.prototype.__setattr__=function(attr,value){
-if(attr in $events){this.elt.addEventListener(attr.substr(2),value)}
+Node.prototype.__setattr__=function(attr,value){
+if(attr in $events){this.addEventListener(attr.substr(2),value)}
 else if('set_'+attr in this){return this['set_'+attr](value)}
-else if(attr in this.elt){this.elt[attr]=value}
+else if(attr in this){this[attr]=value}
 else{setattr(this,attr,value)}
 }
-$TagClass.prototype.__setitem__=function(key,value){
-this.elt.childNodes[key.value]=value
+Node.prototype.__setitem__=function(key,value){
+this.childNodes[key]=value
 }
-$TagClass.prototype.toString=function(){return this.get_html()}
-$TagClass.prototype.get_clone=function(){
-res=new $TagClass(this.name)
-res.elt=this.elt.cloneNode(true)
-console.log(res.elt)
+Node.prototype.toString=function(){return this.get_html()}
+Node.prototype.get_clone=function(){
+res=this.cloneNode(true)
 for(var evt in $events){
-if(this.elt[evt]){res.elt[evt]=this.elt[evt]}
+if(this[evt]){res[evt]=this[evt]}
 }
 var func=function(){return res}
 return func
 }
-$TagClass.prototype.get_getContext=function(){
-if(!('getContext' in this.elt)){$raise('AttributeError',
+Node.prototype.get_remove=function(){
+var obj=this
+return function(child){obj.removeChild(child)}
+}
+Node.prototype.get_getContext=function(){
+if(!('getContext' in this)){$raise('AttributeError',
 "object has no attribute 'getContext'")}
-var obj=this.elt
+var obj=this
 return function(ctx){return new $DomWrapper(obj.getContext(ctx))}
 }
-$TagClass.prototype.get_parent=function(){
-if(this.elt.parentElement){return $DomElement(this.elt.parentElement)}
+Node.prototype.get_parent=function(){
+if(this.parentElement){return this.parentElement}
 else{return None}
 }
-$TagClass.prototype.get_options=function(){
+Node.prototype.get_options=function(){
 return new $OptionsClass(this)
 }
-$TagClass.prototype.get_left=function(){
-return int($getPosition(this.elt)["left"])
+Node.prototype.get_left=function(){
+return int($getPosition(this)["left"])
 }
-$TagClass.prototype.get_top=function(){
-return int($getPosition(this.elt)["top"])
+Node.prototype.get_top=function(){
+return int($getPosition(this)["top"])
 }
-$TagClass.prototype.get_children=function(){
+Node.prototype.get_children=function(){
 var res=[]
-for(var i=0;i<this.elt.childNodes.length;i++){
-res.push($DomElement(this.elt.childNodes[i]))
+for(var i=0;i<this.childNodes.length;i++){
+res.push(this.childNodes[i])
 }
 return res
 }
-$TagClass.prototype.get_reset=function(){
-var $obj=this.elt
+Node.prototype.get_reset=function(){
+var $obj=this
 return function(){$obj.reset()}
 }
-$TagClass.prototype.get_style=function(){
-return new $DomWrapper(this.elt.style)
+Node.prototype.get_style=function(){
+return new $DomWrapper(this.style)
 }
-$TagClass.prototype.set_style=function(style){
+Node.prototype.set_style=function(style){
 for(var i=0;i<style.$keys.length;i++){
-this.elt.style[style.$keys[i]]=style.$values[i]
+this.style[style.$keys[i]]=style.$values[i]
 }
 }
-$TagClass.prototype.get_submit=function(){
-var $obj=this.elt
+Node.prototype.get_submit=function(){
+var $obj=this
 return function(){$obj.submit()}
 }
-$TagClass.prototype.get_text=function(){
-return str(this.elt.innerText || this.elt.textContent)
+Node.prototype.get_text=function(){
+return this.innerText || this.textContent
 }
-$TagClass.prototype.get_html=function(){return this.elt.innerHTML}
-$TagClass.prototype.get_value=function(value){return this.elt.value}
-$TagClass.prototype.set_html=function(value){this.elt.innerHTML=str(value)}
-$TagClass.prototype.set_text=function(value){
-this.elt.innerText=str(value)
-this.elt.textContent=str(value)
+Node.prototype.get_html=function(){return this.innerHTML}
+Node.prototype.get_value=function(value){return this.value}
+Node.prototype.set_html=function(value){this.innerHTML=str(value)}
+Node.prototype.set_text=function(value){
+this.innerText=str(value)
+this.textContent=str(value)
 }
-$TagClass.prototype.set_value=function(value){this.elt.value=value.toString()}
-function A(){return new $TagClass('A',arguments)}
+Node.prototype.set_value=function(value){this.value=value.toString()}
+function A(){return $Tag('A',arguments)}
 var $src=A+'' 
 $tags=['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
 'B', 'BDO', 'BIG', 'BLOCKQUOTE', 'BUTTON',
@@ -3768,15 +3757,10 @@ __getattr__:function(attr){return this[attr]}
 }
 $svgNS="http://www.w3.org/2000/svg"
 $xlinkNS="http://www.w3.org/1999/xlink"
-function $SVGTagClass(tag_name,args){
+function $SVGTag(tag_name,args){
 var $i=null
 var $obj=this
-if(tag_name!==undefined){
-this.name=tag_name
-this.__class__=SVG
-this.elt=document.createElementNS($svgNS,this.name)
-this.elt.parent=this
-}
+elt=document.createElementNS($svgNS,tag_name)
 if(args!=undefined && args.length>0){
 $start=0
 $first=args[0]
@@ -3784,51 +3768,33 @@ if(!isinstance($first,$Kw)){
 $start=1
 if(isinstance($first,[str,int,float])){
 txt=document.createTextNode(str($first))
-this.elt.appendChild(txt)
+elt.appendChild(txt)
 }else if(isinstance($first,$AbstractTag)){
 for($i=0;$i<$first.children.length;$i++){
-this.elt.appendChild($first.children[$i])
+elt.appendChild($first.children[$i])
 }
 }else{
-try{this.elt.appendChild($first.elt)}
-catch(err){$raise('ValueError','wrong element '+$first.elt)}
+try{elt.appendChild($first)}
+catch(err){$raise('ValueError','wrong element '+$first)}
 }
 }
 for($i=$start;$i<args.length;$i++){
 $arg=args[$i]
 if(isinstance($arg,$Kw)){
 if($arg.name.toLowerCase()in $events){
-eval('this.elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
+eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
 }else if($arg.name.toLowerCase()=="style"){
-this.set_style($arg.value)
+elt.set_style($arg.value)
 }else{
 if($arg.value!==false){
-this.elt.setAttributeNS(null,$arg.name.replace('_','-'),$arg.value)
+elt.setAttributeNS(null,$arg.name.replace('_','-'),$arg.value)
 }
 }
 }
 }
 }
-if('elt' in this && !this.elt.getAttribute('id')){
-this.elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
+return elt
 }
-}
-$SVGTagClass.prototype.__add__=$TagClass.prototype.__add__
-$SVGTagClass.prototype.__eq__=$TagClass.prototype.__eq__
-$SVGTagClass.prototype.__getattr__=$TagClass.prototype.__getattr__
-$SVGTagClass.prototype.__getitem__=$TagClass.prototype.__getitem__
-$SVGTagClass.prototype.__le__=$TagClass.prototype.__le__
-$SVGTagClass.prototype.__ne__=$TagClass.prototype.__ne__
-$SVGTagClass.prototype.__radd__=$TagClass.prototype.__radd__
-$SVGTagClass.prototype.__setattr__=function(key,value){
-if(key=="href"){
-this.elt.setAttributeNS($xlinkNS,key.replace('_','-'),value)
-}else{
-this.elt.setAttributeNS(null,key.replace('_','-'),value)
-}
-}
-$SVGTagClass.prototype.__setitem__=$TagClass.prototype.__setitem__
-$SVGTagClass.prototype.set_style=$TagClass.prototype.set_style
 var $svg_tags=['a',
 'altGlyph',
 'altGlyphDef',
@@ -3863,7 +3829,7 @@ var $svg_tags=['a',
 'tref',
 'tspan',
 'use']
-$svg=function(){return new $SVGTagClass('X',arguments)}
+$svg=function(){return $SVGTag('X',arguments)}
 $svg +='' 
 for(var i=0;i<$svg_tags.length;i++){
 var tag=$svg_tags[i]
@@ -3880,7 +3846,7 @@ this.__getitem__=function(key){
 if(this.supported){
 res=localStorage[key]
 if(res===undefined){return None}
-else{return $JS2Py(res)}
+else{return res}
 }
 else{$raise('NameError',"local storage is not supported by this browser")}
 }
