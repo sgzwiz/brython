@@ -67,9 +67,9 @@ String.prototype.__getitem__ = function(arg){
         if(pos>=0 && pos<this.length){return this.charAt(pos)}
         else{$raise('IndexError','string index out of range')}
     } else if(isinstance(arg,slice)) {
-        var start = arg.start || 0
-        if(arg.stop===null){stop=this.__len__()}else{stop=arg.stop}
-        var step = arg.step || 1
+        var start = arg.start===None ? 0 : arg.start
+        var stop = arg.stop===None ? this.__len__() : arg.stop
+        var step = arg.step===None ? 1 : arg.step
         if(start<0){start=this.length+start}
         if(stop<0){stop=this.length+stop}
         var res = '',i=null
