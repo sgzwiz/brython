@@ -1,7 +1,8 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-<script src="../brython.js"></script>
+<meta charset="iso-8859-1">
+<script src="/brython.js"></script>
 
 </head>
 <body onLoad="brython()">
@@ -17,7 +18,7 @@ def update(elt):
     local_storage[elt.id]=elt.value
     log(local_storage[elt.id])
 
-nb_cols = local_storage['nb_cols']
+nb_cols = 5
 nb_lines = 6
 
 t = TABLE()
