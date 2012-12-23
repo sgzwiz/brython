@@ -356,7 +356,6 @@ Node.prototype.__getitem__ = function(key){
 }
 
 Node.prototype.__item__ = function(key){ // for iteration
-    console.log('iterate on tag, item '+key+' '+this.childNodes[key])
     return this.childNodes[key]
 }
 
@@ -421,8 +420,9 @@ Node.prototype.get_clone = function(){
     return func
 }
 
-Node.prototype.get_remove = function(child){
-    this.removeChild(child)
+Node.prototype.get_remove = function(){
+    var obj = this
+    return function(child){obj.removeChild(child)}
 }
 
 Node.prototype.get_getContext = function(){ // for CANVAS tag
