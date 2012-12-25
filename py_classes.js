@@ -526,14 +526,6 @@ function len(obj){
     catch(err){$raise('TypeError',"object of type "+str(obj.__class__)+" has no len()")}
 }
 
-function log(){
-    $ns = $MakeArgs('log',arguments,[],{},'args')
-    if(!('end' in $ns)){$ns['end']='\n'}
-    for(var i=0;i<$ns['args'].length;i++){
-        console.log($ns['args'][i]+$ns['end'])
-    }
-}
-
 function map(){
     var func = arguments[0],res=[],rank=0
     while(true){
@@ -644,6 +636,9 @@ function $print(){
     res += end
     $stdout.write(res)
 }
+
+log = $print // compatibility with previous versions
+
 function $prompt(src){return prompt(src)}
 
 // range
