@@ -188,7 +188,12 @@ function enumerate(iterator){
     }
     return res
 }
-            
+
+function exec(src){
+    $run($py2js(src,1).to_js())
+    document.$py_src.pop() // remove from execution stack
+}         
+
 function filter(){
     if(arguments.length!=2){$raise('TypeError',
             "filter expected 2 arguments, got "+arguments.length)}
@@ -302,7 +307,7 @@ function hasattr(obj,attr){
 
 function $import(){
 
-    var js_modules = $List2Dict('time','datetime','math','random','sys')
+    var js_modules = $List2Dict('time','datetime','dis','math','random','sys')
     var calling={'line':document.line_num,'context':document.$context}
     for(var i=0;i<arguments.length;i++){
         module = arguments[i]
@@ -525,7 +530,7 @@ function log(){
     $ns = $MakeArgs('log',arguments,[],{},'args')
     if(!('end' in $ns)){$ns['end']='\n'}
     for(var i=0;i<$ns['args'].length;i++){
-        console.log(str($ns['args'][i])+str($ns['end']))
+        console.log($ns['args'][i]+$ns['end'])
     }
 }
 
@@ -619,7 +624,27 @@ function object(){
     return new $ObjectClass()
 }
 
-function $prompt(src){return str(prompt(src))}
+$stderr = null
+
+$stdout = {
+    write: function(data){console.log(data)}
+}
+
+function $print(){
+    var $ns=$MakeArgs('print',arguments,[],{},'args','kw')
+    var args = $ns['args']
+    var kw = $ns['kw']
+    var end = '\n'
+    var res = ''
+    if(kw.__contains__('end')){end=kw.__getitem__('end')}
+    for(var i=0;i<args.length;i++){
+        res += args[i]
+        if(i<args.length-1){res += ' '}
+    }
+    res += end
+    $stdout.write(res)
+}
+function $prompt(src){return prompt(src)}
 
 // range
 function range(){
