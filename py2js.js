@@ -1007,7 +1007,7 @@ function $py2js(src,debug){
         }
     }
 
-    var js2py = {'alert':'$alert','prompt':'$prompt','confirm':'$confirm'}
+    var js2py = {'alert':'$alert','prompt':'$prompt','confirm':'$confirm','print':'$print'}
     for(key in js2py){
         pos = 0
         while(true){
@@ -1257,6 +1257,7 @@ function brython(debug){
             if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
             try{
                 $run(js)
+                document.$py_src.pop() // execution stack
             }catch(err){$raise('ExecutionError',err.message)
                 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
                 else{throw err}
