@@ -317,22 +317,17 @@ function $string_index(obj){
 
 function $string_join(obj){
     return function(iterable){
-        if(!'__next__' in iterable){$raise('TypeError',
+        if(!'__item__' in iterable){$raise('TypeError',
              "'"+str(iterable.__class__)+"' object is not iterable")}
         var res = '',count=0
-        while(true){
-            try{
-                var obj2 = next(iterable)
-                if(!isinstance(obj2,str)){$raise('TypeError',
-                    "sequence item "+count+": expected str instance, "+str(obj2.__class__)+"found")}
-                res += obj2+obj
-                count++
-            }catch(err){
-                if(err.name=='StopIteration'){break}
-                throw err
-            }
+        for(var i=0;i<iterable.length;i++){
+            var obj2 = iterable.__getitem__(i)
+            if(!isinstance(obj2,str)){$raise('TypeError',
+                "sequence item "+count+": expected str instance, "+obj2.__class__+"found")}
+            res += obj2+obj
+            count++
         }
-        if(count==0){return str('')}
+        if(count==0){return ''}
         res = res.substr(0,res.length-obj.length)
         return res
     }
