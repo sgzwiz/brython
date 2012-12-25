@@ -34,6 +34,7 @@ function $raise(name,msg) {
     err.name = name
     err.message = name+": "+msg;
     err.py_error = true
+    if($stderr!==null){$stderr.write(err.message)}
     throw err
 }
 
