@@ -309,7 +309,7 @@ function $Tag(class_name,args){
                 if($arg.name.toLowerCase().substr(0,2)==="on"){ // events
                     eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){
-                    this.set_style($arg.value)
+                    elt.set_style($arg.value)
                 } else {
                     if($arg.value!==false){
                         // option.selected=false sets it to true :-)
