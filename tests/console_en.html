@@ -11,59 +11,49 @@
 <script src="/py_dom.js"></script>
 <script src="/py2js.js"></script>
 <script src="/py_ajax.js"></script>
+<script src="/py_local_storage.js"></script>
 
 <script type="text/python">
 import sys
-def to_str(x):
-    return str(x)
+import time
+import dis
+
+def reset_src():
+    if sys.has_local_storage:
+        doc['src'].value = local_storage["py_src"]
+
+def to_str(xx):
+    return str(xx)
 
 doc['version'].text = '.'.join(map(to_str,sys.version_info))
 
-# override log to send output to textarea
-def log(*data,**kw):
-    if 'end' in kw:
-        end = kw['end']
-    else:
-        end = '\n'
-    for x in data:
-        doc["console"].value = doc["console"].value+str(x)+' '
-    doc["console"].value += end
-</script>
-<script>
-var has_ls = typeof(Storage)!=="undefined"
-ctxt = ''
+sys.stdout = object()
+def write(data):
+    doc["console"].value += data
+sys.stdout.write = write
 
-function reset_src(){
-    if(has_ls){
-        var py_src = localStorage["py_src"]
-        if(py_src){document.getElementById("src").value=py_src}
-    }
-}
-function show_console(){
-    document.getElementById("console").value = ctxt
-}
-function show_js(){
-    var src_elt = document.getElementById("src")
-    var src = src_elt.value
-    var stack = $py2js(src)
-    ctxt = document.getElementById("console").value
-    document.getElementById("console").value = stack.to_js()
-}
-function run(){
-    document.getElementById("console").value=''
-    var src_elt = document.getElementById("src")
-    var src = src_elt.value
-    if(has_ls){localStorage["py_src"]=src}
-    t0 = new Date()
-    t0 = t0.getTime()
-    var stack = $py2js(src,null,1)
-    var js = stack.to_js()
-    try{$run(js)}
-    catch(err){log(err.message)}
-    t1 = new Date()
-    t1 = t1.getTime()
-    log('<done in '+(t1-t0)+' ms>')
-}
+sys.stderr = object()
+sys.stderr.write = write
+
+output = ''
+
+def show_console():
+    doc["console"].value = output
+
+def run():
+    global output
+    doc["console"].value=''
+    src = doc["src"].value
+    if sys.has_local_storage:
+        local_storage["py_src"]=src
+    t0 = time.time()
+    exec(src)
+    output = doc["console"].value
+    print('<done in %s ms>' %(time.time()-t0))
+
+def show_js():
+    src = doc["src"].value
+    doc["console"].value = dis.dis(src)
 </script>
 </head>
 <body onload="brython();reset_src()">
