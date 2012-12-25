@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20121223-185037
+// version 1.0.20121225-174458
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -158,6 +158,10 @@ res.push([i,iterator.__item__(i)])
 }
 return res
 }
+function exec(src){
+$run($py2js(src,1).to_js())
+document.$py_src.pop()
+}
 function filter(){
 if(arguments.length!=2){$raise('TypeError',
 "filter expected 2 arguments, got "+arguments.length)}
@@ -251,7 +255,7 @@ try{getattr(obj,attr);return True}
 catch(err){return False}
 }
 function $import(){
-var js_modules=$List2Dict('time','datetime','math','random','sys')
+var js_modules=$List2Dict('time','datetime','dis','math','random','sys')
 var calling={'line':document.line_num,'context':document.$context}
 for(var i=0;i<arguments.length;i++){
 module=arguments[i]
@@ -435,13 +439,6 @@ function len(obj){
 try{return obj.__len__()}
 catch(err){$raise('TypeError',"object of type "+str(obj.__class__)+" has no len()")}
 }
-function log(){
-$ns=$MakeArgs('log',arguments,[],{},'args')
-if(!('end' in $ns)){$ns['end']='\n'}
-for(var i=0;i<$ns['args'].length;i++){
-console.log(str($ns['args'][i])+str($ns['end']))
-}
-}
 function map(){
 var func=arguments[0],res=[],rank=0
 while(true){
@@ -524,7 +521,26 @@ $ObjectClass.prototype.__setattr__=function(attr,value){this[attr]=value}
 function object(){
 return new $ObjectClass()
 }
-function $prompt(src){return str(prompt(src))}
+$stderr=null
+$stdout={
+write: function(data){console.log(data)}
+}
+function $print(){
+var $ns=$MakeArgs('print',arguments,[],{},'args','kw')
+var args=$ns['args']
+var kw=$ns['kw']
+var end='\n'
+var res=''
+if(kw.__contains__('end')){end=kw.__getitem__('end')}
+for(var i=0;i<args.length;i++){
+res +=args[i]
+if(i<args.length-1){res +=' '}
+}
+res +=end
+$stdout.write(res)
+}
+log=$print 
+function $prompt(src){return prompt(src)}
 function range(){
 var $ns=$MakeArgs('range',arguments,[],{},'args',null)
 var args=$ns['args']
@@ -810,9 +826,9 @@ if(arg<0){pos=items.length+pos}
 if(pos>=0 && pos<items.length){return items[pos]}
 else{$raise('IndexError','list index out of range')}
 }else if(isinstance(arg,slice)){
-var start=arg.start || 0
-var stop=arg.stop || this.length
-var step=arg.step || 1
+var start=arg.start===None ? 0 : arg.start
+var stop=arg.stop===None ? this.__len__(): arg.stop
+var step=arg.step===None ? 1 : arg.step
 if(start<0){start=int(this.length+start)}
 if(stop<0){stop=this.length+stop}
 var res=[],i=null,items=this.valueOf()
@@ -1048,9 +1064,9 @@ if(arg<0){pos=this.length+pos}
 if(pos>=0 && pos<this.length){return this.charAt(pos)}
 else{$raise('IndexError','string index out of range')}
 }else if(isinstance(arg,slice)){
-var start=arg.start || 0
-if(arg.stop===null){stop=this.__len__()}else{stop=arg.stop}
-var step=arg.step || 1
+var start=arg.start===None ? 0 : arg.start
+var stop=arg.stop===None ? this.__len__(): arg.stop
+var step=arg.step===None ? 1 : arg.step
 if(start<0){start=this.length+start}
 if(stop<0){stop=this.length+stop}
 var res='',i=null
@@ -1264,22 +1280,17 @@ else{return res}
 }
 function $string_join(obj){
 return function(iterable){
-if(!'__next__' in iterable){$raise('TypeError',
+if(!'__item__' in iterable){$raise('TypeError',
 "'"+str(iterable.__class__)+"' object is not iterable")}
 var res='',count=0
-while(true){
-try{
-var obj2=next(iterable)
+for(var i=0;i<iterable.length;i++){
+var obj2=iterable.__getitem__(i)
 if(!isinstance(obj2,str)){$raise('TypeError',
-"sequence item "+count+": expected str instance, "+str(obj2.__class__)+"found")}
+"sequence item "+count+": expected str instance, "+obj2.__class__+"found")}
 res +=obj2+obj
 count++
-}catch(err){
-if(err.name=='StopIteration'){break}
-throw err
 }
-}
-if(count==0){return str('')}
+if(count==0){return ''}
 res=res.substr(0,res.length-obj.length)
 return res
 }
@@ -2280,7 +2291,7 @@ stack.list[func_pos][1]=js2py[key]
 pos=func_pos+1
 }
 }
-var js2py={'alert':'$alert','prompt':'$prompt','confirm':'$confirm'}
+var js2py={'alert':'$alert','prompt':'$prompt','confirm':'$confirm','print':'$print'}
 for(key in js2py){
 pos=0
 while(true){
@@ -2500,6 +2511,7 @@ js=$py2js(src,debug).to_js()
 if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
 try{
 $run(js)
+document.$py_src.pop()
 }catch(err){$raise('ExecutionError',err.message)
 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
 else{throw err}
@@ -2810,8 +2822,7 @@ try{if(src.constructor==MouseEvent){return new $MouseEvent(src)}}
 catch(err){void(0)}
 try{if(src.constructor==KeyboardEvent){return new $DomWrapper(src)}}
 catch(err){void(0)}
-if(src.__class__!==undefined){return src}
-return new $DomObject(src)
+return src
 }
 }else{return src}
 }
@@ -2825,6 +2836,7 @@ err=new Error(name+": "+msg)
 err.name=name
 err.message=name+": "+msg
 err.py_error=true
+if($stderr!==null){$stderr.write(err.message)}
 throw err
 }
 function $UnsupportedOpType(op,class1,class2){
@@ -3402,13 +3414,6 @@ this.data.setData(name,value)
 $Clipboard.prototype.__setattr__=function(attr,value){
 eval("this.data."+attr+"=value")
 }
-function $DomObject(obj){
-this.obj=obj
-this.type=obj.constructor.toString()
-}
-$DomObject.prototype.__getattr__=function(attr){
-return getattr(this.obj,attr)
-}
 function $OptionsClass(parent){
 this.parent=parent
 this.__getattr__=function(attr){
@@ -3581,7 +3586,7 @@ if(isinstance($arg,$Kw)){
 if($arg.name.toLowerCase().substr(0,2)==="on"){
 eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
 }else if($arg.name.toLowerCase()=="style"){
-this.set_style($arg.value)
+elt.set_style($arg.value)
 }else{
 if($arg.value!==false){
 elt.setAttribute($arg.name.toLowerCase(),$arg.value)
@@ -3589,9 +3594,6 @@ elt.setAttribute($arg.name.toLowerCase(),$arg.value)
 }
 }
 }
-}
-if(elt && !elt.getAttribute('id')){
-elt.setAttribute('id',Math.random().toString(36).substr(2, 8))
 }
 return elt
 }
@@ -3613,6 +3615,7 @@ return getattr(this,attr)
 Node.prototype.__getitem__=function(key){
 return this.childNodes[key]
 }
+Node.prototype.__in__=function(other){return other.__contains__(this)}
 Node.prototype.__item__=function(key){
 return this.childNodes[key]
 }
