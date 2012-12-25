@@ -59,16 +59,16 @@ Brython follows the Python syntax:
 
 Brython supports most keywords and functions of Python 3 :
 <ul><li>keywords : <code>assert break continue def del elif else except False finally for global if import None pass return True try while </code>
-<li>built-in functions : <code>abs() all() any() bool() dict() enumerate() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
+<li>built-in functions : <code>abs() all() any() bool() dict() dir() enumerate() exec() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
 The following are not implemented : 
 <ul>
 <li>keywords <code>as class from is lambda nonlocal raise with yield</code>
 <li>amongst the built-in functions :
-<ul><li>some might be implemented in the future : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), dir(), divmod(), eval(), exec(), format(), frozenset(), globals() ,hex(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code></li>
-<li>while others are unlikely : <code>bytearray(), bytes(), compile(), hash(), help(), id(), memoryview(), property(), super(), __import__() </code></li>
-<li>some are irrelevant in the context of a web browser : <code>input(), open(), print()</code></li>
+<ul><li>some might be implemented in the future : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), eval(), format(), frozenset(), globals() ,hex(), id(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code></li>
+<li>while others are unlikely : <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code></li>
+<li>some are irrelevant in the context of a web browser : <code>input(), open()</code></li>
 <li>the complex number type (<code>j</code>) is not supported</li>
 </ul>
 </ul>
