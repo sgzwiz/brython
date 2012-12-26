@@ -26,8 +26,8 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
             upargs.push($args[i])
         }
     }
-    for(i=0;i<upargs.length;i++){
-        $arg=upargs[i]
+    for(var $i=0;$i<upargs.length;$i++){
+        $arg=upargs[$i]
         $PyVar=$JS2Py($arg)
         if(isinstance($arg,$Kw)){ // keyword argument
             $PyVar = $arg.value
@@ -46,11 +46,11 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
             }
             if($arg.name in $defaults){delete $defaults[$arg.name]}
         }else{ // positional arguments
-            if(i<$required.length){
-                eval($required[i]+"=$PyVar")
-                $ns[$required[i]]=$PyVar
-            } else if(i<$required.length+$def_names.length) {
-                $ns[$def_names[i-$required.length]]=$PyVar
+            if($i<$required.length){
+                eval($required[$i]+"=$PyVar")
+                $ns[$required[$i]]=$PyVar
+            } else if($i<$required.length+$def_names.length) {
+                $ns[$def_names[$i-$required.length]]=$PyVar
             } else if($other_args!=null){
                 eval('$ns["'+$other_args+'"].push($PyVar)')
             } else {
@@ -66,18 +66,18 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
 
 function $list_comp(loops,expr,cond){
     var py = 'res = []\n'
-    for(i=0;i<loops.length;i++){
+    for(var i=0;i<loops.length;i++){
         for(j=0;j<4*i;j++){py += ' '} // indent
         py += 'for '+loops[i][0]+' in '+loops[i][1]+':\n'
     }
     if(cond){
-        for(j=0;j<4*i;j++){py += ' '} // indent
+        for(var j=0;j<4*i;j++){py += ' '} // indent
         py += 'if '+cond+':\n'
         i++
     }
-    for(j=0;j<4*i;j++){py += ' '} // indent
+    for(var j=0;j<4*i;j++){py += ' '} // indent
     py += 'tvar = '+expr+'\n'
-    for(j=0;j<4*i;j++){py += ' '} // indent
+    for(var j=0;j<4*i;j++){py += ' '} // indent
     py += 'res.append(tvar)'
     var js = $py2js(py).to_js()
     eval(js)
@@ -1249,7 +1249,8 @@ function $run(js){
 
 function brython(debug){
     var elts = document.getElementsByTagName("script")
-    for($i=0;$i<elts.length;$i++){
+    
+    for(var $i=0;$i<elts.length;$i++){
         var elt = elts[$i]
         if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
