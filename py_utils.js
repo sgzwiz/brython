@@ -17,7 +17,8 @@ function $JS2Py(src){
             catch(err){void(0)}
             try{if(src.constructor==KeyboardEvent){return new $DomWrapper(src)}}
             catch(err){void(0)}
-            return src
+            if(src.__class__!==undefined){return src}
+            return new $DomWrapper(src)
         }
     }else{return src}
 }
