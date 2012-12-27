@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Brython test</title>
+        <meta charset="iso-8859-1">
+        <script src="/py_tokenizer.js"></script>
+        <script src="/py_utils.js"></script>
+        <script src="/py_classes.js"></script>
+        <script src="/py_list.js"></script>
+        <script src="/py_string.js"></script>
+        <script src="/py_dom.js"></script>
+        <script src="/py2js.js"></script>
+        <script src="/py_ajax.js"></script>
+    </head>
+    <body onLoad="brython(1)">
+        <script type="text/python">
+        geo = win.navigator.geolocation
+
+        def navi(pos):
+            xyz = pos.coords
+            display = "Your position"
+            doc <= H3(display)
+            ul = UL()
+            ul <= LI('latitude %s longitude %s (accuracy %f)' 
+                %(xyz.latitude,xyz.longitude,xyz.accuracy))
+            ul <= LI('timestamp %s' %pos.timestamp)
+            ul <= LI('altitude %f (accuracy %f)' 
+                %(xyz.altitude,xyz.altitudeAccuracy))
+            ul <= LI('heading %f' %xyz.heading)
+            ul <= LI('speed %f' %xyz.speed)
+            doc <= ul
+
+        def nonavi(error):
+            log(error)
+
+        if geo:
+            geo.getCurrentPosition(navi, nonavi)
+        else:
+            alert('geolocation not supported')
+        </script>
+    </body>
+</html>
