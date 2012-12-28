@@ -35,9 +35,20 @@ function $raise(name,msg) {
     err.name = name
     err.message = name+": "+msg;
     err.py_error = true
-    if($stderr!==null){$stderr.write(err.message)}
+    if(document.$stderr!==null){document.$stderr_buff = err.message}
     throw err
 }
+
+// default standard output and error
+// can be reset by sys.stdout or sys.stderr
+document.$stderr = null
+document.$stderr_buff = '' // buffer for standard output
+
+document.$stdout = {
+    write: function(data){console.log(data)}
+}
+
+
 
 function $UnsupportedOpType(op,class1,class2){
     $raise('TypeError',
