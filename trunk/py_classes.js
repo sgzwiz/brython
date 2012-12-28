@@ -650,7 +650,7 @@ function $print(){
 
 log = $print // compatibility with previous versions
 
-function $prompt(src){return prompt(src)}
+function $prompt(text,fill){return prompt(text,fill || '')}
 
 // range
 function range(){
