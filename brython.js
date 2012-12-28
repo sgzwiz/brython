@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20121225-174458
+// version 1.0.20121228-085720
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -127,14 +127,14 @@ this.$keys.push(key)
 this.$values.push(value)
 }
 $DictClass.prototype.items=function(){
-var res=[]
-for(var i=0;i<this.$keys.length;i++){
-res.push([this.$keys[i],this.$values[i]])
+return new $iterator(zip(this.$keys,this.$values),"dict_items")
 }
-return res
+$DictClass.prototype.keys=function(){
+return new $iterator(this.$keys,"dict keys")
 }
-$DictClass.prototype.keys=function(){return this.$keys}
-$DictClass.prototype.values=function(){return this.$values}
+$DictClass.prototype.values=function(){
+return new $iterator(this.$values,"dict values")
+}
 function dict(){
 if(arguments.length==0){return new $DictClass([],[])}
 var iterable=arguments[0]
@@ -159,7 +159,12 @@ res.push([i,iterator.__item__(i)])
 return res
 }
 function exec(src){
-$run($py2js(src,1).to_js())
+try{eval($py2js(src,1).to_js())}
+catch(err){
+if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+if(document.$stderr){document.$stderr.write(document.$stderr_buff)}
+else{throw(err)}
+}
 document.$py_src.pop()
 }
 function filter(){
@@ -435,9 +440,20 @@ return obj
 }
 $raise('TypeError',"'"+str(obj.__class__)+"' object is not iterable")
 }
+function $iterator(obj,info){
+this.__getattr__=function(attr){
+var res=this[attr]
+if(res===undefined){$raise('AttributeError',
+"'"+info+"' object has no attribute '"+attr+"'")}
+else{return res}
+}
+this.__len__=function(){return obj.__len__()}
+this.__item__=function(i){return obj.__item__(i)}
+this.toString=function(){return info+'('+obj.toString()+')'}
+}
 function len(obj){
 try{return obj.__len__()}
-catch(err){$raise('TypeError',"object of type "+str(obj.__class__)+" has no len()")}
+catch(err){$raise('TypeError',"object of type "+obj.__class__+" has no len()")}
 }
 function map(){
 var func=arguments[0],res=[],rank=0
@@ -521,10 +537,6 @@ $ObjectClass.prototype.__setattr__=function(attr,value){this[attr]=value}
 function object(){
 return new $ObjectClass()
 }
-$stderr=null
-$stdout={
-write: function(data){console.log(data)}
-}
 function $print(){
 var $ns=$MakeArgs('print',arguments,[],{},'args','kw')
 var args=$ns['args']
@@ -537,7 +549,7 @@ res +=args[i]
 if(i<args.length-1){res +=' '}
 }
 res +=end
-$stdout.write(res)
+document.$stdout.write(res)
 }
 log=$print 
 function $prompt(src){return prompt(src)}
@@ -1427,8 +1439,8 @@ upargs.push($Kw($args[i].arg.$keys[j],$args[i].arg.$values[j]))
 upargs.push($args[i])
 }
 }
-for(i=0;i<upargs.length;i++){
-$arg=upargs[i]
+for(var $i=0;$i<upargs.length;$i++){
+$arg=upargs[$i]
 $PyVar=$JS2Py($arg)
 if(isinstance($arg,$Kw)){
 $PyVar=$arg.value
@@ -1447,11 +1459,11 @@ throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"
 }
 if($arg.name in $defaults){delete $defaults[$arg.name]}
 }else{
-if(i<$required.length){
-eval($required[i]+"=$PyVar")
-$ns[$required[i]]=$PyVar
-}else if(i<$required.length+$def_names.length){
-$ns[$def_names[i-$required.length]]=$PyVar
+if($i<$required.length){
+eval($required[$i]+"=$PyVar")
+$ns[$required[$i]]=$PyVar
+}else if($i<$required.length+$def_names.length){
+$ns[$def_names[$i-$required.length]]=$PyVar
 }else if($other_args!=null){
 eval('$ns["'+$other_args+'"].push($PyVar)')
 }else{
@@ -1466,18 +1478,18 @@ return $ns
 }
 function $list_comp(loops,expr,cond){
 var py='res = []\n'
-for(i=0;i<loops.length;i++){
+for(var i=0;i<loops.length;i++){
 for(j=0;j<4*i;j++){py +=' '}
 py +='for '+loops[i][0]+' in '+loops[i][1]+':\n'
 }
 if(cond){
-for(j=0;j<4*i;j++){py +=' '}
+for(var j=0;j<4*i;j++){py +=' '}
 py +='if '+cond+':\n'
 i++
 }
-for(j=0;j<4*i;j++){py +=' '}
+for(var j=0;j<4*i;j++){py +=' '}
 py +='tvar = '+expr+'\n'
-for(j=0;j<4*i;j++){py +=' '}
+for(var j=0;j<4*i;j++){py +=' '}
 py +='res.append(tvar)'
 var js=$py2js(py).to_js()
 eval(js)
@@ -2498,24 +2510,15 @@ var dobj=new Date()
 times['total']=dobj.getTime()-t0
 return stack
 }
-function $run(js){
-eval(js)
-}
 function brython(debug){
 var elts=document.getElementsByTagName("script")
-for($i=0;$i<elts.length;$i++){
+for(var $i=0;$i<elts.length;$i++){
 var elt=elts[$i]
 if(elt.type=="text/python"){
 var src=(elt.innerHTML || elt.textContent)
 js=$py2js(src,debug).to_js()
 if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
-try{
-$run(js)
-document.$py_src.pop()
-}catch(err){$raise('ExecutionError',err.message)
-if(err.py_error===undefined){$raise('ExecutionError',err.message)}
-else{throw err}
-}
+exec(src)
 }
 }
 }var $operators={
@@ -2822,7 +2825,8 @@ try{if(src.constructor==MouseEvent){return new $MouseEvent(src)}}
 catch(err){void(0)}
 try{if(src.constructor==KeyboardEvent){return new $DomWrapper(src)}}
 catch(err){void(0)}
-return src
+if(src.__class__!==undefined){return src}
+return new $DomWrapper(src)
 }
 }else{return src}
 }
@@ -2836,8 +2840,13 @@ err=new Error(name+": "+msg)
 err.name=name
 err.message=name+": "+msg
 err.py_error=true
-if($stderr!==null){$stderr.write(err.message)}
+if(document.$stderr!==null){document.$stderr_buff=err.message}
 throw err
+}
+document.$stderr=null
+document.$stderr_buff='' 
+document.$stdout={
+write: function(data){console.log(data)}
 }
 function $UnsupportedOpType(op,class1,class2){
 $raise('TypeError',
