@@ -226,9 +226,13 @@ $FloatClass.prototype.toString = function(){
 $FloatClass.prototype.__bool__ = function(){return bool(this.value)}
     
 $FloatClass.prototype.__floordiv__ = function(other){
-    if(isinstance(other,int)){return float(Math.floor(this.value/other))}
-    else if(isinstance(other,float)){return float(Math.floor(this.value/other.value))}
-    else{$raise('TypeError',
+    if(isinstance(other,int)){
+        if(other===0){$raise('ZeroDivisionError','division by zero')}
+        else{return float(Math.floor(this.value/other))}
+    }else if(isinstance(other,float)){
+        if(!other.value){$raise('ZeroDivisionError','division by zero')}
+        else{return float(Math.floor(this.value/other.value))}
+    }else{$raise('TypeError',
         "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
     }
 }
@@ -236,6 +240,18 @@ $FloatClass.prototype.__floordiv__ = function(other){
 $FloatClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
 $FloatClass.prototype.__not_in__ = function(item){return !(item.__contains__(this))}
+
+$FloatClass.prototype.__truediv__ = function(other){
+    if(isinstance(other,int)){
+        if(other===0){$raise('ZeroDivisionError','division by zero')}
+        else{return float(this.value/other)}
+    }else if(isinstance(other,float)){
+        if(!other.value){$raise('ZeroDivisionError','division by zero')}
+        else{return float(this.value/other.value)}
+    }else{$raise('TypeError',
+        "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
+    }
+}
 
 // operations
 var $op_func = function(other){
@@ -246,7 +262,7 @@ var $op_func = function(other){
     }
 }
 $op_func += '' // source code
-var $ops = {'+':'add','-':'sub','*':'mul','/':'truediv','%':'mod'}
+var $ops = {'+':'add','-':'sub','*':'mul','%':'mod'}
 for($op in $ops){
     eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
 }
@@ -397,9 +413,13 @@ function $getNumClass(obj){
 Number.prototype.__class__ = $getNumClass(this)
 
 Number.prototype.__floordiv__ = function(other){
-    if(isinstance(other,int)){return Math.floor(this/other)}
-    else if(isinstance(other,float)){return float(Math.floor(this/other.value))}
-    else{$UnsupportedOpType("//","int",other.__class__)}
+    if(isinstance(other,int)){
+        if(other==0){$raise('ZeroDivisionError','division by zero')}
+        else{return Math.floor(this/other)}
+    }else if(isinstance(other,float)){
+        if(!other.value){$raise('ZeroDivisionError','division by zero')}
+        else{return float(Math.floor(this/other.value))}
+    }else{$UnsupportedOpType("//","int",other.__class__)}
 }
 
 Number.prototype.__getattr__ = function(attr){$raise('AttributeError',
@@ -441,6 +461,16 @@ Number.prototype.__setattr__ = function(attr,value){$raise('AttributeError',
 
 Number.prototype.__str__ = function(){return this.toString()}
 
+Number.prototype.__truediv__ = function(other){
+    if(isinstance(other,int)){
+        if(other==0){$raise('ZeroDivisionError','division by zero')}
+        else{return this/other}
+    }else if(isinstance(other,float)){
+        if(!other.value){$raise('ZeroDivisionError','division by zero')}
+        else{return float(this/other.value)}
+    }else{$UnsupportedOpType("//","int",other.__class__)}
+}
+
 // operations
 var $op_func = function(other){
     if(isinstance(other,int)){
@@ -454,7 +484,7 @@ var $op_func = function(other){
     }
 }
 $op_func += '' // source code
-var $ops = {'+':'add','-':'sub','/':'truediv','%':'mod'}
+var $ops = {'+':'add','-':'sub','%':'mod'}
 for($op in $ops){
     eval('Number.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
 }
