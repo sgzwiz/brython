@@ -1243,10 +1243,6 @@ function $py2js(src,debug){
     return stack
 }
 
-function $run(js){
-    eval(js)
-}
-
 function brython(debug){
     var elts = document.getElementsByTagName("script")
     
@@ -1256,13 +1252,7 @@ function brython(debug){
             var src = (elt.innerHTML || elt.textContent)
             js = $py2js(src,debug).to_js()
             if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
-            try{
-                $run(js)
-                document.$py_src.pop() // execution stack
-            }catch(err){$raise('ExecutionError',err.message)
-                if(err.py_error===undefined){$raise('ExecutionError',err.message)}
-                else{throw err}
-            }
+            exec(src)
         }
     }
 }
