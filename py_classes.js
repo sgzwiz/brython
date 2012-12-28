@@ -190,7 +190,12 @@ function enumerate(iterator){
 }
 
 function exec(src){
-    $run($py2js(src,1).to_js())
+    try{eval($py2js(src,1).to_js())}
+    catch(err){
+        if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+        if(document.$stderr){document.$stderr.write(document.$stderr_buff)}
+        else{throw(err)}
+    }    
     document.$py_src.pop() // remove from execution stack
 }         
 
@@ -628,12 +633,6 @@ function object(){
     return new $ObjectClass()
 }
 
-$stderr = null
-
-$stdout = {
-    write: function(data){console.log(data)}
-}
-
 function $print(){
     var $ns=$MakeArgs('print',arguments,[],{},'args','kw')
     var args = $ns['args']
@@ -646,7 +645,7 @@ function $print(){
         if(i<args.length-1){res += ' '}
     }
     res += end
-    $stdout.write(res)
+    document.$stdout.write(res)
 }
 
 log = $print // compatibility with previous versions
