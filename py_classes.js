@@ -152,16 +152,16 @@ $DictClass.prototype.__setitem__ = function(key,value){
 }
 
 $DictClass.prototype.items = function(){
-    var res=[]
-    for(var i=0;i<this.$keys.length;i++){
-        res.push([this.$keys[i],this.$values[i]])
-    }
-    return res
+    return new $iterator(zip(this.$keys,this.$values),"dict_items")
 }
 
-$DictClass.prototype.keys = function(){return this.$keys}
+$DictClass.prototype.keys = function(){
+    return new $iterator(this.$keys,"dict keys")
+}
 
-$DictClass.prototype.values = function(){return this.$values}  
+$DictClass.prototype.values = function(){
+    return new $iterator(this.$values,"dict values")
+}
 
 function dict(){
     if(arguments.length==0){return new $DictClass([],[])}
@@ -521,9 +521,21 @@ function iter(obj){
     $raise('TypeError',"'"+str(obj.__class__)+"' object is not iterable")
 }
 
+function $iterator(obj,info){
+    this.__getattr__ = function(attr){
+        var res = this[attr]
+        if(res===undefined){$raise('AttributeError',
+            "'"+info+"' object has no attribute '"+attr+"'")}
+        else{return res}
+    }
+    this.__len__ = function(){return obj.__len__()}
+    this.__item__ = function(i){return obj.__item__(i)}
+    this.toString = function(){return info+'('+obj.toString()+')'}
+}
+
 function len(obj){
     try{return obj.__len__()}
-    catch(err){$raise('TypeError',"object of type "+str(obj.__class__)+" has no len()")}
+    catch(err){$raise('TypeError',"object of type "+obj.__class__+" has no len()")}
 }
 
 function map(){
