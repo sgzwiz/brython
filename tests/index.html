@@ -11,10 +11,23 @@
 <script src="/py_dom.js"></script>
 <script src="/py2js.js"></script>
 <script src="/py_ajax.js"></script>
+<script src="/py_local_storage.js"></script>
 
 <script type="text/python">
 import sys
+import time
 import random
+import dis
+
+output = ''
+
+sys.stdout = object()
+def write(data):
+    doc["console"].value += str(data)
+sys.stdout.write = write
+
+sys.stderr = object()
+sys.stderr.write = write
 
 def to_str(x):
     return str(x)
@@ -32,31 +45,25 @@ def load(_name):
     req.on_complete = on_complete
     req.open('GET',_name+'?foo=%s' %random.random(),False)
     req.send()
-</script>
-<script>
-var has_ls = typeof(Storage)!=="undefined"
-ctxt = ''
 
-function show_console(){
-    document.getElementById("console").value = ctxt
-}
-function show_js(){
-    var src_elt = document.getElementById("src")
-    var src = src_elt.value
-    var stack = $py2js(src)
-    ctxt = document.getElementById("console").value
-    document.getElementById("console").value = stack.to_js()
-}
-function run(){
-    document.getElementById("console").value=''
-    var src_elt = document.getElementById("src")
-    var src = src_elt.value
-    if(has_ls){localStorage["py_src"]=src}
-    var stack = $py2js(src,null,1)
-    var js = stack.to_js()
-    try{$run(js)}
-    catch(err){log(err.message)}
-}
+def show_console():
+    doc["console"].value = output
+
+def run():
+    global output
+    doc["console"].value=''
+    src = doc["src"].value
+    if sys.has_local_storage:
+        local_storage["py_src"]=src
+    t0 = time.time()
+    exec(src)
+    output = doc["console"].value
+    print('<done in %s ms>' %(time.time()-t0))
+
+def show_js():
+    src = doc["src"].value
+    doc["console"].value = dis.dis(src)
+
 </script>
 </head>
 <body onload="brython()">
