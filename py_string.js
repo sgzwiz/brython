@@ -18,6 +18,8 @@ String.prototype.__contains__ = function(item){
         return False
     }
 
+String.prototype.__eq__ = function(other){return other===this.valueOf()}
+
 String.prototype.__getattr__ = function(attr){
     obj=this
     switch(attr){
@@ -185,6 +187,8 @@ String.prototype.__mul__ = function(other){
     return $res
 }
 
+String.prototype.__ne__ = function(other){return other!==this.valueOf()}
+
 String.prototype.__next__ = function(){
     if(this.iter==null){this.iter==0}
     if(this.iter<this.value.length){
@@ -211,7 +215,7 @@ var $comp_func = function(other){
     return this > other
 }
 $comp_func += '' // source code
-var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
+var $comps = {'>':'gt','>=':'ge','<':'lt','<=':'le'}
 for($op in $comps){
     eval("String.prototype.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
 }
