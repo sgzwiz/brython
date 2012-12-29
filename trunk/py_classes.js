@@ -36,6 +36,13 @@ function bool(obj){ // return true or false
     return true
 }
 
+function $class(obj,info){
+    this.obj = obj
+    this.info = info
+    this.__class__ = Object
+    this.toString = function(){return "<class '"+info+"'>"}
+}
+
 function $confirm(src){return confirm(src)}
 
 // dictionary
@@ -193,7 +200,7 @@ function exec(src){
     try{eval($py2js(src,1).to_js())}
     catch(err){
         if(err.py_error===undefined){$raise('ExecutionError',err.message)}
-        if(document.$stderr){document.$stderr.write(document.$stderr_buff)}
+        if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
         else{throw(err)}
     }    
     document.$py_src.pop() // remove from execution stack
@@ -565,6 +572,7 @@ function $iterator(obj,info){
     }
     this.__len__ = function(){return obj.__len__()}
     this.__item__ = function(i){return obj.__item__(i)}
+    this.__class__ = new $class(this,info)
     this.toString = function(){return info+'('+obj.toString()+')'}
 }
 
@@ -671,7 +679,7 @@ function $print(){
     var res = ''
     if(kw.__contains__('end')){end=kw.__getitem__('end')}
     for(var i=0;i<args.length;i++){
-        res += args[i]
+        res += str(args[i])
         if(i<args.length-1){res += ' '}
     }
     res += end
@@ -885,16 +893,20 @@ function zip(){
 
 // built-in constants : True, False, None
 
-True = true //new $TrueClass()
+True = true
+False = false
 
-False = false //new $FalseClass()
+Boolean.prototype.__class__ = new $class(Boolean,'bool')
 
-Boolean.prototype.toString = function(){
-    if(this.valueOf()){return "True"}else{return "False"}
-}
 Boolean.prototype.__eq__ = function(other){
+    console.log('eq boolean')
     if(this.valueOf()){return !!other}else{return !other}
 }
+Boolean.prototype.toString = function(){
+    console.log('bool to string')
+    if(this.valueOf()){return "True"}else{return "False"}
+}
+console.log(true)
 
 function $NoneClass(){
     this.__class__ = "None"
