@@ -471,7 +471,7 @@ Number.prototype.__str__ = function(){return this.toString()}
 Number.prototype.__truediv__ = function(other){
     if(isinstance(other,int)){
         if(other==0){$raise('ZeroDivisionError','division by zero')}
-        else{return this/other}
+        else{return float(this/other)}
     }else if(isinstance(other,float)){
         if(!other.value){$raise('ZeroDivisionError','division by zero')}
         else{return float(this/other.value)}
@@ -896,7 +896,9 @@ function zip(){
 True = true
 False = false
 
-Boolean.prototype.__class__ = new $class(Boolean,'bool')
+function bool(){}
+
+Boolean.prototype.__class__ = bool
 
 Boolean.prototype.__eq__ = function(other){
     if(this.valueOf()){return !!other}else{return !other}
@@ -906,7 +908,7 @@ Boolean.prototype.toString = function(){
 }
 
 function $NoneClass(){
-    this.__class__ = "None"
+    this.__class__ = new $class(this,"NoneType")
     this.value = null
     this.__bool__ = function(){return False}
     this.__eq__ = function(other){return other.__class__=="None"}
