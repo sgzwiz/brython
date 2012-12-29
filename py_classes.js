@@ -899,14 +899,11 @@ False = false
 Boolean.prototype.__class__ = new $class(Boolean,'bool')
 
 Boolean.prototype.__eq__ = function(other){
-    console.log('eq boolean')
     if(this.valueOf()){return !!other}else{return !other}
 }
 Boolean.prototype.toString = function(){
-    console.log('bool to string')
     if(this.valueOf()){return "True"}else{return "False"}
 }
-console.log(true)
 
 function $NoneClass(){
     this.__class__ = "None"
