@@ -158,6 +158,8 @@ function $OptionsClass(parent){ // parent is a SELECT tag
     this.get_remove = function(arg){parent.options.remove(arg)}
 }
 
+HTMLDocument.prototype.__class__ = $DomClass(document)
+
 HTMLDocument.prototype.__delitem__ = function(key){
     if(typeof key==="string"){
         var res = document.getElementById(key)
@@ -179,7 +181,7 @@ HTMLDocument.prototype.__getattr__ = function(attr){return getattr(this,attr)}
 HTMLDocument.prototype.__getitem__ = function(key){
     if(typeof key==="string"){
         var res = document.getElementById(key)
-        if(res){return res}
+        if(res){res.__class__= $DomClass(res);return res}
         else{$raise("KeyError",key)}
     }else{
         try{
@@ -190,6 +192,12 @@ HTMLDocument.prototype.__getitem__ = function(key){
             $raise("KeyError",str(key))
         }
     }
+}
+
+HTMLDocument.prototype.__item__ = function(i){
+    var res = document.childNodes[i]
+    res.__class__ = $DomClass(res)
+    return res
 }
 
 HTMLDocument.prototype.__le__ = function(other){
@@ -203,6 +211,8 @@ HTMLDocument.prototype.__le__ = function(other){
         document.body.appendChild(txt)
     } else {document.body.appendChild(other)}
 }
+
+HTMLDocument.prototype.__len__ = function(){return document.childNodes.length}
 
 HTMLDocument.prototype.__setattr__ = function(attr,value){
     if(attr in $events){document.addEventListener(attr.substr(2),value)}
@@ -322,6 +332,17 @@ function $Tag(class_name,args){
     return elt
 }
 
+
+function $DomClass(elt){
+    var s = elt.toString() // string [object <classname>]
+    var pattern = /\[object (.*)\]/
+    var res = pattern.exec(s)
+    var dclass = eval(res[1])
+    dclass.__class__ = Object
+    dclass.toString = function(){return '<class '+res[1]+'>'}
+    return dclass
+}
+
 Node.prototype.__add__ = function(other){
     var res = $AbstractTag() // abstract tag
     res.children = [this]
@@ -341,13 +362,17 @@ Node.prototype.__getattr__ = function(attr){
 }
 
 Node.prototype.__getitem__ = function(key){
-    return this.childNodes[key]
+    var res = this.childNodes[key]
+    res.__class__ = $DomClass(res)
+    return res
 }
 
 Node.prototype.__in__ = function(other){return other.__contains__(this)}
 
 Node.prototype.__item__ = function(key){ // for iteration
-    return this.childNodes[key]
+    var res = this.childNodes[key]
+    res.__class__ = $DomClass(res)
+    return res
 }
 
 Node.prototype.__le__ = function(other){
@@ -399,8 +424,6 @@ Node.prototype.__setitem__ = function(key,value){
     this.childNodes[key]=value
 }
 
-Node.prototype.toString = function(){return this.get_html()}
-    
 Node.prototype.get_clone = function(){
     res = this.cloneNode(true)
     // copy events - may not work since there is no getEventListener()
@@ -484,6 +507,14 @@ Node.prototype.set_text = function(value){
 }
 
 Node.prototype.set_value = function(value){this.value = value.toString()}
+
+HTMLHtmlElement.prototype.__class__ = '<class HTMLHtmlElement>'
+HTMLHtmlElement.prototype.__item__ = function(key){ // for iteration
+    var res = this.childNodes[key]
+    res.__class__ = new $DomClass(res)
+    return res
+}
+HTMLHtmlElement.prototype.__len__ = function(){return this.childNodes.length}
 
 function A(){return $Tag('A',arguments)}
 
