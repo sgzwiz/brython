@@ -74,8 +74,13 @@ function $tokenize(src){
         // check indentation
         if(stack.length==0 || $last(stack)[0]=='newline'){
             var indent = 0
-            while(pos<src.length && src.charAt(pos)==" "){
-                indent++;pos++
+            while(pos<src.length){
+                if(src.charAt(pos)==" "){indent++;pos++}
+                else if(src.charAt(pos)=="\t"){ 
+                    // tab : fill until indent is multiple of 8
+                    indent++;pos++
+                    while(indent%8>0){indent++}
+                }else{break}
             }
             // ignore empty lines
             if(src.charAt(pos)=='\n'){pos++;lnum++;continue}
