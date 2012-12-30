@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20121228-085720
+// version 1.0.20121230-093939
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -32,6 +32,12 @@ if(obj){return true}else{return false}
 }else if('__bool__' in obj){return obj.__bool__()}
 else if('__len__' in obj){return obj.__len__()>0}
 return true
+}
+function $class(obj,info){
+this.obj=obj
+this.info=info
+this.__class__=Object
+this.toString=function(){return "<class '"+info+"'>"}
 }
 function $confirm(src){return confirm(src)}
 function $DictClass($keys,$values){
@@ -162,7 +168,7 @@ function exec(src){
 try{eval($py2js(src,1).to_js())}
 catch(err){
 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
-if(document.$stderr){document.$stderr.write(document.$stderr_buff)}
+if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
 else{throw(err)}
 }
 document.$py_src.pop()
@@ -190,14 +196,29 @@ return str(res)
 }
 $FloatClass.prototype.__bool__=function(){return bool(this.value)}
 $FloatClass.prototype.__floordiv__=function(other){
-if(isinstance(other,int)){return float(Math.floor(this.value/other))}
-else if(isinstance(other,float)){return float(Math.floor(this.value/other.value))}
-else{$raise('TypeError',
+if(isinstance(other,int)){
+if(other===0){$raise('ZeroDivisionError','division by zero')}
+else{return float(Math.floor(this.value/other))}
+}else if(isinstance(other,float)){
+if(!other.value){$raise('ZeroDivisionError','division by zero')}
+else{return float(Math.floor(this.value/other.value))}
+}else{$raise('TypeError',
 "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
 }
 }
 $FloatClass.prototype.__in__=function(item){return item.__contains__(this)}
 $FloatClass.prototype.__not_in__=function(item){return !(item.__contains__(this))}
+$FloatClass.prototype.__truediv__=function(other){
+if(isinstance(other,int)){
+if(other===0){$raise('ZeroDivisionError','division by zero')}
+else{return float(this.value/other)}
+}else if(isinstance(other,float)){
+if(!other.value){$raise('ZeroDivisionError','division by zero')}
+else{return float(this.value/other.value)}
+}else{$raise('TypeError',
+"unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
+}
+}
 var $op_func=function(other){
 if(isinstance(other,int)){return float(this.value-other)}
 else if(isinstance(other,float)){return float(this.value-other.value)}
@@ -206,7 +227,7 @@ else{$raise('TypeError',
 }
 }
 $op_func +='' 
-var $ops={'+':'add','-':'sub','*':'mul','/':'truediv','%':'mod'}
+var $ops={'+':'add','-':'sub','*':'mul','%':'mod'}
 for($op in $ops){
 eval('$FloatClass.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
 }
@@ -330,9 +351,13 @@ return "int"
 }
 Number.prototype.__class__=$getNumClass(this)
 Number.prototype.__floordiv__=function(other){
-if(isinstance(other,int)){return Math.floor(this/other)}
-else if(isinstance(other,float)){return float(Math.floor(this/other.value))}
-else{$UnsupportedOpType("//","int",other.__class__)}
+if(isinstance(other,int)){
+if(other==0){$raise('ZeroDivisionError','division by zero')}
+else{return Math.floor(this/other)}
+}else if(isinstance(other,float)){
+if(!other.value){$raise('ZeroDivisionError','division by zero')}
+else{return float(Math.floor(this/other.value))}
+}else{$UnsupportedOpType("//","int",other.__class__)}
 }
 Number.prototype.__getattr__=function(attr){$raise('AttributeError',
 "'int' object has no attribute '"+attr+"'")}
@@ -364,6 +389,15 @@ else{$UnsupportedOpType("//",int,other.__class__)}
 Number.prototype.__setattr__=function(attr,value){$raise('AttributeError',
 "'int' object has no attribute "+attr+"'")}
 Number.prototype.__str__=function(){return this.toString()}
+Number.prototype.__truediv__=function(other){
+if(isinstance(other,int)){
+if(other==0){$raise('ZeroDivisionError','division by zero')}
+else{return float(this/other)}
+}else if(isinstance(other,float)){
+if(!other.value){$raise('ZeroDivisionError','division by zero')}
+else{return float(this/other.value)}
+}else{$UnsupportedOpType("//","int",other.__class__)}
+}
 var $op_func=function(other){
 if(isinstance(other,int)){
 var res=this.valueOf()-other.valueOf()
@@ -376,7 +410,7 @@ else{$raise('TypeError',
 }
 }
 $op_func +='' 
-var $ops={'+':'add','-':'sub','/':'truediv','%':'mod'}
+var $ops={'+':'add','-':'sub','%':'mod'}
 for($op in $ops){
 eval('Number.prototype.__'+$ops[$op]+'__ = '+$op_func.replace(/-/gm,$op))
 }
@@ -449,6 +483,7 @@ else{return res}
 }
 this.__len__=function(){return obj.__len__()}
 this.__item__=function(i){return obj.__item__(i)}
+this.__class__=new $class(this,info)
 this.toString=function(){return info+'('+obj.toString()+')'}
 }
 function len(obj){
@@ -545,14 +580,14 @@ var end='\n'
 var res=''
 if(kw.__contains__('end')){end=kw.__getitem__('end')}
 for(var i=0;i<args.length;i++){
-res +=args[i]
+res +=str(args[i])
 if(i<args.length-1){res +=' '}
 }
 res +=end
 document.$stdout.write(res)
 }
 log=$print 
-function $prompt(src){return prompt(src)}
+function $prompt(text,fill){return prompt(text,fill || '')}
 function range(){
 var $ns=$MakeArgs('range',arguments,[],{},'args',null)
 var args=$ns['args']
@@ -727,16 +762,21 @@ res.push(line)
 rank++
 }
 }
-True=true 
-False=false 
-Boolean.prototype.toString=function(){
-if(this.valueOf()){return "True"}else{return "False"}
+True=true
+False=false
+function $bool(){
+this.__class__=Object
 }
+$bool.toString=function(){return "<class 'bool'>" }
+Boolean.prototype.__class__=$bool
 Boolean.prototype.__eq__=function(other){
 if(this.valueOf()){return !!other}else{return !other}
 }
+Boolean.prototype.toString=function(){
+if(this.valueOf()){return "True"}else{return "False"}
+}
 function $NoneClass(){
-this.__class__="None"
+this.__class__=new $class(this,"NoneType")
 this.value=null
 this.__bool__=function(){return False}
 this.__eq__=function(other){return other.__class__=="None"}
@@ -1028,6 +1068,7 @@ if(this.substr(i,nbcar)==item){return True}
 }
 return False
 }
+String.prototype.__eq__=function(other){return other===this.valueOf()}
 String.prototype.__getattr__=function(attr){
 obj=this
 switch(attr){
@@ -1183,6 +1224,7 @@ $res=''
 for(var i=0;i<other;i++){$res+=this.valueOf()}
 return $res
 }
+String.prototype.__ne__=function(other){return other!==this.valueOf()}
 String.prototype.__next__=function(){
 if(this.iter==null){this.iter==0}
 if(this.iter<this.value.length){
@@ -1204,7 +1246,7 @@ if(typeof other !=="string"){$raise('TypeError',
 return this > other
 }
 $comp_func +='' 
-var $comps={'>':'gt','>=':'ge','<':'lt','<=':'le','==':'eq','!=':'ne'}
+var $comps={'>':'gt','>=':'ge','<':'lt','<=':'le'}
 for($op in $comps){
 eval("String.prototype.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
 }
@@ -2588,8 +2630,12 @@ var flag=false
 var car=src.charAt(pos)
 if(stack.length==0 || $last(stack)[0]=='newline'){
 var indent=0
-while(pos<src.length && src.charAt(pos)==" "){
+while(pos<src.length){
+if(src.charAt(pos)==" "){indent++;pos++}
+else if(src.charAt(pos)=="\t"){
 indent++;pos++
+while(indent%8>0){indent++}
+}else{break}
 }
 if(src.charAt(pos)=='\n'){pos++;lnum++;continue}
 if(stack.length>1){
@@ -3464,6 +3510,7 @@ return parent.options.namedItem(name)
 }
 this.get_remove=function(arg){parent.options.remove(arg)}
 }
+HTMLDocument.prototype.__class__=$DomClass(document)
 HTMLDocument.prototype.__delitem__=function(key){
 if(typeof key==="string"){
 var res=document.getElementById(key)
@@ -3483,7 +3530,7 @@ HTMLDocument.prototype.__getattr__=function(attr){return getattr(this,attr)}
 HTMLDocument.prototype.__getitem__=function(key){
 if(typeof key==="string"){
 var res=document.getElementById(key)
-if(res){return res}
+if(res){res.__class__=$DomClass(res);return res}
 else{$raise("KeyError",key)}
 }else{
 try{
@@ -3494,6 +3541,11 @@ return res
 $raise("KeyError",str(key))
 }
 }
+}
+HTMLDocument.prototype.__item__=function(i){
+var res=document.childNodes[i]
+res.__class__=$DomClass(res)
+return res
 }
 HTMLDocument.prototype.__le__=function(other){
 if(isinstance(other,$AbstractTag)){
@@ -3506,6 +3558,7 @@ txt=document.createTextNode(str(other))
 document.body.appendChild(txt)
 }else{document.body.appendChild(other)}
 }
+HTMLDocument.prototype.__len__=function(){return document.childNodes.length}
 HTMLDocument.prototype.__setattr__=function(attr,value){
 if(attr in $events){document.addEventListener(attr.substr(2),value)}
 else{document[attr]=value}
@@ -3606,6 +3659,15 @@ elt.setAttribute($arg.name.toLowerCase(),$arg.value)
 }
 return elt
 }
+function $DomClass(elt){
+var s=elt.toString()
+var pattern=/\[object(.*)\]/
+var res=pattern.exec(s)
+var dclass=eval(res[1])
+dclass.__class__=Object
+dclass.toString=function(){return '<class '+res[1]+'>'}
+return dclass
+}
 Node.prototype.__add__=function(other){
 var res=$AbstractTag()
 res.children=[this]
@@ -3622,11 +3684,15 @@ if('get_'+attr in this){return this['get_'+attr]()}
 return getattr(this,attr)
 }
 Node.prototype.__getitem__=function(key){
-return this.childNodes[key]
+var res=this.childNodes[key]
+res.__class__=$DomClass(res)
+return res
 }
 Node.prototype.__in__=function(other){return other.__contains__(this)}
 Node.prototype.__item__=function(key){
-return this.childNodes[key]
+var res=this.childNodes[key]
+res.__class__=$DomClass(res)
+return res
 }
 Node.prototype.__le__=function(other){
 if(isinstance(other,$AbstractTag)){
@@ -3670,7 +3736,6 @@ else{setattr(this,attr,value)}
 Node.prototype.__setitem__=function(key,value){
 this.childNodes[key]=value
 }
-Node.prototype.toString=function(){return this.get_html()}
 Node.prototype.get_clone=function(){
 res=this.cloneNode(true)
 for(var evt in $events){
@@ -3736,6 +3801,13 @@ this.innerText=str(value)
 this.textContent=str(value)
 }
 Node.prototype.set_value=function(value){this.value=value.toString()}
+HTMLHtmlElement.prototype.__class__='<class HTMLHtmlElement>'
+HTMLHtmlElement.prototype.__item__=function(key){
+var res=this.childNodes[key]
+res.__class__=new $DomClass(res)
+return res
+}
+HTMLHtmlElement.prototype.__len__=function(){return this.childNodes.length}
 function A(){return $Tag('A',arguments)}
 var $src=A+'' 
 $tags=['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
