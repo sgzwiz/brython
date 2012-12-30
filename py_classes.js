@@ -660,6 +660,7 @@ function next(obj){
 function $not(obj){return !bool(obj)}
 
 function $ObjectClass(){
+    this.__class__ = "<class 'object'>"
 }
 $ObjectClass.prototype.__getattr__ = function(attr){
     if(attr in this){return this[attr]}
