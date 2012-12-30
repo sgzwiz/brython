@@ -197,13 +197,12 @@ function enumerate(iterator){
 }
 
 function exec(src){
-    try{eval($py2js(src,1).to_js())}
+    try{eval($py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){$raise('ExecutionError',err.message)}
         if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
         else{throw(err)}
-    }    
-    document.$py_src.pop() // remove from execution stack
+    }
 }         
 
 function filter(){
@@ -375,7 +374,7 @@ function $import(){
             try{eval(res)}catch(err){$raise('ImportError',err.message)}
         }else{
             // if module was found, res is set to the Python source code
-            var stack = $py2js(res)
+            var stack = $py2js(res,module)
             // insert module name as a JS object
             stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
             // search for module-level names
@@ -405,9 +404,11 @@ function $import(){
                 stack.list[$mlname_pos][1]=module+'.'+stack.list[$mlname_pos][1]
                 $pos = $mlname_pos+1
             }
-            eval(stack.to_js())
-            // remove from execution stack
-            document.$py_src.pop()
+            try{
+                eval(stack.to_js())
+            }catch(err){
+                $raise(err.name,'Error in imported module '+module+'\n'+err.message,module)
+            }
         }
     }
 }

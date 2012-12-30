@@ -134,17 +134,15 @@ function $multiple_assign(indent,targets,right_expr,assign_pos){
 var $OpeningBrackets = $List2Dict('(','[','{')
 var $ClosingBrackets = $List2Dict(')',']','}')
 
-function $py2js(src,debug){
-    // context is "main" for the main script, the module name if import   
-    document.$debug = debug
+function $py2js(src,module){
     var i = 0
     src = src.replace(/\r\n/gm,'\n')
     while (src.length>0 && (src.charAt(0)=="\n" || src.charAt(0)=="\r")){
         src = src.substr(1)
     }
     if(src.charAt(src.length-1)!="\n"){src+='\n'}
-    if(document.$py_src){document.$py_src.push(src)}
-    else{document.$py_src=[src]}
+    if(module===undefined){module="__main__"}
+    document.$py_src[module]=src
     
     // map position to line number
     var pos2line = {}
@@ -165,7 +163,7 @@ function $py2js(src,debug){
     var $err_num = 0
     // add a line number at the end of each line in source code
     // used for traceback
-    if(debug){
+    if(document.$debug){
         var pos = 0
         var s_nl = 0
         while(true){
@@ -175,7 +173,7 @@ function $py2js(src,debug){
             if(!stack.list[indent_pos+1].match(['keyword','else']) &&
                 !stack.list[indent_pos+1].match(['keyword','elif']) &&
                 !stack.list[indent_pos+1].match(['keyword','except'])){
-                stack.list.splice(s_nl,0,stack.list[indent_pos],
+                stack.list.splice(s_nl,0,['indent',stack.list[indent_pos][1]],
                     ['code','document.line_num='+stack.list[nl][1],stack.list[nl][2]],
                     ['newline','\n'])
                 s_nl = nl+4
@@ -367,10 +365,16 @@ function $py2js(src,debug){
         if(arg_start[0]!='bracket' || arg_start[1]!='('){
             $raise("SyntaxError","missing ( after function name")
         }
+        var end_def = stack.find_next_at_same_level(def_pos,"delimiter",":")
+        if(end_def==null){
+            $raise("SyntaxError","Unable to find definition end "+end_def)
+        }
+        var has_args = false
         if(func_token[0]=='id' && arg_start[0]=='bracket'
             && arg_start[1]=='(' && 
             !(stack.list[def_pos+3].match(["bracket",")"]))){
             // function definition
+            has_args = true
             arg_end = stack.find_next_matching(def_pos+2)
             // mark ids as argument ids
             for(var i=def_pos+2;i<arg_end;i++){
@@ -416,11 +420,7 @@ function $py2js(src,debug){
                     }
                 }
             }
-             // insert code after end of function definition (next delimiter ':')
-            var end_def = stack.find_next_at_same_level(def_pos,"delimiter",":")
-            if(end_def==null){
-                $raise("SyntaxError","Unable to find definition end "+end_def)
-            }
+            // insert code after end of function definition (next delimiter ':')
             var arg_code = '"'+func_token[1]+'",arguments,'
             
             if(required.length==0){arg_code+='[],'}
@@ -446,11 +446,35 @@ function $py2js(src,debug){
             else{arg_code += '"'+other_args+'",'}
             if(other_kw==null){arg_code+="null"}
             else{arg_code += '"'+other_kw+'"'}
-            var fcode = f_indent+'for($var in $ns){eval("var "+$var+"=$ns[$var]")}'
-            stack.list.splice(end_def+1,0,
-                ['code',f_indent+"$ns=$MakeArgs("+arg_code+")"+fcode,stack.list[end_def][2]])
+        }
+        var block = stack.find_block(def_pos) // begins with [delimiter,newline,indent]
+        var block_indent = stack.list[block[0]+2][1]
+        stack.list.splice(block[0]+2,0,['indent',block_indent],
+            ['code','document.$func_info=["'+module+'","'+func_token[1]+'"]'],
+            ['newline','\n'])
+        if(has_args){stack.list.splice(block[0]+5,0,
+            ['indent',block_indent],['code',"$ns=$MakeArgs("+arg_code+")"],['newline','\n'],
+            ['indent',block_indent],['code','for($var in $ns){eval("var "+$var+"=$ns[$var]")}'],
+            ['newline','\n'])
+        }
+        if(document.$debug){
+            var block = stack.find_block(def_pos) // begins with [delimiter,newline,indent]
+            // insert a try clause after func_info
+            stack.list.splice(block[0]+5,0,['indent',block_indent],
+                ['code','try'], // not "keyword", would be treated as Python "try:"
+                ['bracket','{'],['newline','\n'])
+            // indent all lines in function block
+            for(var i=block[0]+8;i<block[1]+4;i++){
+                if(stack.list[i][0]==='indent'){
+                    stack.list[i][1]=stack.list[i][1]+4
+                }
+            }
+            // end with catch
+            var err_code = '}catch(err'+$err_num+'){$raise(err'+$err_num+'.name,err'+$err_num+'.message)}'
+            stack.list.splice(block[1]+4,0,['newline','\n'],['indent',block_indent],
+                ['code',err_code]) 
        }
-        pos = def_pos-1
+       pos = def_pos-1
     }
 
     var dobj = new Date()
@@ -678,7 +702,7 @@ function $py2js(src,debug){
         stack.list = stack.list.slice(0,if_pos-r1.end+r1.start-1).concat(seq).concat(tail)
         pos = if_pos-1
     }
-    
+
     // replace if,elif,else,def,for,try,catch,finally by equivalents
     var kws = {'if':'if','else':'else','elif':'else if',
         'def':'function','for':'for','while':'while',
@@ -719,7 +743,7 @@ function $py2js(src,debug){
             if(kw in has_parenth){
                 if(kw=="for"){
                     loop_id++
-                    var block_indent = stack.indent(block[0]+1)
+                    var block_indent = stack.indent(block[0]+2)
                     var arg_list = stack.atom_at(kw_pos+1,true) // accept implicit tuple
                     var _in = stack.atom_at(arg_list.end+1)
                     var _in_list = stack.list.slice(_in.start,_in.end+1)
@@ -1227,32 +1251,22 @@ function $py2js(src,debug){
         pos = $list_pos
     }
 
-    // add a try/except clause in functions, for traceback XXX
-    var pos = 0
-    while(true){
-        var func_pos = stack.find_next(pos,'keyword','function')
-        if(func_pos===null){break}
-        var br_pos = stack.find_next_at_same_level(func_pos,'bracket','{')
-        var end_pos = stack.find_next_matching(br_pos)
-        var block = new Stack(stack.list.slice(br_pos+1,end_pos))
-        pos = func_pos+1
-    }
-
     var dobj = new Date()
     times['total'] = dobj.getTime()-t0
 
+    if(document.$debug==2){console.log(stack.to_js())}
     return stack
 }
 
 function brython(debug){
+    document.$debug = debug
+    document.$py_src = {}
     var elts = document.getElementsByTagName("script")
     
     for(var $i=0;$i<elts.length;$i++){
         var elt = elts[$i]
         if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
-            js = $py2js(src,debug).to_js()
-            if(debug==2){document.write('<textarea cols=120 rows=30>'+js+'</textarea>')}
             exec(src)
         }
     }
