@@ -896,13 +896,14 @@ function zip(){
 True = true
 False = false
 
-function bool(){}
+function $bool(){}
 
-Boolean.prototype.__class__ = bool
+Boolean.prototype.__class__ = $bool
 
 Boolean.prototype.__eq__ = function(other){
     if(this.valueOf()){return !!other}else{return !other}
 }
+
 Boolean.prototype.toString = function(){
     if(this.valueOf()){return "True"}else{return "False"}
 }
