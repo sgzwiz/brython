@@ -916,7 +916,7 @@ function $NoneClass(){
     this.__class__ = new $class(this,"NoneType")
     this.value = null
     this.__bool__ = function(){return False}
-    this.__eq__ = function(other){return other.__class__=="None"}
+    this.__eq__ = function(other){return other===None}
     this.__str__ = function(){return 'None'}
 }
 None = new $NoneClass()
