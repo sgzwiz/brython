@@ -896,7 +896,10 @@ function zip(){
 True = true
 False = false
 
-function $bool(){}
+function $bool(){
+    this.__class__ = Object
+}
+$bool.toString = function(){return "<class 'bool'>" }
 
 Boolean.prototype.__class__ = $bool
 
