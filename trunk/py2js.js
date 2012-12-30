@@ -746,8 +746,9 @@ function $py2js(src,debug){
                     stack.list = stack.list.concat(seq)
                     $err_num++
                 } else if(kw=='if' || kw=='elif' || kw=='while'){ // if and elif : use bool()
-                    var seq = [['bracket','(',src_pos]]
+                    var seq = [['bracket','(',src_pos],['id','bool'],['bracket','(']]
                     seq = seq.concat(stack.list.slice(kw_pos+1,block[0]))
+                    seq.push(['bracket',')',src_pos]) // close bool                    
                     seq.push(['bracket',')',src_pos]) // close if / elif
                     seq.push(stack.list[block[0]])
                     seq = seq.concat(stack.list.slice(block[0]+1,block[1]))
