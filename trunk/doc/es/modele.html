@@ -1,0 +1,83 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8">
+<title>Brython</title>
+<link rel="stylesheet" href="brython.css">
+</head>
+<body>
+<a name="modele"><h3>Compilación y ejecución</h3>
+</ol>
+El archivo <b>brython.js</b> es generado por la compilación de varios scripts :
+<ul>
+<li><b>py_tokenizer.js</b> : corta el código fuente de Python en componentes léxico (tokens): identificadores, literales, operadores delimitadores, etc
+<li><b>py2js.js</b> : convierte los tokens al código Javascript
+<li><b>py_utils.js</b> : funciones de utilidad (componentes léxico, conversión de tipos entre Python y Javascript))
+<li><b>py_string.js</b> : implementa la clase Python str desde el objeto Javascript String
+<li><b>py_list.js</b> : implementa la clase Python list desde el objeto Javascript Array
+<li><b>py_classes.js</b> : incluye todos los demás tipos y funciones integradas
+<li><b>py_dom.js</b> : interacción con el documento HTML (DOM)
+<li><b>py_ajax.js</b> : implementa Ajax
+<li><b>py_local_storage.js</b> : implementa local storage de HTML5
+<li><b>py_svg.py</b> : soporte para SVG (gráficos vectoriales)
+</ul>
+
+La "compilación" y ejecución de un script de Brython pasa por las siguientes fases :
+<ol>
+<li>si el nivel de debug es mayor que 0, se añade una línea que contiene el número de la línea siguiente que se ejecutara, después de cada línea de código fuente Python, excepto cuando esto causaría un error de sintaxis (antes un <tt>except</tt> o un <tt>else</tt>)
+<p>
+<li>corta el código fuente de Python en componentes léxico
+<br>Se hace por medio del script <tt>py_tokenizer.js</tt>. Tokens son listas Javascript con 3 elementos [<em>tipo, valor, posicion</em>]. <em>posicion</em> es la clasificación del primer carácter del token en el código Python. Los dos otros elementos pueden tener los valors siguientes :
+<ul>
+<li><tt>["indent",<em>indentation</em>]</tt> : siempre presente en el comienzo de cada línea, <em>indentation</em> es un numero
+<li><tt>["newline","\n"]</tt> : cambio de linea
+<li><tt>["str",<em>string</em>]</tt> : literal de tipo cadena
+<li><tt>["int",<em>number</em>]</tt> : literal de tipo entero
+<li><tt>["float",<em>number</em>]</tt> : literal de tipo real
+<li><tt>["id",<em>string</em>]</tt> : identificador de variable (cadena)
+<li><tt>["qualifier",<em>string</em>]</tt> : nombre después de un punto, como en <tt>bar</tt> in <tt>foo.bar</tt> (foo dot bar)
+<li><tt>["keyword",<em>value</em>]</tt> : palabra clave Python (cadena)
+<li><tt>["bracket",<em>value</em>]</tt> : paréntesis, soporte o abrazadera. El valor puede ser <em>()[]{}</em>
+<li><tt>["point","."]</tt> : un punto
+<li><tt>["delimiter",<em>string</em>]</tt> : un valor de delimitador de <em>:</em>, <em>,</em> o <em>=</em> dentro de  parentesis (sintaxis <tt>foo(x = 0)</tt>)
+<li><tt>["assign","="]</tt> : el símbolo = cuando no esta dentro de un paréntesis, y operadores de asignación aumentada: +=, *= etc.
+<li><tt>["operator",<em>string</em>]</tt> : un operador
+</ul>
+<p>En este paso, errores pueden ser reportados : 
+<ul>
+<li>error de sangría
+<li>cadena inconclusa
+<li>paréntesis no balanceados
+<li>carácter ilegal
+<li>palabra clave Python no soportada por Brython
+<li>identificado inutilizable porque entra en conflicto con las palabras reservadas de JavaScript (eg <em>window, document, status...</em>)
+</ul>
+<p>
+<li>Traducción de componentes léxico en código Javascript
+<p>Se hace por medio de los scripts <tt>py2js.js</tt> y <tt>py_utils.js</tt>, en e siguiente orden:
+<ol>
+<li>sustitución de la secuencia <tt>not in</tt> por el operado <tt>__not_in__</tt>
+<li>transformación de paréntesis, corchetes y llaves en tuplas, listas y diccionarios
+<li>conversión de argumentos en la definición de la función (<tt>def foo(x, y = 1, *args, **kw)</tt>)
+<li>conversión de argumentos como palabras clave en las llamadas de funciones (<tt>foo(b = 1)</tt>)
+<li>resolución de combinación de + y - (++ pasa a ser +, -+- vuelve en -, etc.) y de los operadores simples - y +
+<li>sustitución de <tt>import foo</tt> con <tt>Import(foo)</tt>
+<li>traducción de <tt>try / except / finally / else</tt> blocks
+<li>traducción de <tt>assert</tt>
+<li>traducción de sangría en llaves para los bloques de <tt>if, else, elif, def, for, try, finally</tt>
+<li>reemplazo de <tt>not x</tt> con <tt>$not(x)</tt>
+<li>sustitución de las formas abreviadas (<tt>x += 1</tt>) por asignaciones y operaciones simples (<tt>x = x+1</tt>)
+<li>reemplazo de los operadores por sus funciones equivalentes : <tt>x+y</tt> se convierte en <tt>x.__add__(y)</tt>
+<li>condiciones con <tt>and</tt> y <tt>or</tt>
+<li>asignaciones en cadena (<tt>x = y = 0</tt>), directa (<tt>x = y</tt>) y multiple (<tt>x, y = a, b</tt>)
+<li>acceso (<tt>a=foo[x]</tt>) o asignación (<tt>foo[x] = 0</tt>) a las claves y rebanadas (slices)
+<li>acceso (<tt>a=foo.x</tt>) y asignación (<tt>foo.x = 0</tt>) a los atributos
+</ol>
+<p>
+<li>La ejecución de código Javascript generado
+<p>Las clases definidas en otros módulos se utilizan para la sintaxis de Python y la interfaz con el navegador
+
+<p>Si hay un error de tiempo de ejecución, una traza se imprime en la consola de navegador. Está estrechamente modelada de la que sería generado por Python
+
+</ol>
+</body>
+</html>
