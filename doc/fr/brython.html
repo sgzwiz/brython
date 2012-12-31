@@ -1,14 +1,14 @@
 <html>
 <head>
 <title>Brython</title>
-<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<meta http-equiv="content-type" content="text/html;charset=utf-8">
 <link rel="stylesheet" href="brython.css">
 <script src="/brython.js"></script>
 </head>
 <body onload="brython()">
 
-<a name="intro">L'objectif de Brython est d'utiliser Python comme langage de script pour les navigateurs web, à la place de Javascript
-<p>Un exemple simple :
+<a name="intro">El objetivo de Brython es utilizar Python como lenguaje de script para los navegadores de la red, en vez de Javascript
+<p>Un ejemplo sencillo :
 <table>
 <tr>
 <td>
@@ -20,9 +20,9 @@ CODE<br>
 &lt;body onLoad="brython()"&gt;
 &lt;script type="text/python"&gt;
 def echo():
-    alert(doc["zone"].value)
+    alert(doc["zona"].value)
 &lt;/script&gt;
-&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;input id="zona"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
 &lt;/body&gt;
 &lt;/html&gt;
 </pre>
@@ -31,135 +31,133 @@ def echo():
 TEST<p>
 <script type="text/python">
 def echo():
-    alert(doc["zone"].value)
+    alert(doc["zona"].value)
 </script>
 
-<input id="zone"><button onclick="echo()">clic !</button>
+<input id="zona"><button onclick="echo()">clic !</button>
 </td>
 </tr>
 </table>
 
-<p>Pour faire fonctionner les scripts Python, il suffit d'importer le script <em>brython.js</em>, et d'exécuter la fonction <code>brython()</code> quand la page est chargée (attribut <tt>onload</tt> de la balise &lt;BODY&gt;)
-<p>Quand on clique sur le bouton, la fonction <code>echo()</code> définie dans le script Python est exécutée. Cette fonction récupère la valeur de l'élément INPUT par son id <tt>zone</tt>, en utilisant la syntaxe <code>doc["zone"]</code> au lieu de <code>document.getElementById("zone")</code> en Javascript : <code>doc</code> est un mot-clé de Brython, il se comporte comme un dictionnaire indexé par les id des éléments DOM. <code>doc["zone"]</code> est un objet correspondant à l'élément INPUT ; on accède à la valeur par l'attribut <tt>value</tt>
-<p>L'affichage est réalisé par une fonction intégrée de Brython, <code>alert()</code>, qui se comporte comme la fonction du même nom en Javascript
+<p>Para ejecutar los scripts Python, solo se requiere el script <em>brython.js</em>, y una llamada de la funciÃ³n <code>brython()</code> cuando se carga la pagina (atributo <tt>onload</tt> de la etiqueta &lt;BODY&gt;)
+<p>Al hacer un clic en el botÃ³n, ejecutara la funciÃ³n <code>echo()</code> que definimos en el cÃ³digo Python. Esta funciÃ³n provee el valor del elemento INPUT por medio de su id (identidad) <tt>zone</tt>, con la sintaxis <code>doc["zone"]</code> en vez de <code>document.getElementById("zone")</code> en Javascript : <code>doc</code> es una palabra clave de Brython, de manera similar a un diccionario indexado por id de los elementos DOM. AsÃ­ que <code>doc["zona"]</code> es un objeto que corresponde al elemento INPUT y se puede acceder al valor por el atributo <tt>value</tt>
+<p>Se visualiza el resultado por medio de una funciÃ³n integrada de Brython, <code>alert()</code>, que se comporta como la funciÃ³n del mismo nombre en Javascript
 <hr>
-<a name="syntaxe"><h3>Syntaxe</h3>
-Brython est conforme à la syntaxe de Python 3
+<a name="syntaxe"><h3>Sintaxis</h3>
+Brython sigue la sintaxis de Python 3
 <ul>
-<li>blocs délimités par l'indentation
-<li>définition de listes par <code>[]</code> ou <code>list()</code>, de tuples par <code>()</code> ou <code>tuple()</code>, de dictionnaires par <code>{}</code> ou <code>dict()</code>, d'ensembles par <code>set()</code>
-<li>listes en extansion : <code>[ expr for item in iterable if condition ]</code>
-<li>opérateur ternaire : <code>x = r1 if condition else r2</code>
-<li>la définition des fonctions peut comporter des valeurs par défaut et des arguments et mot-clés optionnels : <br><code>def foo(x,y=0,*args,**kw):</code>
-<li>décompactage de listes ou de dictionnaires dans l'appel de fonctions : <code>x = foo(*args,**kw)</code>
+<li>los bloques de cÃ³digo delimitados por sangrÃ­a
+<li>definiciÃ³n de listas con <code>[]</code> o <code>list()</code>, de tuplas con <code>()</code> o <code>tuple()</code>, de diccionarios con <code>{}</code> o <code>dict()</code>, de conjunto con <code>set()</code>
+<li>comprensiÃ³n de listas : <code>[ expr for item in iterable if condition ]</code>
+<li>operador ternario : <code>x = r1 if condition else r2</code>
+<li>la definiciÃ³n de funciones pueden tener valores predeterminados y tambiÃ©n argumentos y claves opcionales: <br><code>def foo(x,y=0,*args,**kw):</code>
+<li>desempaquetando de listas o diccionarios en la llamada de funciÃ³n : <code>x = foo(*args,**kw)</code>
 </ul>
 
 </ul>
 
-<a name="integr"><h3>Mots clés et fonction intégrées</h3>
+<a name="integr"><h3>Palabras clave y funciones integradas</h3>
 
-Brython supporte l'essentiel des mots-clés et des fonctions de Python 3 :
-<ul><li>mots clés : <code>assert break continue def del elif else except False finally for global if import None pass return True try while </code>
-<li>fonctions intégrées : <code>abs() all() any() bool() dict() dir() enumerate() exec() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
+Brython soporta la mayorÃ­a de las palabras clave y las funciones de Python 3 :
+<ul><li>palabras claves : <code>assert break continue def del elif else except False finally for global if import None pass return True try while </code>
+<li>funciones integradas : <code>abs() all() any() bool() dict() enumerate() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
-Par défaut, <code>print()</code> affiche sur la console du navigateur, et les messages d'erreur sont également affichés sur cette console. <code>sys.stderr</code> et <code>sys.stdout</code> peuvent être affectés à un objet qui implémente une méthode <code>write()</code>, ce qui permet par exemple d'afficher les messages d'erreurs dans une fenêtre
-
-<p>Ne sont pas pris en charge : 
+No estÃ¡n soportados : 
 <ul>
-<li>les mots-clés <code>as class from is lambda nonlocal raise with yield</code>
-<li>parmi les fonctions intégrées :
-<ul><li>certaines seront peut-être intégrées dans des versions futures : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), eval(), format(), frozenset(), globals() ,hex(), id(), locals(), ord(), pow(), repr(), sorted(), type(), vars()</code>
-<li>d'autres ont peu de chances d'être intégrées : <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code>
-<li>certaines ne sont pas pertinentes dans le contexte d'un navigateur : <code>input(), open()</code>
-<li>le type des nombres complexes n'est pas supporté
+<li>palabras claves <code>as class from is lambda nonlocal raise with yield</code>
+<li>entre las funciones integradas :
+<ul><li>algunas pueden ser incluidas en versiones futuras : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), dir(), divmod(), eval(), exec(), format(), frozenset(), globals() ,hex(), locals(), ord(), pow(), repr(), sorted(), type(), vars()</code>
+<li>otras son poco probable que sea integrada: <code>bytearray(), bytes(), compile(), hash(), help(), id(), memoryview(), property(), super(), __import__() </code>
+<li>algunas no son relevantes en el contexto de un navegador : <code>input(), open()</code>
+<li>el tipo de numeros complejos (j)
 </ul>
 </ul>
-Le mot-clé <code>class</code> n'étant pas pris en charge, on ne peut pas définir de classe autre que les types intégrés (listes, dictionnaires, ensembles). En revanche, contrairement à Python, on peut ajouter des attributs aux objects créés par la fonction intégrée <code>object()</code> :
+Como no hay la palabra clave <code>class</code> todavÃ­a, no se puede definir otra clase que los tipos incorporados (listas, diccionarios, conjunto). Sin embargo, a diferencia de Python, puede agregar atributos a los objetos creados por <code>object()</code> :
 <p><pre>x = object()
 x.foo = 44
 del x.foo
 </pre>
 <p>
-Enfin, certains mots clés et fonctions intégrées adaptés au fonctionnement dans un navigateur sont ajoutés :
+Por ultimo, se agrego algunas palabras clave y funciones integradas diseÃ±adas para funcionar en un navegador :
 <ul>
-<li>les fonctions intégrées <code>alert confirm prompt</code> correspondent à leur équivalent Javascript
-<li>la fonction intégrée <code>ajax</code> permet l'exécution de requêtes HTTP en mode Ajax
-<li>le mot clé <code>local_storage</code> représente le stockage local spécifié dans HTML5
-<li>le mot clé <code>win</code> représente la fenêtre (objet <em>window</em> en JS) et <code>doc</code> représente le document HTML (<em>document</em> en JS)
-<li>les fonctions intégrées <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : chacune correspond à la balise HTML de même nom
+<li>funciones integradas : <code>alert confirm prompt</code> corresponden a su equivalente Javascript
+<li>la funciÃ³n integrada <code>ajax</code> permite la ejecucion de peticiones HTTP en modo Ajax
+<li>la palabra clave <code>local_storage</code> corresponde al almacenamiento local que se especifica en HTML5
+<li>la palabra clave <code>win</code> es la ventana (objeto <em>window</em> en JS) y <code>doc</code> es el documento HTML (<em>document</em> en JS)
+<li>las funciones integradas <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : cada corresponde a las etiquetas HTML
 </ul>
 <hr>
-<a name="htmldocs"><h3>Manipulation de documents HTML</h3>
+<a name="htmldocs"><h3>ManipulaciÃ³n de documentos HTML</h3>
 
-Une page HTML est considérée comme un arbre, dont le sommet est représenté par le mot-clé <code>doc</code> et les noeuds sont soit des objets intégrés Python (chaines de caractères, entiers...) soit des objets créés par les fonctions correspondant aux balises HTML
-<p>La syntaxe pour créer un objet (par exemple un lien hypertexte) est :
+Una pagina HTML es visto como un Ã¡rbol cuyo vÃ©rtice o cima esta representado por la palabra clave <code>doc</code> y los nodos pueden ser objetos integrados de Python (cadenas, enteros...) u objetos creados por las funciones que corresponden a las etiquetas HTML
+<p>La sintaxis para crear un objeto (por ejemplo, un hiperenlace) es :
 <dl><dt><code>A(<i>[content,[attributes]]</i>)</code>
-<dd><em>content</em> est le noeud "fils" de l'objet ; <em>attributes</em> est une suite de mots-clés correspondant aux attributs de la balise HTML. Ces attributs doivent être fournis avec la syntaxe Javascript, pas CSS : <em>backgroundColor</em> et pas <em>background-color</em>
+<dd><em>content</em> es el nodo "hijo" del objeto ; <em>attributes</em> es una secuencia de palabras clave que corresponden a los atributos de la etiqueta HTML. Estos atributos deben contar con la sintaxis de Javascript, y no de CSS : <em>backgroundColor</em> y no como <em>background-color</em>
 </dl>
-Exemple :
+Ejemplo :
 <p><pre>link1 = A('Brython',href='http://www.brython.info')
 link2 = A(B('Python'),href='http://www.python.org')
 </pre>
-<p>Pour l'attribut <em>style</em>, la valeur doit être un dictionnaire :
+<p>Para el atributo <em>style</em>, el valor debe ser un diccionario :
 <p><pre>d = DIV('Brython',style={'height':100,'width':200})
 </pre>
 
-<p>On peut aussi créer un objet sans argument, puis le compléter :
+<p>TambiÃ©n puede crear un objeto sin argumento, y luego aÃ±adir atributos :
 <ul>
-<li>pour ajouter un noeud enfant, utiliser l'opérateur <=
-<li>pour ajouter des attributs, utiliser la syntaxe Python classique : <pre style="display:inline">objet.attribut = valeur</pre>
+<li>para agregar un nodo secundario, utilice el operador <=
+<li>para agregar atributos, utilice la sintaxis Python : <pre style="display:inline">objeto.attributo = valor</pre>
 </ul>
-<p>par exemple :
+<p>por ejemplo :
 <p><pre>link = A()
 link <= B('connexion')
-link.href = 'http://exemple.com'
+link.href = 'http://ejemplo.com'
 </pre>
-<p>On peut aussi créer plusieurs éléments de même niveau par addition :
-<p><pre>row = TR(TH('Nom')+TH('Prénom'))</pre>
-<p>En combinant ces opérateurs et la syntaxe Python, voici comment créer une boite de sélection à partir d'une liste :
-<p><pre>items = ['un','deux','trois']
+<p>TambiÃ©n puede crear varios elementos del mismo nivel, por medio del operador aÃ±adir (+):
+<p><pre>row = TR(TH('Nombre')+TH('Apellido'))</pre>
+<p>Mediante la combinaciÃ³n de estos operadores y la sintaxis de Python, aquÃ­ es como crear un cuadro de selecciÃ³n de una lista :
+<p><pre>items = ['uno','dos','tres']
 sel = SELECT()
-for i,elt in enumerate(items):
-    sel <= OPTION(elt,value=i)
+for i, elt in enumerate(items):
+    sel <= OPTION(elt, value = i)
 doc <= sel
 </pre>
-<p>A noter que la création d'une instance d'une classe HTML entraine la création d'un unique objet DOM. Si on affecte l'instance à une variable, on ne peut pas l'utiliser à plusieurs endroits. Par exemple avec ce code :
+<p>Tenga en cuenta que la creaciÃ³n de una instancia de una clase HTML implica la creaciÃ³n de un Ãºnico objeto DOM. Si asignamos la instancia a una variable, no se puede utilizar en varios lugares. Por ejemplo, con este cÃ³digo :
 <p><pre>link = A('Python',href='http://www.python.org')
-doc <= 'Site officiel de Python : '+link
-doc <= P()+'Je répète : le site est '+link
+doc <= 'El sitio de Python : ' + link
+doc <= P()+'repito : el sitio es ' + link
 </pre>
-le lien ne sera montré que dans la deuxième ligne. Une solution est de cloner l'objet initial :
+el enlace se muestra solamente en la segunda linea. Una soluciÃ³n consiste en clonar el objeto original:
 <p><pre>link = A('Python',href='http://www.python.org')
-doc <= 'Site officiel de Python : '+link
-doc <= P()+'Je répète : le site est '+link.clone()
+doc <= 'El sitio de Python : ' + link
+doc <= P()+'repito : el sitio es ' + link.clone()
 </pre>
 
 
-<p>En général, les instances des classes HTML ont des attributs de même nom que les objets Javascript correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT
-<p>Par exception, le contenu d'un noeud DOM peut être lu ou modifié par les attributs <tt>text</tt> ou <tt>html</tt>, correspondant respectivement à <i>innerText</i> (ou <i>textContent</i>) et à <i>innerHTML</i> en Javascript
-<p>La collection <code>options</code> associée à un objet SELECT a l'interface d'une liste Python :
+<p>Por lo general, las instancias de las clases de atributos HTML tienen el mismo nombre que los objetos Javascript correspondientes. Por ejemplo, puede recuperar la opciÃ³n seleccionada por el atributo <tt>selectedIndex</tt> del objeto SELECT
+<p>Como excepciÃ³n, el contenido de un nodo DOM se pueden leer o ser modificado or medio de los atributos <tt>text</tt> o <tt>html</tt>, correspondientes a <i>innerText</i> (o <i>textContent</i>) y <i>innerHTML</i> en Javascript
+<p>La colecciÃ³n <code>options</code> asociada a un objeto SELECT tiene una interfaz de una lista Python :
 <ul>
-<li>accès à une option par son index : <pre style="display:inline">option = elt.options[index]</pre>
-<li>insertion d'une option à la position <em>index</em> : <pre style="display:inline">elt.options.insert(index,option)</pre>
-<li>insertion d'une option en fin de liste : <pre style="display:inline">elt.options.append(option)</pre>
-<li>suppression d'une option : <pre style="display:inline">del elt.options[index]</pre>
+<li>acceder a una opciÃ³n por su indice : <pre style="display:inline">option = elt.options[index]</pre>
+<li>inserciÃ³n de una opciÃ³n a la posiciÃ³n <em>index</em> : <pre style="display:inline">elt.options.insert(index,option)</pre>
+<li>inserciÃ³n de una opciÃ³n al fin de una lista : <pre style="display:inline">elt.options.append(option)</pre>
+<li>eliminaciÃ³n de una opciÃ³n : <pre style="display:inline">del elt.options[index]</pre>
 </ul>
-<p>Pour la recherche d'objets par leur identifiant, ou par leur nom de balise, on utilise la syntaxe suivante :
+<p>Para buscar objetos por identificador o por su nombre de la etiqueta, utilice la siguiente sintaxis :
 <ul>
-<li><pre style="display:inline">doc[obj_id]</pre> renvoie l'objet d'après son identifiant, ou déclenche une exception <code>KeyError</code>
-<li><pre style="display:inline">doc[A]</pre> renvoie une liste de tous les objets de type A (lien hypertexte) dans le document
+<li><pre style="display:inline">doc[obj_id]</pre> devuelve el objeto a partir de su identificador, o genera una excepciÃ³n <code>KeyError</code>
+<li><pre style="display:inline">doc[A]</pre> devuelve una lista de todos los objetos de tipo A (hiperenlace) en el documento
 </ul>
 <hr>
 <a name="ajax"><h3>Ajax</h3>
-La fonction intégrée <code>ajax()</code> renvoie un objet comparable à XMLHTTPRequest en Javascript, mais son interface est légèrement différente. Il possède les méthodes suivantes
+La funciÃ³n integrada <code>ajax()</code> devuelve un objeto similar a XMLHTTPRequest en Javascript, pero su interfaz es un poco diferente. Tiene las siguientes opciones:
 
-<ul><li><code>open(<em>methode,url,async</em>)</code> : <em>methode</em> est la méthode HTTP utilisée pour la requête (habituellement GET ou POST), <em>url</em> est l'url appelée, <em>async</em> est un booléen qui indique si l'appel est asynchrone ou non
-<li><code>set_header(<em>nom,valeur</em>)</code> : affecte la valeur <em>valeur</em> à l'entête <em>nom</em>
-<li><code>set_timeout(<em>duree,fonction</em>)</code> : si la requête n'a pas renvoyé de réponse dans les <em>duree</em> secondes, annule la requête et exécute la <em>fonction</em>. Cette fonction ne prend pas d'argument
-<li><code>send()</code> : lance la requête
+<ul><li><code>open(<em>metodo, url,async</em>)</code> : <em>metodo</em> es el mÃ©todo HTTP utilizado para la solicitud (normalmente GET o POST), <em>url</em> es la URL llamada, <em>async</em> es un valor booleano que indica si la llamada es asincrona o no
+<li><code>set_header(<em>nombre, valor</em>)</code> : asigna el valor de <em>valor</em> para la cabecera <em>nombre</em>
+<li><code>set_timeout(<em>duracion, funcion</em>)</code> : si la solicitud no ha devuelto una respuesta adentro de <em>duracion</em> segundos, se cancela la solicitud y ejecuta la <em>funcion</em>. Esta funciÃ³n no toma argumentos
+<li><code>send()</code> : inicia la solicitud
 </ul>
-Pour interagir avec le serveur, il faut définir les attributs suivants, correspondant à chaque état de la variable <tt>readyState</tt> en Javascript :
+Para interactuar con el servidor, debe configurar los siguientes atributos, correspondientes a cada estado de la variable <tt>readyState</tt> en Javascript :
 <p><table cellspacing=0 cellpadding=0 border=1><tr><th>readyState</th><th>attribut</th></tr>
 <tr><td>0</td><td><code>on_uninitialized</code></td></tr>
 <tr><td>1</td><td><code>on_loading</code></td></tr>
@@ -167,31 +165,31 @@ Pour interagir avec le serveur, il faut définir les attributs suivants, correspo
 <tr><td>3</td><td><code>on_interactive</code></td></tr>
 <tr><td>4</td><td><code>on_complete</code></td></tr>
 </table>
-<p>L'attribut doit prendre pour valeur une fonction à un seul argument, qui est l'objet <code>ajax</code>. Cet objet possède les attributs suivants :
+<p>El valor del atributo debe ser una funcion con un solo argumento, que es el objeto <code>ajax</code>. Este objeto tiene los siguientes atributos :
 <ul>
-<li><code>status</code> : un entier représentant le statut HTTP de la requête
-<li><code>text</code> : la réponse du serveur sous forme de chaine de caractères (correspond à <em>responseText</em> en Javascript)
-<li><code>xml</code> : la réponse du serveur sous forme d'objet DOM (correspond à <em>responseXML</em> en Javascript)
+<li><code>status</code> : un entero que representa el estado de la solicitud HTTP
+<li><code>text</code> : la respuesta del servidor como una cadena de caracteres (<em>responseText</em> en Javascript)
+<li><code>xml</code> : la respuesta del servidor como objeto DOM (<em>responseXML</em> en Javascript)
 </ul>
 
-<h4>Exemple</h4>
+<h4>Ejemplo</h4>
 <pre>req = ajax()
 req.on_complete = on_complete
-req.set_timeout(timeout,err_msg)
-req.open('POST',url,True)
-req.set_header('content-type','application/x-www-form-urlencoded')
+req.set_timeout(timeout, err_msg)
+req.open('POST', url, True)
+req.set_header('content-type', 'application/x-www-form-urlencoded')
 req.send(data)
 </pre>
 <hr>
 <a name="locstor"><h3>Local storage</h3>
 
-Le stockage local défini par HTML5 (classe <tt>Storage</tt> et objet <tt>localStorage</tt> de Javascript) est accessible sous la syntaxe <code>local_storage</code>. On l'utilise comme un dictionnaire Python classique, sauf que la recherche d'un mot clé inexistant renvoie <code>None</code> au lieu de déclencher une exception, et que la suppression d'une clé inexistante ne déclenche pas non plus d'exception
+El almacenamiento local que define HTML5 (clase <tt>Storage</tt> y objeto <tt>localStorage</tt> de Javascript) es accesible bajo la sintaxis <code>local_storage</code>. Se utiliza como un diccionario Python tÃ­pico, con la excepciÃ³n de que la bÃºsqueda de una palabra clave vuelve <code>None</code> en vez de producir una excepciÃ³n, y eliminar una clave inexistente tampoco dispara una excepciÃ³n
 
-<h4>Exemple</h4>
-<pre>local_storage['foo']='bar'
+<h4>Ejemplo</h4>
+<pre>local_storage['foo'] = 'bar'
 log(local_storage['foo'])
 del local_storage['foo']
-log(local_storage['foo']) # affiche None
+log(local_storage['foo']) # None
 </pre>
 
 </body>
