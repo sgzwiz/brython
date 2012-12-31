@@ -332,7 +332,6 @@ function $Tag(class_name,args){
     return elt
 }
 
-
 function $DomClass(elt){
     var s = elt.toString() // string [object <classname>]
     var pattern = /\[object (.*)\]/
