@@ -1,0 +1,98 @@
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../brython.css">
+
+<script src="/py_tokenizer.js"></script>
+<script src="/py_utils.js"></script>
+<script src="/py_classes.js"></script>
+<script src="/py_list.js"></script>
+<script src="/py_string.js"></script>
+<script src="/py_dom.js"></script>
+<script src="/py2js.js"></script>
+<script src="/py_ajax.js"></script>
+<script src="/py_local_storage.js"></script>
+
+<script type="text/python">
+import sys
+import time
+import dis
+
+def reset_src():
+    if sys.has_local_storage:
+        doc['src'].value = local_storage["py_src"]
+
+def to_str(xx):
+    return str(xx)
+
+doc['version'].text = '.'.join(map(to_str,sys.version_info))
+
+sys.stdout = object()
+def write(data):
+    doc["console"].value += str(data)
+sys.stdout.write = write
+
+sys.stderr = object()
+sys.stderr.write = write
+
+output = ''
+
+def show_console():
+    doc["console"].value = output
+
+def run():
+    global output
+    doc["console"].value=''
+    src = doc["src"].value
+    if sys.has_local_storage:
+        local_storage["py_src"]=src
+    t0 = time.time()
+    exec(src)
+    output = doc["console"].value
+    print('<done in %s ms>' %(time.time()-t0))
+
+def show_js():
+    src = doc["src"].value
+    doc["console"].value = dis.dis(src)
+</script>
+</head>
+<body onload="brython();reset_src()">
+<center>
+<table id="banner" cellpadding=0 cellspacing=0>
+<tr>
+<td><a class="banner" href="/index.html">Inicio</a></td>
+<td><a class="banner" href="/tests/console_es.html">Consola</a></td>
+<td><a class="banner" href="/gallery/gallery_es.html">Galería</a></td>
+<td><a class="banner" href="/doc/es/index.html">Documentación</a>
+<td><a class="banner" href="http://code.google.com/p/brython/downloads/list" target="_blank">Descargas</a></td>
+<td><a class="banner" href="http://code.google.com/p/brython/" target="_blank">Desarrollo</a></td>
+<td><a class="banner" href="/groups_es.html" target="_blank">Grupos</a></td>
+</tr>
+</table>
+
+<div style="text-align:center">
+<img src="../brython.png"></img><br><b>browser python</b>
+</div>
+
+<table width=80%>
+<tr><td style="text-align:center"><b>Python</b>
+</td>
+<td>&nbsp;</td>
+<th><button onClick="show_console()">Consola</button></th>
+<th><button onClick="show_js()">Javascript</button></th>
+</tr>
+<tr>
+<td colspan><textarea id="src" cols=60 rows=20>for i in range(10):
+    print(i)</textarea></td>
+<td><button onClick="run()">run</button>
+<td colspan=2><textarea id="console" cols=70 rows=20></textarea></td>
+</tr>
+<tr><td colspan=2>
+<i>No hay soporte todavia por las clases Python</i>
+<p>Brython version <span id="version"></span>
+<p>Poner los bugs en el <a href="http://code.google.com/p/brython/issues/list">Issue Tracker</a>
+</td></tr>
+</table>
+</center>
+</body>
+</html>
