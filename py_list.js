@@ -71,7 +71,7 @@ Array.prototype.__eq__ = function(other){
 }
 
 Array.prototype.__getattr__ = function(attr){
-    obj=this
+    var obj=this
     switch(attr){
         case 'append':
             return function(other){
@@ -233,7 +233,7 @@ function $list_index(obj){
 
 function $list_reverse(obj){
     for(var i=0;i<parseInt(obj.length/2);i++){
-        buf = obj[i]
+        var buf = obj[i]
         obj[i] = obj[obj.length-i-1]
         obj[obj.length-i-1] = buf
     }
@@ -245,8 +245,7 @@ function $partition(arg,array,begin,end,pivot)
     var piv=array[pivot];
     array.swap(pivot, end-1);
     var store=begin;
-    var ix;
-    for(ix=begin;ix<end-1;++ix) {
+    for(var ix=begin;ix<end-1;++ix) {
         if(arg(array[ix]).__le__(arg(piv))) {
             array.swap(store, ix);
             ++store;
@@ -284,15 +283,15 @@ function $list(){
     // used for list displays
     // different from list : $list(1) is valid (matches [1])
     // but list(1) is invalid (integer 1 is not iterable)
-    var args = new Array(),i=0
-    for(i=0;i<arguments.length;i++){args.push(arguments[i])}
+    var args = new Array()
+    for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
     return new $ListClass(args)
 }
 
 function list(){
     if(arguments.length===0){return []}
     else if(arguments.length>1){
-        $raise('TypeError',"list() takes at most 1 argument ("+args.length+" given)")
+        $raise('TypeError',"list() takes at most 1 argument ("+arguments.length+" given)")
     }
     var res = []
     res.__init__(arguments[0])
