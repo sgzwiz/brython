@@ -300,6 +300,17 @@ Stack.prototype.find_previous_matching = function(pos){
     }
     return null
 }
+
+Stack.prototype.ids_in = function(){
+    var ids = []
+    for(var i=0;i<this.list.length;i++){
+        if(this.list[i][0]==='id'){
+            var loc_var = this.list[i][1]
+            if(ids.indexOf(loc_var)===-1){ids.push(loc_var)}
+        }
+    }    
+    return ids
+}
     
 Stack.prototype.get_atoms = function(){
     var pos = 0
