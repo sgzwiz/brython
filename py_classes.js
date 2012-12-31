@@ -59,11 +59,12 @@ function $DictClass($keys,$values){
 
 $DictClass.prototype.toString = function(){
     if(this.$keys.length==0){return '{}'}
-    var res = "{",key=null,value=null,i=null
+    var res = "{",key=null,value=null,i=null        
+    var qesc = new RegExp('"',"g") // to escape double quotes in arguments
     for(i=0;i<this.$keys.length;i++){
-        if(typeof this.$keys[i]==="string"){key="'"+this.$keys[i]+"'"}
+        if(typeof this.$keys[i]==="string"){key='"'+$escape_dq(this.$keys[i])+'"'}
         else{key = str(this.$keys[i])}
-        if(typeof this.$values[i]==="string"){value="'"+this.$values[i]+"'"}
+        if(typeof this.$values[i]==="string"){value='"'+$escape_dq(this.$values[i])+'"'}
         else{value = str(this.$values[i])}
         res += key+':'+value+','
     }
