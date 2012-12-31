@@ -42,6 +42,10 @@ function $raise(name,msg,module) {
     throw err
 }
 
+// escaping double quotes
+var $dq_regexp = new RegExp('"',"g") // to escape double quotes in arguments
+function $escape_dq(arg){return arg.replace($dq_regexp,'\\"')}
+
 // default standard output and error
 // can be reset by sys.stdout or sys.stderr
 document.$stderr = null
