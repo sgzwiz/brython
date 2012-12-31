@@ -174,7 +174,7 @@ function $py2js(src,module){
                 !stack.list[indent_pos+1].match(['keyword','elif']) &&
                 !stack.list[indent_pos+1].match(['keyword','except'])){
                 stack.list.splice(s_nl,0,['indent',stack.list[indent_pos][1]],
-                    ['code','document.line_num='+stack.list[nl][1],stack.list[nl][2]],
+                    ['code','document.$line_info=['+stack.list[nl][1]+',"'+module+'"]',stack.list[nl][2]],
                     ['newline','\n'])
                 s_nl = nl+4
                 pos = nl+5
@@ -214,6 +214,7 @@ function $py2js(src,module){
         var expr = stack.list.slice(br_pos+1,for_pos)
         var in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
         if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
+        var qesc = new RegExp('"',"g") // to escape double quotes in arguments
         var loops = []
         var lvar = new Stack(stack.list.slice(for_pos+1,in_pos))
         // there may be other for ... in ...
@@ -222,19 +223,19 @@ function $py2js(src,module){
             if(for_pos===null){break}
             // close previous loop
             var s = new Stack(stack.list.slice(in_pos+1,for_pos))
-            loops.push([lvar.to_js(),s.to_js()])
+            loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
             in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
             if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
             lvar = stack.list.slice(for_pos+1,in_pos)
         }
-        var if_pos = stack.find_next_at_same_level(in_pos+2,'keyword','if')
+        var if_pos = stack.find_next_at_same_level(in_pos,'keyword','if')
         if(if_pos===null){
             var s = new Stack(stack.list.slice(in_pos+1,end))
-            loops.push([lvar.to_js(),s.to_js()])
+            loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
             var cond=[]
         }else{
             var s = new Stack(stack.list.slice(in_pos+1,if_pos))
-            loops.push([lvar.to_js(),s.to_js()])
+            loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
             var cond=stack.list.slice(if_pos+1,end)
         }
         seq = '$list_comp(['
@@ -247,7 +248,7 @@ function $py2js(src,module){
         seq += '"'+s.to_js()+'",'
         if(cond){
             s=new Stack(cond)
-            seq += '"'+s.to_js()+'")'
+            seq += '"'+s.to_js().replace(qesc,'\\"')+'")'
         }else{seq += '"")'}
         var tail = stack.list.slice(end+1,stack.list.length)
         stack.list = stack.list.slice(0,br_pos).concat([['code',seq]]).concat(tail)
