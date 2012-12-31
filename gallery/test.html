@@ -2,17 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="iso-8859-1">
-<script src="/brython.js"></script>
+<script src="/py_tokenizer.js"></script>
+<script src="/py_utils.js"></script>
+<script src="/py_classes.js"></script>
+<script src="/py_list.js"></script>
+<script src="/py_string.js"></script>
+<script src="/py_dom.js"></script>
+<script src="/py2js.js"></script>
+<script src="/py_ajax.js"></script>
 </head>
-<body onload="brython()">
+<body onload="brython(2)">
 <script type="text/python">
-def reload(url):
-    f=doc['f']
-    f.src = url
-    
-doc<=IFRAME(Id='f',src="hello.html")
+x = I('r')
+x += B('br')+P('p')
+t = TABLE()
+tb = TBODY()
+tb <= TD(x)
+t <= tb
+doc <= t
 </script>
-<button onclick="reload('goodbye.html')">reload</button>
 </body>
 </html>
 
