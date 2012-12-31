@@ -1,0 +1,253 @@
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8">
+<title>Brython</title>
+<link rel="stylesheet" href="brython.css">
+<meta charset="iso-8859-1">
+</head>
+<body>
+<a name="conv"><h3>La traducción de la sintaxis de Python en JavaScript</h3>
+
+<p>
+<table border=1>
+<tr>
+<th>Python</th>
+<th>Javascript</th>
+<th>Comentarios</th>
+</tr>
+
+<tr>
+<td><pre>x = 1
+y = 3.14
+z = "azerty"</td>
+<td><pre>x = int(1)
+y = float(3.14)
+z = "azerty"</pre>
+</td>
+<td><tt>float</tt> es una función Javascript se define en <b>py_classes.js</b></td>
+</tr>
+
+<tr>
+<td><pre>x = foo.bar</td>
+<td><pre>x = foo.__getattr__('bar')</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>foo.bar = x</td>
+<td><pre>foo.__setattr__('bar',x)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>x = foo[bar]</td>
+<td><pre>x = foo.__getitem__(bar)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>foo[bar] = x</td>
+<td><pre>foo.__setitem__(bar,x)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>x+y</td>
+<td><pre>x.__add__(b)</pre>
+<td>mismo para todos los operadores 
+<br>necesarios para realizar las operaciones tales como 2 * "a"</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>a and b</td>
+<td><pre>$test_expr($test_item(a)&&$test_item(b))</pre>
+<td>Mantenemos el operador && de Javascript para no evaluar b si a es falso
+<br><tt>$test_item</tt> devuelve un booleano Javascript (true o false) y almacena el valor evaluado en una variable global; <tt>$test_expr</tt> devuelve esta variable global</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>for obj in iterable:
+    (...)</pre></td>
+<td><pre>var $Iter1 = iterable
+for (var $i1=0;$i1<$iter1.__len__();$i1++){ 
+   obj =$iter1.__item__($i1)
+   void(0)
+}</pre>
+</td>
+<td>&nbsp;</td></tr>
+
+<tr>
+<td><pre>x,y = iterable</pre></td>
+<td><pre>var $var =iterable 
+x =$var.__item__(0) 
+y =$var.__item__(1) 
+</pre>
+</td>
+<td>&nbsp;</td></tr>
+
+<tr>
+<td><pre>x,y = a,b</pre></td>
+<td><pre>var $temp=[]
+$temp.push(a)
+$temp.push(b)
+x =$temp[0] 
+y =$temp[1]
+</pre>
+</td>
+<td>&nbsp;</td></tr>
+
+<tr>
+<td><pre>def foo():
+   x=3
+</pre></td>
+<td><pre>function foo(){
+   var x=3
+}
+window.foo=foo 
+</td>
+<td>Para ser coherente con la gestión del espacio de nombres de Python, la variable <tt>x</tt> es local y se declara por <em>var</em> keyword
+<p>La última línea añade el nombre de la función en el espacio de nombre del navegador. Sólo está presente si la función en el nivel de módulo, y no dentro de otra función</td></tr>
+
+<tr>
+<td><pre>def foo():
+   global x
+   x=3
+</pre></td>
+<td><pre>function foo(){
+   x=3
+}
+window.foo=foo 
+</td>
+<td>en el caso de una variable global, no se usa la palabra clave <em>var</em></td>
+</tr>
+
+<tr>
+<td><pre>def foo(x,y=3,*args,**kw):
+   (...)
+</pre></td>
+<td><pre>function foo(){
+   $ns=$MakeArgs(arguments,['x'],{"y":3},"args","kw")
+   for($var in $ns){eval("var "+$var+"=$ns[$var]")} 
+   (...)
+}
+window.foo=foo 
+</td>
+<td>La función <tt>$MakeArgs</tt> construye un objeto Javascript coincidan con los nombres definidos en función de los valores de la definición de la función. En la próxima linea se construye el espacio de nombres de la función (variables locales)</td>
+</tr>
+
+<tr>
+<td><pre>foo(x,y=1)
+</pre></td>
+<td><pre>foo(x,$Kw("y",1))
+</td>
+<td>argumentos pasados ​​como palabras clave se convierten en objetos creados por la función <em>$Kw</em>
+</tr>
+
+<tr>
+<td><pre>x='brython'
+try:
+    x[2]='a'
+except TypeError:
+    log('error')
+except:
+    log('another error')
+</pre></td>
+<td><pre>x ='brython' 
+try{
+    x.__setitem__(2,str('a'))
+}
+catch($err0){
+    if(false){void(0)} 
+    else if($err0.name=="TypeError"){
+        log('error')
+    }
+    else{
+        log('another error')
+    }
+}
+</pre>
+</td>
+<td>las lineas
+<pre><b>catch($err0){
+    if(false){void(0)} </b></pre><p>
+se añaden antes de todas las cláusulas <code>except</code>, que se traducen en <em>else if</em> cuando hay un nombre de excepción, o como <em>else</em> cuando no hay
+
+</tr>
+
+</table>
+
+<p>
+<table border=1>
+<tr>
+<th>Javascript</th>
+<th>Python</th>
+<th>Comentario</th>
+</tr>
+
+
+<tr>
+<td><pre>document</td>
+<td><pre>doc</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>document.getElementById(elt_id)</td>
+<td><pre>doc[elt_id]</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>document.getElementsByTagName('A')</td>
+<td><pre>doc[A]</pre>
+<td>devuelve una lista Python</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>setInterval(func,millisec)</td>
+<td><pre>import time
+time.set_interval(func,millisec)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>clearInterval(interval_id)</td>
+<td><pre>import time
+time.clear_interval(interval_id)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+<tr>
+<td><pre>setTimeOut(func,millisec)</td>
+<td><pre>import time
+time.set_timeout(func,millisec)</pre>
+<td>&nbsp;</td>
+</td>
+</tr>
+
+
+
+</table>
+<hr>
+<a name="import"><h3>import</h3>
+La importación (import) se realiza mediante llamadas Ajax
+
+<p>Hay dos tipos de módulos importables :
+<ul>
+<li>módulos escritos en Javascript : <tt>time, datetime, math, random, sys</tt> (que sólo unos atributos y métodos están más o menos implementados)
+<li>módulos escritos en Python, importables desde el directorio donde se encuentra el script llamando el import
+</ul>
+
+</body>
+</html>
