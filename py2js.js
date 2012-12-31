@@ -64,7 +64,11 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     return $ns
 }
 
-function $list_comp(loops,expr,cond){
+function $list_comp(loops,expr,cond,env){
+    // create local variables passed from the list comp environment
+    for(var i=0;i<env.length;i+=2){
+        eval('var '+env[i]+'=env['+(i+1)+']')
+    }
     var py = 'res = []\n'
     for(var i=0;i<loops.length;i++){
         for(j=0;j<4*i;j++){py += ' '} // indent
@@ -202,7 +206,8 @@ function $py2js(src,module){
         }
     }
 
-    // list comprenhensions
+    // list comprehensions
+
     var pos = 0
     while(true){
         var br_pos = stack.find_next(pos,'bracket','[')
@@ -216,6 +221,7 @@ function $py2js(src,module){
         if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
         var qesc = new RegExp('"',"g") // to escape double quotes in arguments
         var loops = []
+        var env = [] // variables found in iterables and conditions
         var lvar = new Stack(stack.list.slice(for_pos+1,in_pos))
         // there may be other for ... in ...
         while(true){
@@ -223,6 +229,7 @@ function $py2js(src,module){
             if(for_pos===null){break}
             // close previous loop
             var s = new Stack(stack.list.slice(in_pos+1,for_pos))
+            env = env.concat(s.ids_in())
             loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
             in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
             if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
@@ -231,10 +238,12 @@ function $py2js(src,module){
         var if_pos = stack.find_next_at_same_level(in_pos,'keyword','if')
         if(if_pos===null){
             var s = new Stack(stack.list.slice(in_pos+1,end))
+            env = env.concat(s.ids_in())
             loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
             var cond=[]
         }else{
             var s = new Stack(stack.list.slice(in_pos+1,if_pos))
+            env = env.concat(s.ids_in())
             loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
             var cond=stack.list.slice(if_pos+1,end)
         }
@@ -248,8 +257,14 @@ function $py2js(src,module){
         seq += '"'+s.to_js()+'",'
         if(cond){
             s=new Stack(cond)
-            seq += '"'+s.to_js().replace(qesc,'\\"')+'")'
-        }else{seq += '"")'}
+            seq += '"'+s.to_js().replace(qesc,'\\"')+'",['
+        }else{seq += '"",['}
+        // pass environment variables as arguments with name and value
+        for(var i=0;i<env.length;i++){
+            seq+="'"+env[i]+"',"+env[i]
+            if(i<env.length-1){seq+=','}    
+        }
+        seq += '])'
         var tail = stack.list.slice(end+1,stack.list.length)
         stack.list = stack.list.slice(0,br_pos).concat([['code',seq]]).concat(tail)
         pos = br_pos+1
