@@ -26,7 +26,8 @@ function any(iterable){
 }
 
 function bool(obj){ // return true or false
-    if(isinstance(obj,dict)){return obj.keys.length>0}
+    if(obj===null){return False}
+    else if(isinstance(obj,dict)){return obj.keys.length>0}
     else if(isinstance(obj,tuple)){return obj.items.length>0}
     else if(typeof obj==="boolean"){return obj}
     else if(typeof obj==="number" || typeof obj==="string"){
@@ -35,6 +36,7 @@ function bool(obj){ // return true or false
     else if('__len__' in obj){return obj.__len__()>0}
     return true
 }
+bool.toString = function(){return "<class 'bool'>"}
 
 function $class(obj,info){
     this.obj = obj
@@ -899,12 +901,7 @@ function zip(){
 True = true
 False = false
 
-function $bool(){
-    this.__class__ = Object
-}
-$bool.toString = function(){return "<class 'bool'>" }
-
-Boolean.prototype.__class__ = $bool
+Boolean.prototype.__class__ = bool
 
 Boolean.prototype.__eq__ = function(other){
     if(this.valueOf()){return !!other}else{return !other}
@@ -922,5 +919,3 @@ function $NoneClass(){
     this.__str__ = function(){return 'None'}
 }
 None = new $NoneClass()
-
-
