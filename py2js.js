@@ -1048,7 +1048,8 @@ function $py2js(src,module){
         }
     }
 
-    var js2py = {'alert':'$alert','prompt':'$prompt','confirm':'$confirm','print':'$print'}
+    var js2py = {'alert':'$alert','prompt':'$prompt','confirm':'$confirm',
+        'print':'$print','eval':'$eval'}
     for(key in js2py){
         pos = 0
         while(true){
