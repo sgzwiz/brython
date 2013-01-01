@@ -4,7 +4,10 @@ function $JS2Py(src){
     if(src===false){return False}
     if(src===true){return True}
     if(isinstance(src,[str,int,float,list,dict,set])){return src}
-    if(typeof src=="object"){
+    htmlelt_pattern = new RegExp(/\[object HTML(.*)Element\]/)
+    if(["string","number"].indexOf(typeof src)>-1){
+        return src
+    } else if(typeof src=="object"){
         if(src.constructor===Array){return src}
         else if(src.tagName!==undefined && src.nodeName!==undefined){return src}
         else{
@@ -17,9 +20,7 @@ function $JS2Py(src){
             if(src.__class__!==undefined){return src}
             return new $DomWrapper(src)
         }
-    }else{
-        return src
-    }
+    }else{return src}
 }
 
 // exceptions

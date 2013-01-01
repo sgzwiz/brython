@@ -297,4 +297,3 @@ function list(){
     res.__init__(arguments[0])
     return res
 }
-list.toString = function(){return "<class 'list'>"}

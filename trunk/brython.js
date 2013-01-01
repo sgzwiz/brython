@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130101-143229
+// version 1.0.20121231-104712
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -24,8 +24,7 @@ if(bool(elt)){return True}
 }
 }
 function bool(obj){
-if(obj===null){return False}
-else if(isinstance(obj,dict)){return obj.keys.length>0}
+if(isinstance(obj,dict)){return obj.keys.length>0}
 else if(isinstance(obj,tuple)){return obj.items.length>0}
 else if(typeof obj==="boolean"){return obj}
 else if(typeof obj==="number" || typeof obj==="string"){
@@ -34,7 +33,6 @@ if(obj){return true}else{return false}
 else if('__len__' in obj){return obj.__len__()>0}
 return true
 }
-bool.toString=function(){return "<class 'bool'>"}
 function $class(obj,info){
 this.obj=obj
 this.info=info
@@ -154,7 +152,6 @@ obj.__setitem__(elt.__item__(0),elt.__item__(1))
 }
 return obj
 }
-dict.toString=function(){return "<class 'dict'>"}
 function dir(obj){
 var res=[]
 for(var attr in obj){res.push(attr)}
@@ -264,7 +261,6 @@ return new $FloatClass(parseFloat(value))
 }else if(isinstance(value,float)){return value}
 else{$raise('ValueError',"Could not convert to float(): '"+str(value)+"'")}
 }
-float.toString=function(){return "<class 'float'>"}
 function $bind(func, thisValue){
 return function(){return func.apply(thisValue, arguments)}
 }
@@ -453,7 +449,6 @@ return parseInt(value.value)
 "Invalid literal for int() with base 10: '"+str(value)+"'")
 }
 }
-int.toString=function(){return "<class 'int'>"}
 function isinstance(obj,arg){
 if(obj===null){return arg===None}
 if(obj===undefined){return false}
@@ -464,7 +459,7 @@ if(isinstance(obj,arg[i])){return true}
 return false
 }else{
 if(arg===int){
-return((typeof obj)=="number"||obj.constructor===Number)&&(obj.valueOf()%1===0)
+return(typeof obj=="number"||obj.constructor===Number)&&(obj.valueOf()%1===0)
 }
 if(arg===float){
 return((typeof obj=="number")&&(obj.valueOf()%1!==0))||
@@ -757,7 +752,6 @@ var obj=list(args)
 obj.__class__=tuple
 return obj
 }
-tuple.toString=function(){return "<class 'tuple'>"}
 function zip(){
 var rank=0,res=[]
 while(true){
@@ -774,7 +768,11 @@ rank++
 }
 True=true
 False=false
-Boolean.prototype.__class__=bool
+function $bool(){
+this.__class__=Object
+}
+$bool.toString=function(){return "<class 'bool'>" }
+Boolean.prototype.__class__=$bool
 Boolean.prototype.__eq__=function(other){
 if(this.valueOf()){return !!other}else{return !other}
 }
@@ -1055,7 +1053,6 @@ var res=[]
 res.__init__(arguments[0])
 return res
 }
-list.toString=function(){return "<class 'list'>"}
 String.prototype.__add__=function(other){
 if(!(typeof other==="string")){
 try{return other.__radd__(this)}
@@ -1065,7 +1062,6 @@ catch(err){$raise('TypeError',
 return this+other
 }
 }
-String.prototype.__class__=new $class(this,'str')
 String.prototype.__contains__=function(item){
 if(!(typeof item==="string")){$raise('TypeError',
 "'in <string>' requires string as left operand, not "+item.__class__)}
@@ -1468,7 +1464,6 @@ function str(arg){
 if(arg===undefined){return '<undefined>'}
 else{return arg.toString()}
 }
-str.toString=function(){return "<class 'str'>"}
 function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
 var i=null,$PyVars={},$def_names=[],$ns={}
 for(var k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
@@ -2894,7 +2889,10 @@ if(src===null){return None}
 if(src===false){return False}
 if(src===true){return True}
 if(isinstance(src,[str,int,float,list,dict,set])){return src}
-if(typeof src=="object"){
+htmlelt_pattern=new RegExp(/\[object HTML(.*)Element\]/)
+if(["string","number"].indexOf(typeof src)>-1){
+return src
+}else if(typeof src=="object"){
 if(src.constructor===Array){return src}
 else if(src.tagName!==undefined && src.nodeName!==undefined){return src}
 else{
@@ -2907,9 +2905,7 @@ catch(err){void(0)}
 if(src.__class__!==undefined){return src}
 return new $DomWrapper(src)
 }
-}else{
-return src
-}
+}else{return src}
 }
 function $raise(name,msg,module){
 if(msg===undefined){msg=''}
@@ -3614,18 +3610,9 @@ if(attr in $events){document.addEventListener(attr.substr(2),value)}
 else{document[attr]=value}
 }
 doc=document
-function $Location(){
-var obj=new object()
-for(var x in window.location){obj[x]=window.location[x]}
-obj.__class__=new $class(this,'Location')
-obj.toString=function(){return window.location.toString()}
-return obj
-}
 win={
-__getattr__ : function(attr){
-if(attr=='location'){return $Location()}
-return getattr(window,attr)
-}
+__getattr__ : function(attr){return getattr(window,attr)},
+location:{__getattr__:function(attr){return getattr(window.location,attr)}}
 }
 function $AbstractTagClass(){
 this.__class__=$AbstractTag
