@@ -183,6 +183,7 @@ function dict(){
     }
     return obj
 }
+dict.toString = function(){return "<class 'dict'>"}
 
 function dir(obj){
     var res = []
@@ -198,6 +199,15 @@ function enumerate(iterator){
     }
     return res
 }
+
+function $eval(src){
+    try{return eval($py2js(src).to_js())}
+    catch(err){
+        if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+        if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
+        else{throw(err)}
+    }
+}         
 
 function exec(src){
     try{eval($py2js(src).to_js())}
@@ -310,6 +320,7 @@ function float(value){
     }else if(isinstance(value,float)){return value}
     else{$raise('ValueError',"Could not convert to float(): '"+str(value)+"'")}
 }
+float.toString = function(){return "<class 'float'>"}
 
 // this trick is necessary to set "this" to the instance inside functions
 // found at http://yehudakatz.com/2011/08/11/understanding-javascript-function-invocation-and-this/
@@ -536,6 +547,7 @@ function int(value){
         "Invalid literal for int() with base 10: '"+str(value)+"'")
     }
 }
+int.toString = function(){return "<class 'int'>"}
 
 function isinstance(obj,arg){
     if(obj===null){return arg===None}
@@ -547,7 +559,7 @@ function isinstance(obj,arg){
         return false
     }else{
         if(arg===int){
-            return (typeof obj=="number"||obj.constructor===Number)&&(obj.valueOf()%1===0)
+            return ((typeof obj)=="number"||obj.constructor===Number)&&(obj.valueOf()%1===0)
         }
         if(arg===float){
             return ((typeof obj=="number")&&(obj.valueOf()%1!==0))||
@@ -880,6 +892,7 @@ function tuple(){
     obj.__class__ = tuple
     return obj
 }
+tuple.toString = function(){return "<class 'tuple'>"}
 
 function zip(){
     var rank=0,res=[]
