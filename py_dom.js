@@ -221,9 +221,19 @@ HTMLDocument.prototype.__setattr__ = function(attr,value){
 
 doc = document
 
+function $Location(){
+    var obj = new object()
+    for(var x in window.location){obj[x]=window.location[x]}
+    obj.__class__ = new $class(this,'Location')
+    obj.toString = function(){return window.location.toString()}
+    return obj
+}
+
 win = { 
-    __getattr__ : function(attr){return getattr(window,attr)},
-    location: {__getattr__:function(attr){return getattr(window.location,attr)}}
+    __getattr__ : function(attr){
+        if(attr=='location'){return $Location()}
+        return getattr(window,attr)
+   }
 }
 
 // classes to interact with DOM
