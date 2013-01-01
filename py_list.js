@@ -10,6 +10,8 @@ Array.prototype.__add__ = function(other){
     return this.valueOf().concat(other.valueOf())
 }
 
+Array.prototype.__class__ = new $class(this,'list')
+
 Array.prototype.__contains__ = function(item){
     for(var i=0;i<this.length;i++){
         try{if(this[i].__eq__(item)){return true}
@@ -297,3 +299,4 @@ function list(){
     res.__init__(arguments[0])
     return res
 }
+list.toString = function(){return "<class 'list'>"}

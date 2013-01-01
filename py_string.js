@@ -8,6 +8,8 @@ String.prototype.__add__ = function(other){
     }
 }
 
+String.prototype.__class__ = new $class(this,'str')
+
 String.prototype.__contains__ = function(item){
         if(!(typeof item==="string")){$raise('TypeError',
              "'in <string>' requires string as left operand, not "+item.__class__)}
@@ -467,3 +469,4 @@ function str(arg){
     if(arg===undefined){return '<undefined>'}
     else{return arg.toString()}
 }
+str.toString = function(){return "<class 'str'>"}
