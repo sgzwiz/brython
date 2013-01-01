@@ -113,7 +113,7 @@ String.prototype.__mod__ = function(args){
             var re = new RegExp('\\%(\\(.+\\))*'+conv_flags+'(\\*|\\d*)(\\.\\*|\\.\\d*)*(h|l|L)*('+conv_types+'){1}')
             var res = re.exec(s)
             this.is_format = true
-            if(res===undefined){this.is_format = false;return}
+            if(!res){this.is_format = false;return}
             this.src = res[0]
             if(res[1]){this.mapping_key=str(res[1].substr(1,res[1].length-2))}
             else{this.mapping_key=null}
@@ -153,7 +153,7 @@ String.prototype.__mod__ = function(args){
         while(pos<val.length){
             if(val.charAt(pos)=='%'){
                 var f = new format(val.substr(pos))
-                if(f.is_format){
+                if(f.is_format && f.type!=="%"){
                     elts.push(val.substring(start,pos))
                     elts.push(f)
                     start = pos+f.src.length
@@ -178,7 +178,9 @@ String.prototype.__mod__ = function(args){
         }
         var res = ''
         for(var i=0;i<elts.length;i++){res+=elts[i]}
-        return str(res)
+        // finally, replace %% by %
+        res = res.replace(/%%/g,'%')
+        return res
     }
 
 String.prototype.__mul__ = function(other){
