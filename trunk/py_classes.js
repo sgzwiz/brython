@@ -48,6 +48,19 @@ function $class(obj,info){
 function $confirm(src){return confirm(src)}
 
 // dictionary
+function dict(){
+    if(arguments.length==0){return new $DictClass([],[])}
+    var iterable = arguments[0]
+    var obj = new $DictClass([],[])
+    for(var i=0;i<iterable.__len__();i++){
+        var elt = iterable.__item__(i)
+        obj.__setitem__(elt.__item__(0),elt.__item__(1))
+    }
+    return obj
+}
+dict.__class__ = $type
+dict.toString = function(){return "<class 'dict'>"}
+
 function $DictClass($keys,$values){
     // JS dict objects are indexed by strings, not by arbitrary objects
     // so we must use 2 arrays, one for keys and one for values
@@ -77,6 +90,8 @@ $DictClass.prototype.__add__ = function(other){
     var msg = "unsupported operand types for +:'dict' and "
     $raise('TypeError',msg+"'"+(str(other.__class__) || typeof other)+"'")
 }
+
+$DictClass.prototype.__class__ = dict
 
 $DictClass.prototype.__contains__ = function(item){
     return this.$keys.__contains__(item)
@@ -173,18 +188,6 @@ $DictClass.prototype.values = function(){
     return new $iterator(this.$values,"dict values")
 }
 
-function dict(){
-    if(arguments.length==0){return new $DictClass([],[])}
-    var iterable = arguments[0]
-    var obj = new $DictClass([],[])
-    for(var i=0;i<iterable.__len__();i++){
-        var elt = iterable.__item__(i)
-        obj.__setitem__(elt.__item__(0),elt.__item__(1))
-    }
-    return obj
-}
-dict.toString = function(){return "<class 'dict'>"}
-
 function dir(obj){
     var res = []
     for(var attr in obj){res.push(attr)}
@@ -231,6 +234,16 @@ function filter(){
     return res
 }
 
+function float(value){
+    if(typeof value=="number" || (
+        typeof value=="string" && !isNaN(value))){
+        return new $FloatClass(parseFloat(value))
+    }else if(isinstance(value,float)){return value}
+    else{$raise('ValueError',"Could not convert to float(): '"+str(value)+"'")}
+}
+float.__class__ = $type
+float.toString = function(){return "<class 'float'>"}
+
 function $FloatClass(value){
     this.value = value
     this.__class__ = float
@@ -241,6 +254,8 @@ $FloatClass.prototype.toString = function(){
     if(res.indexOf('.')==-1){res+='.0'}
     return str(res)
 }
+
+$FloatClass.prototype.__class__ = float
 
 $FloatClass.prototype.__bool__ = function(){return bool(this.value)}
     
@@ -312,15 +327,6 @@ for($op in $operators){
         eval('$FloatClass.prototype.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
     }
 }
-
-function float(value){
-    if(typeof value=="number" || (
-        typeof value=="string" && !isNaN(value))){
-        return new $FloatClass(parseFloat(value))
-    }else if(isinstance(value,float)){return value}
-    else{$raise('ValueError',"Could not convert to float(): '"+str(value)+"'")}
-}
-float.toString = function(){return "<class 'float'>"}
 
 // this trick is necessary to set "this" to the instance inside functions
 // found at http://yehudakatz.com/2011/08/11/understanding-javascript-function-invocation-and-this/
@@ -427,12 +433,21 @@ function $import(){
     }
 }
 
-function $getNumClass(obj){
-    return "int"
+function int(value){
+    if(typeof value=="number" ||
+        (typeof value=="string" && parseInt(value)!=NaN)){
+        return parseInt(value)
+    }else if(isinstance(value,float)){
+        return parseInt(value.value)
+    }else{ $raise('ValueError',
+        "Invalid literal for int() with base 10: '"+str(value)+"'")
+    }
 }
+int.__class__ = $type
+int.toString = function(){return "<class 'int'>"}
 
 // Python integers are Javascript numbers
-Number.prototype.__class__ = $getNumClass(this)
+Number.prototype.__class__ = int
 
 Number.prototype.__floordiv__ = function(other){
     if(isinstance(other,int)){
@@ -536,18 +551,6 @@ for($op in $operators){
         eval('Number.prototype.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
     }
 }
-
-function int(value){
-    if(typeof value=="number" ||
-        (typeof value=="string" && parseInt(value)!=NaN)){
-        return parseInt(value)
-    }else if(isinstance(value,float)){
-        return parseInt(value.value)
-    }else{ $raise('ValueError',
-        "Invalid literal for int() with base 10: '"+str(value)+"'")
-    }
-}
-int.toString = function(){return "<class 'int'>"}
 
 function isinstance(obj,arg){
     if(obj===null){return arg===None}
@@ -759,6 +762,28 @@ function round(arg,n){
 }
 
 // set
+function set(){
+    var i=0
+    if(arguments.length==0){return new $SetClass()}
+    else if(arguments.length==1){    // must be an iterable
+        var arg=arguments[0]
+        if(isinstance(arg,set)){return arg}
+        var obj = new $SetClass()
+        try{
+            for(var i=0;i<arg.__len__();i++){
+                obj.items.push(arg.__getitem__(i))
+            }
+            return obj
+        }catch(err){
+            $raise('TypeError',"'"+str(args[0].__class__)+"' object is not iterable")
+        }
+    } else {
+        $raise('TypeError',"set expected at most 1 argument, got "+arguments.length)
+    }
+}
+set.__class__ = $type
+set.toString = function(){return "<class 'set'>"}
+
 function $SetClass(){
     var x = null;
     var i = null;
@@ -781,6 +806,8 @@ $SetClass.prototype.toString = function(){
 $SetClass.prototype.__add__ = function(other){
     return set(this.items.concat(other.items))
 }
+
+$SetClass.prototype.__class__ = set
 
 $SetClass.prototype.__contains__ = function(item){
     for(var i=0;i<this.items.length;i++){
@@ -821,26 +848,6 @@ $SetClass.prototype.add = function(item){
         catch(err){void(0)} // if equality test throws exception
     }
     this.items.push(item)
-}
-
-function set(){
-    var i=0
-    if(arguments.length==0){return new $SetClass()}
-    else if(arguments.length==1){    // must be an iterable
-        var arg=arguments[0]
-        if(isinstance(arg,set)){return arg}
-        var obj = new $SetClass()
-        try{
-            for(var i=0;i<arg.__len__();i++){
-                obj.items.push(arg.__getitem__(i))
-            }
-            return obj
-        }catch(err){
-            $raise('TypeError',"'"+str(args[0].__class__)+"' object is not iterable")
-        }
-    } else {
-        $raise('TypeError',"set expected at most 1 argument, got "+arguments.length)
-    }
 }
 
 function setattr(obj,attr,value){
@@ -890,6 +897,10 @@ function tuple(){
     for(i=0;i<arguments.length;i++){args.push(arguments[i])}
     var obj = list(args)
     obj.__class__ = tuple
+    obj.toString = function(){
+        var res = args.toString()
+        return '('+res.substr(1,res.length-2)+')'
+    }
     return obj
 }
 tuple.toString = function(){return "<class 'tuple'>"}
