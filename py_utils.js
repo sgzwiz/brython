@@ -54,7 +54,10 @@ document.$stdout = {
     write: function(data){console.log(data)}
 }
 
-
+// used for class of classes
+function $type(){}
+$type.__class__ = $type
+$type.toString = function(){return "<class 'type'>"}
 
 function $UnsupportedOpType(op,class1,class2){
     $raise('TypeError',
