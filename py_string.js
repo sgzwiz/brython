@@ -1,3 +1,12 @@
+function str(arg){
+    if(arg===undefined){return '<undefined>'}
+    else{return arg.toString()}
+}
+str.__class__ = $type
+str.toString = function(){return "<class 'str'>"}
+
+// add Brython attributes to Javascript String
+
 String.prototype.__add__ = function(other){
     if(!(typeof other==="string")){
         try{return other.__radd__(this)}
@@ -8,7 +17,7 @@ String.prototype.__add__ = function(other){
     }
 }
 
-String.prototype.__class__ = new $class(this,'str')
+String.prototype.__class__ = str
 
 String.prototype.__contains__ = function(item){
         if(!(typeof item==="string")){$raise('TypeError',
@@ -466,9 +475,3 @@ function $string_strip(obj){
 }
 
 function $string_upper(obj){return function(){return obj.toUpperCase()}}
-
-function str(arg){
-    if(arg===undefined){return '<undefined>'}
-    else{return arg.toString()}
-}
-str.toString = function(){return "<class 'str'>"}

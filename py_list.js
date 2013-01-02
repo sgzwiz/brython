@@ -1,3 +1,24 @@
+function $list(){
+    // used for list displays
+    // different from list : $list(1) is valid (matches [1])
+    // but list(1) is invalid (integer 1 is not iterable)
+    var args = new Array()
+    for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+    return new $ListClass(args)
+}
+
+function list(){
+    if(arguments.length===0){return []}
+    else if(arguments.length>1){
+        $raise('TypeError',"list() takes at most 1 argument ("+arguments.length+" given)")
+    }
+    var res = []
+    res.__init__(arguments[0])
+    return res
+}
+list.__class__ = $type
+list.toString = function(){return "<class 'list'>"}
+
 function $ListClass(items){
 
     var x = null,i = null;
@@ -6,11 +27,13 @@ function $ListClass(items){
     this.items = items // JavaScript array
 }
 
+// add Brython attributes to Javascript Array
+
 Array.prototype.__add__ = function(other){
     return this.valueOf().concat(other.valueOf())
 }
 
-Array.prototype.__class__ = new $class(this,'list')
+Array.prototype.__class__ = list
 
 Array.prototype.__contains__ = function(item){
     for(var i=0;i<this.length;i++){
@@ -281,22 +304,3 @@ function $list_sort(obj,arg){
     $qsort(arg,obj,0,obj.length)
 }
 
-function $list(){
-    // used for list displays
-    // different from list : $list(1) is valid (matches [1])
-    // but list(1) is invalid (integer 1 is not iterable)
-    var args = new Array()
-    for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-    return new $ListClass(args)
-}
-
-function list(){
-    if(arguments.length===0){return []}
-    else if(arguments.length>1){
-        $raise('TypeError',"list() takes at most 1 argument ("+arguments.length+" given)")
-    }
-    var res = []
-    res.__init__(arguments[0])
-    return res
-}
-list.toString = function(){return "<class 'list'>"}
