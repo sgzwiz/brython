@@ -45,7 +45,45 @@ function $mouseCoords(ev){
     return res
 }
 
-// DOM classes
+// class for all DOM objects
+function DOMObject(){}
+DOMObject.__class__ = $type
+DOMObject.toString = function(){return "<class 'DOMObject'>"}
+
+$DOMtoString = function(){
+    var res = "<DOMObject object type '" 
+    return res+$NodeTypes[this.nodeType]+"' name '"+this.nodeName+"'>"
+}
+
+// DOM node types
+$NodeTypes = {1:"ELEMENT",
+    2:"ATTRIBUTE",
+    3:"TEXT",
+    4:"CDATA_SECTION",
+    5:"ENTITY_REFERENCE",
+    6:"ENTITY",
+    7:"PROCESSING_INSTRUCTION",
+    8:"COMMENT",
+    9:"DOCUMENT",
+    10:"DOCUMENT_TYPE",
+    11:"DOCUMENT_FRAGMENT",
+    12:"NOTATION"
+}
+
+function DOMEvent(){}
+DOMEvent.__class__ = $type
+DOMEvent.toString = function(){return "<class 'DOMEvent'>"}
+
+function $DOMEvent(ev){
+    // wrapper for events for browsers that don't support addEventListener
+    // and get the event object from window.event
+    ev.__class__ = DOMEvent
+    ev.__getattr__ = function(attr){return $JS2Py(ev[attr])}
+    ev.preventDefault = function(){ev.returnValue=false}
+    ev.stopPropagation = function(){ev.cancelBubble=true}
+    ev.toString = function(){return '<DOMEvent object>'}
+    return ev
+}
 
 function $MouseEvent(ev){
     this.event = ev
@@ -105,13 +143,15 @@ $Clipboard.prototype.__setattr__ = function(attr,value){
     eval("this.data."+attr+"=value")
 }
 
-function $OptionsClass(parent){ // parent is a SELECT tag
+function $OptionsClass(parent){ 
+    // class for collection "options" of a SELECT tag
+    // implements Python list interface
     this.parent = parent
     
     this.__getattr__ = function(attr){
         if('get_'+attr in this){return eval('this.get_'+attr)}
         if(attr in this.parent.elt.options){
-            var obj = eval('this.parent.elt.options.'+attr)
+            var obj = eval('this.parent.options.'+attr)
             if((typeof obj)=='function'){
                 $raise('AttributeError',"'options' object has no attribute '"+attr+'"')
             }
@@ -121,8 +161,8 @@ function $OptionsClass(parent){ // parent is a SELECT tag
     
     this.__class__ = 'options'
 
-    this.__getitem__ = function(arg){
-        return parent.options[arg]
+    this.__getitem__ = function(key){
+        return $DomObject(parent.options[key])
     }
     this.__delitem__ = function(arg){
         parent.options.remove(arg)
@@ -158,9 +198,9 @@ function $OptionsClass(parent){ // parent is a SELECT tag
     this.get_remove = function(arg){parent.options.remove(arg)}
 }
 
-HTMLDocument.prototype.__class__ = $DomClass(document)
+document.__class__ = DOMObject
 
-HTMLDocument.prototype.__delitem__ = function(key){
+document.__delitem__ = function(key){
     if(typeof key==="string"){
         var res = document.getElementById(key)
         if(res){res.parentNode.removeChild(res)}
@@ -176,17 +216,17 @@ HTMLDocument.prototype.__delitem__ = function(key){
     }
 }
 
-HTMLDocument.prototype.__getattr__ = function(attr){return getattr(this,attr)}
+document.__getattr__ = function(attr){return getattr(this,attr)}
 
-HTMLDocument.prototype.__getitem__ = function(key){
+document.__getitem__ = function(key){
     if(typeof key==="string"){
         var res = document.getElementById(key)
-        if(res){res.__class__= $DomClass(res);return res}
+        if(res){return $DomObject(res)}
         else{$raise("KeyError",key)}
     }else{
         try{
             var elts=document.getElementsByTagName(key.name),res=[]
-            for(var $i=0;$i<elts.length;$i++){res.push(elts[$i])}
+            for(var $i=0;$i<elts.length;$i++){res.push($DomObject(elts[$i]))}
             return res
         }catch(err){
             $raise("KeyError",str(key))
@@ -194,14 +234,13 @@ HTMLDocument.prototype.__getitem__ = function(key){
     }
 }
 
-HTMLDocument.prototype.__item__ = function(i){
-    var res = document.childNodes[i]
-    res.__class__ = $DomClass(res)
+document.__item__ = function(i){
+    var res = $DomObject(document.childNodes[i])
     return res
 }
 
-HTMLDocument.prototype.__le__ = function(other){
-    if(isinstance(other,$AbstractTag)){
+document.__le__ = function(other){
+    if(isinstance(other,$TagSum)){
         var $i=0
         for($i=0;$i<other.children.length;$i++){
             document.body.appendChild(other.children[$i])
@@ -212,12 +251,21 @@ HTMLDocument.prototype.__le__ = function(other){
     } else {document.body.appendChild(other)}
 }
 
-HTMLDocument.prototype.__len__ = function(){return document.childNodes.length}
+document.__len__ = function(){return document.childNodes.length}
 
-HTMLDocument.prototype.__setattr__ = function(attr,value){
-    if(attr in $events){document.addEventListener(attr.substr(2),value)}
+document.__setattr__ = function(attr,value){
+    if(attr in $events){
+        // value is a function taking an event as argument
+        if(window.addEventListener){document.addEventListener(attr.substr(2),value)}
+        else if(window.attachEvent){
+            var callback = function(ev){return value($DOMEvent(window.event))}
+            document.attachEvent(attr,callback)
+        }
+    }
     else{document[attr]=value}
 }
+
+document.toString = $DOMtoString
 
 doc = document
 
@@ -234,44 +282,6 @@ win = {
         if(attr=='location'){return $Location()}
         return getattr(window,attr)
    }
-}
-
-// classes to interact with DOM
-function $AbstractTagClass(){
-    // for abstract tags
-    this.__class__ = $AbstractTag
-    this._class_name = 'abstract'
-    this.children = []
-}
-$AbstractTagClass.prototype.appendChild = function(child){    
-    this.children.push(child)
-}
-
-$AbstractTagClass.prototype.__add__ = function(other){
-    if(isinstance(other,$AbstractTag)){
-        this.children = this.children.concat(other.children)
-    }else if(isinstance(other,str)){
-        this.children = this.children.concat(document.createTextNode(other))
-    }else{this.children.push(other)}
-    return this
-}
-
-$AbstractTagClass.prototype.__radd__ = function(other){
-    var res = $AbstractTag()
-    res.children = this.children.concat(document.createTextNode(other))
-    return res
-}
-
-$AbstractTagClass.prototype.clone = function(){
-    var res = $AbstractTag(), $i=0
-    for($i=0;$i<this.children.length;$i++){
-        res.children.push(this.children[$i].cloneNode(true))
-    }
-    return res
-}
-
-function $AbstractTag(){
-    return new $AbstractTagClass()
 }
 
 $events = $List2Dict('onabort','onactivate','onafterprint','onafterupdate',
@@ -294,68 +304,35 @@ $events = $List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'ontouchstart','ontouchmove','ontouchend'
 )
 
-function $Tag(class_name,args){
-    // represents an HTML tag
-    var $i = null
-    var elt = null
-    if(class_name!==undefined){
-        var elt = document.createElement(class_name)
-        elt.parent = this
-        elt.__class__ = class_name
+// some browsers don't support the Node object
+$hasNode = (typeof Node==="object")
+if($hasNode){
+    function $DomObject(elt){
+        elt.__class__ = DOMObject
+        elt.toString = $DOMtoString
+        return elt
     }
-    if(args!=undefined && args.length>0){
-        $start = 0
-        $first = args[0]
-        // if first argument is not a keyword, it's the tag content
-        if(!isinstance($first,$Kw)){
-            $start = 1
-            if(isinstance($first,[str,int,float])){
-                txt = document.createTextNode($first.toString())
-                elt.appendChild(txt)
-            } else if(isinstance($first,$AbstractTag)){
-                for($i=0;$i<$first.children.length;$i++){
-                    elt.appendChild($first.children[$i])
-                }
-            } else {
-                try{elt.appendChild($first)}
-                catch(err){$raise('ValueError','wrong element '+$first)}
-            }
+}else{
+    function Node(){} // define a Node object
+    function $DomObject(elt){ 
+        // returns the element, enriched with an attribute $brython_id for 
+        // equality testing and with all the attributes of Node
+        if(!('$brython_id' in elt)){
+            // add a unique id for comparisons
+            elt.$brython_id=Math.random().toString(36).substr(2, 8)
+            // add attributes of Node to element
+            for(var attr in Node.prototype){elt[attr]=Node.prototype[attr]}
+            elt.toString = $DOMtoString
         }
-        // attributes
-        for($i=$start;$i<args.length;$i++){
-            // keyword arguments
-            $arg = args[$i]
-            if(isinstance($arg,$Kw)){
-                if($arg.name.toLowerCase().substr(0,2)==="on"){ // events
-                    eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
-                }else if($arg.name.toLowerCase()=="style"){
-                    elt.set_style($arg.value)
-                } else {
-                    if($arg.value!==false){
-                        // option.selected=false sets it to true :-)
-                        elt.setAttribute($arg.name.toLowerCase(),$arg.value)
-                    }
-                }
-            }
-        }
+        return elt
     }
-    return elt
-}
-
-function $DomClass(elt){
-    var s = elt.toString() // string [object <classname>]
-    var pattern = /\[object (.*)\]/
-    var res = pattern.exec(s)
-    var dclass = eval(res[1])
-    dclass.__class__ = Object
-    dclass.toString = function(){return '<class '+res[1]+'>'}
-    return dclass
 }
 
 Node.prototype.__add__ = function(other){
-    var res = $AbstractTag() // abstract tag
+    // adding another element to self returns an instance of $TagSum
+    var res = $TagSum()
     res.children = [this]
-    if(isinstance(other,$AbstractTag)){
+    if(isinstance(other,$TagSum)){
         for(var $i=0;$i<other.children.length;$i++){res.children.push(other.children[$i])}
     } else if(isinstance(other,[str,int,float,list,dict,set,tuple])){
         res.children.push(document.createTextNode(str(other)))
@@ -363,7 +340,13 @@ Node.prototype.__add__ = function(other){
     return res
 }
 
-Node.prototype.__eq__ = function(other){return this.isEqualNode(other)}
+Node.prototype.__class__ = DOMObject
+
+Node.prototype.__eq__ = function(other){
+    if('isEqualNode' in this){return this.isEqualNode(other)}
+    else if('$brython_id' in this){return this.$brython_id===other.$brython_id}
+    else{$raise('NotImplementedError','__eq__ is not implemented')}
+}
 
 Node.prototype.__getattr__ = function(attr){
     if('get_'+attr in this){return this['get_'+attr]()}
@@ -371,21 +354,17 @@ Node.prototype.__getattr__ = function(attr){
 }
 
 Node.prototype.__getitem__ = function(key){
-    var res = this.childNodes[key]
-    res.__class__ = $DomClass(res)
-    return res
+    return $DomObject(this.childNodes[key])
 }
 
 Node.prototype.__in__ = function(other){return other.__contains__(this)}
 
 Node.prototype.__item__ = function(key){ // for iteration
-    var res = this.childNodes[key]
-    res.__class__ = $DomClass(res)
-    return res
+    return $DomObject(this.childNodes[key])
 }
 
 Node.prototype.__le__ = function(other){
-    if(isinstance(other,$AbstractTag)){
+    if(isinstance(other,$TagSum)){
         var $i=0
         for($i=0;$i<other.children.length;$i++){
             this.appendChild(other.children[$i])
@@ -402,7 +381,7 @@ Node.prototype.__len__ = function(){return this.childNodes.length}
 
 Node.prototype.__mul__ = function(other){
     if(isinstance(other,int) && other.valueOf()>0){
-        var res = $AbstractTag()
+        var res = $TagSum()
         for(var i=0;i<other.valueOf();i++){
             var clone = this.get_clone()()
             res.children.push(clone)
@@ -413,18 +392,24 @@ Node.prototype.__mul__ = function(other){
     }
 }
 
-Node.prototype.__ne__ = function(other){return $not(this.__eq__(other))}
+Node.prototype.__ne__ = function(other){return !this.__eq__(other)}
 
 Node.prototype.__radd__ = function(other){ // add to a string
-    var res = $AbstractTag() // abstract tag
+    var res = $TagSum()
     var txt = document.createTextNode(other)
     res.children = [txt,this]
     return res        
 }
 
 Node.prototype.__setattr__ = function(attr,value){
-    if(attr in $events){this.addEventListener(attr.substr(2),value)}
-    else if('set_'+attr in this){return this['set_'+attr](value)}
+    if(attr.substr(0,2)=='on'){ // event
+        // value is a function taking an event as argument
+        if(window.addEventListener){this.addEventListener(attr.substr(2),value)}
+        else if(window.attachEvent){
+            var callback = function(ev){return value($DOMEvent(window.event))}
+            this.attachEvent(attr,callback)
+        }
+    }else if('set_'+attr in this){return this['set_'+attr](value)}
     else if(attr in this){this[attr]=value}
     else{setattr(this,attr,value)}
 }
@@ -434,7 +419,7 @@ Node.prototype.__setitem__ = function(key,value){
 }
 
 Node.prototype.get_clone = function(){
-    res = this.cloneNode(true)
+    res = $DomObject(this.cloneNode(true))
     // copy events - may not work since there is no getEventListener()
     for(var evt in $events){    
         if(this[evt]){res[evt]=this[evt]}
@@ -456,7 +441,7 @@ Node.prototype.get_getContext = function(){ // for CANVAS tag
 }
 
 Node.prototype.get_parent = function(){
-    if(this.parentElement){return this.parentElement}
+    if(this.parentElement){return $DomObject(this.parentElement)}
     else{return None}
 }
 
@@ -475,7 +460,7 @@ Node.prototype.get_top = function(){
 Node.prototype.get_children = function(){
     var res = []
     for(var i=0;i<this.childNodes.length;i++){
-        res.push(this.childNodes[i])
+        res.push($DomObject(this.childNodes[i]))
     }
     return res
 }
@@ -517,15 +502,90 @@ Node.prototype.set_text = function(value){
 
 Node.prototype.set_value = function(value){this.value = value.toString()}
 
-HTMLHtmlElement.prototype.__class__ = '<class HTMLHtmlElement>'
-HTMLHtmlElement.prototype.__item__ = function(key){ // for iteration
-    var res = this.childNodes[key]
-    res.__class__ = new $DomClass(res)
-    return res
+// creation of an HTML element
+function $Tag(tagName,args){
+    // cl
+    var $i = null
+    var elt = null
+    var elt = $DomObject(document.createElement(tagName))
+    elt.parent = this
+    if(args!=undefined && args.length>0){
+        $start = 0
+        $first = args[0]
+        // if first argument is not a keyword, it's the tag content
+        if(!isinstance($first,$Kw)){
+            $start = 1
+            if(isinstance($first,[str,int,float])){
+                txt = document.createTextNode($first.toString())
+                elt.appendChild(txt)
+            } else if(isinstance($first,$TagSum)){
+                for($i=0;$i<$first.children.length;$i++){
+                    elt.appendChild($first.children[$i])
+                }
+            } else {
+                try{elt.appendChild($first)}
+                catch(err){$raise('ValueError','wrong element '+$first)}
+            }
+        }
+        // attributes
+        for($i=$start;$i<args.length;$i++){
+            // keyword arguments
+            $arg = args[$i]
+            if(isinstance($arg,$Kw)){
+                if($arg.name.toLowerCase().substr(0,2)==="on"){ // events
+                    elt.__setattr__($arg.name.toLowerCase(),$arg.value)
+                }else if($arg.name.toLowerCase()=="style"){
+                    elt.set_style($arg.value)
+                } else {
+                    if($arg.value!==false){
+                        // option.selected=false sets it to true :-)
+                        elt.setAttribute($arg.name.toLowerCase(),$arg.value)
+                    }
+                }
+            }
+        }
+    }
+    return elt
 }
-HTMLHtmlElement.prototype.__len__ = function(){return this.childNodes.length}
 
 function A(){return $Tag('A',arguments)}
+
+// class used for tag sums
+function $TagSumClass(){
+    this.__class__ = $TagSum
+    this.children = []
+}
+$TagSumClass.prototype.appendChild = function(child){    
+    this.children.push(child)
+}
+
+$TagSumClass.prototype.__add__ = function(other){
+    if(isinstance(other,$TagSum)){
+        this.children = this.children.concat(other.children)
+    }else if(isinstance(other,str)){
+        this.children = this.children.concat(document.createTextNode(other))
+    }else{this.children.push(other)}
+    return this
+}
+
+$TagSumClass.prototype.__radd__ = function(other){
+    var res = $TagSum()
+    res.children = this.children.concat(document.createTextNode(other))
+    return res
+}
+
+$TagSumClass.prototype.clone = function(){
+    var res = $TagSum(), $i=0
+    for($i=0;$i<this.children.length;$i++){
+        res.children.push(this.children[$i].cloneNode(true))
+    }
+    return res
+}
+
+function $TagSum(){
+    return new $TagSumClass()
+}
+
 
 var $src = A+'' // source of function A
 $tags = ['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
