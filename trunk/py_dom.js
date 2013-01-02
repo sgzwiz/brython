@@ -533,7 +533,7 @@ function $Tag(tagName,args){
             $arg = args[$i]
             if(isinstance($arg,$Kw)){
                 if($arg.name.toLowerCase().substr(0,2)==="on"){ // events
-                    elt.__setattr__($arg.name.toLowerCase(),$arg.value)
+                    eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){
                     elt.set_style($arg.value)
                 } else {
