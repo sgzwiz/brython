@@ -3,7 +3,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <script src="/brython.js"></script>
 </head>
-<body onload="brython()">
+<body onload="brython(1)">
 <h1>Phonetic cyrillic on QWERTY keyboard</h1>
 Here is a little test, mapping latin characters on a keyboard to their phonetically equivalent characters in a cyrillic script, as used in Russian.
 <p>
@@ -62,18 +62,18 @@ def keyup(e):
     e.preventDefault()
     e.stopPropagation()
 
-
 def drawkeyboard():
     table = TABLE()
+    tbody = TBODY()
     row = TR()
     for letter in CYR:
         row <= TD(BUTTON(letter, onClick= "printkey('%s')" % letter))
         if letter in ('Я','Ъ','я'):
-            table <= row
+            tbody <= row
             row=TR()
-    table <= row
+    tbody <= row
+    table <= tbody
     doc <= table
-
 
 # Draw keyboard and set key events
 
