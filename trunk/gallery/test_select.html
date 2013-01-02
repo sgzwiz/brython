@@ -16,7 +16,7 @@ a.sort_link{margin-left:10px;text-decoration:none}
 <script src="/py_ajax.js"></script>
 
 </head>
-<body onLoad="brython()">
+<body onLoad="brython(1)">
 
         <script type="text/python">
         items = ['unan','daou','tri','pevar','pemp']
@@ -28,7 +28,7 @@ a.sort_link{margin-left:10px;text-decoration:none}
             option = src.options[selected]
             del src.options[selected]
             dest.options.append(option)
-            option.selected = False
+            dest.selectedIndex = -1
         
         def up(src):
             selected = src.selectedIndex
