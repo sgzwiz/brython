@@ -373,7 +373,8 @@ function $import(){
                 window.clearTimeout(timer)
                 if($xmlhttp.status==200 || $xmlhttp.status==0){res=$xmlhttp.responseText}
                 else{
-                    $raise('ImportError',"No module named '"+module+"'")
+                    // don't throw an exception here, it will not be caught
+                    res = Error('ImportError',"No module named '"+module+"'")
                 }
             }
         }
@@ -389,6 +390,7 @@ function $import(){
             document.line_num = calling.line
             $raise('ImportError',"No module named '"+module+"'")}, 5000)
         $xmlhttp.send()
+        if(res.constructor===Error){throw res} // module not found
         if(is_js){
             try{eval(res)}catch(err){$raise('ImportError',err.message)}
         }else{
