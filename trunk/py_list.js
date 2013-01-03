@@ -109,6 +109,8 @@ Array.prototype.__getattr__ = function(attr){
             return $list_extend(obj)
         case 'index':
             return $list_index(obj)
+        case 'pop':
+            return $list_pop(obj)
         case 'reverse':
             return function(){$list_reverse(obj)}
         case 'sort':
@@ -253,6 +255,24 @@ function $list_index(obj){
             if(obj[i].__eq__(elt)){return i}
         }
         $raise('ValueError',str(elt)+" is not in list")
+    }
+}
+
+function $list_pop(obj){
+    return function(elt){
+        if(arguments.length==0){return obj.pop()}
+        else if(arguments.length==1){
+            var pos = arguments[0]
+            if(isinstance(pos,int)){
+                var res = obj[pos]
+                obj.splice(pos,1)
+                return res
+            }else{
+                $raise('TypeError',pos.__class__+" object cannot be interpreted as an integer")
+            }
+        }else{ 
+            $raise('TypeError',"pop() takes at most 1 argument ("+arguments.length+' given)')
+        }
     }
 }
 
