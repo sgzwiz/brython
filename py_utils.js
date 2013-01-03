@@ -26,18 +26,18 @@ function $JS2Py(src){
 function $raise(name,msg) {
     // raises exception with specified name and message
     if(msg===undefined){msg=''}
-    if(document.$debug){
+    if(document.$debug && msg.split('\n').length==1){
         var module = document.$line_info[1]
         var line_num = document.$line_info[0]
         var lines = document.$py_src[module].split('\n')
         msg += "\nmodule '"+module+"' line "+line_num
         msg += '\n'+lines[line_num-1]
     }
-    err = new Error(name+": "+msg)
+    err = new Error()
     err.name = name
-    err.message = name+": "+msg;
+    err.message = msg
     err.py_error = true
-    if(document.$stderr!==null){document.$stderr_buff = err.message}
+    if(document.$stderr!==null){document.$stderr_buff = err.name+': '+err.message}
     throw err
 }
 
@@ -54,8 +54,9 @@ function $src_error(name,module,msg,pos) {
     var lines = src.split('\n')
     msg += "\nmodule '"+module+"' line "+line_num
     msg += '\n'+lines[line_num-1]
-    err = new Error(name+": "+msg)
+    err = new Error()
     err.name = name
+    err.message = msg
     err.py_error = true
     if(document.$stderr!==null){document.$stderr_buff = err.message}
     throw err

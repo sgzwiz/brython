@@ -427,7 +427,7 @@ function $import(){
             try{
                 eval(stack.to_js())
             }catch(err){
-                $raise(err.name,'Error in imported module '+module+'\n'+err.message,module)
+                $raise(err.name,err.message)
             }
         }
     }
