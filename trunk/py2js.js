@@ -904,8 +904,9 @@ function $py2js(src,module){
                     code += '\n'+f_indent+'var obj=new $'+fname+'()'
                     code += '\n'+f_indent+'obj.__getattr__ = function(attr){return obj[attr]}'
                     code += '\n'+f_indent+'obj.__setattr__ = function(attr,value){obj[attr]=value}'
-                    code += '\n'+f_indent+'obj.__init__.apply(obj,arguments)'
-                    code += '\n'+f_indent+'return obj}'
+                    code += '\n'+f_indent+'if("__init__" in obj)'
+                    code += '{obj.__init__.apply(obj,arguments)}'
+                    code += '\n'+f_indent+'return obj'+'\n'+f_indent+'}'
                     tail.splice(0,0,['func_end',code])
                 }                
             } else {
