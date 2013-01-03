@@ -139,7 +139,7 @@ var $OpeningBrackets = $List2Dict('(','[','{')
 var $ClosingBrackets = $List2Dict(')',']','}')
 
 function $py2js(src,module){
-    var i = 0
+    var i=0,pos=0
     src = src.replace(/\r\n/gm,'\n')
     while (src.length>0 && (src.charAt(0)=="\n" || src.charAt(0)=="\r")){
         src = src.substr(1)
@@ -160,7 +160,7 @@ function $py2js(src,module){
     var times = {}
         
     // tokenization
-    tokens = $tokenize(src)
+    tokens = $tokenize(src,module)
 
     stack = new Stack(tokens)
     
@@ -207,8 +207,7 @@ function $py2js(src,module){
     }
 
     // list comprehensions
-
-    var pos = 0
+    pos = 0
     while(true){
         var br_pos = stack.find_next(pos,'bracket','[')
         if(br_pos===null){break}
@@ -218,7 +217,7 @@ function $py2js(src,module){
         if(for_pos===null){pos = br_pos+1;continue}
         var expr = stack.list.slice(br_pos+1,for_pos)
         var in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
-        if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
+        if(in_pos===null){$SyntaxError(module,"missing 'in' in list comprehension",br_pos)}
         var qesc = new RegExp('"',"g") // to escape double quotes in arguments
         var loops = []
         var env = [] // variables found in iterables and conditions
@@ -232,7 +231,7 @@ function $py2js(src,module){
             env = env.concat(s.ids_in())
             loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
             in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
-            if(in_pos===null){$raise('SyntaxError',"missing 'in' in list comprehension")}
+            if(in_pos===null){$SyntaxError(module,"missing 'in' in list comprehension",br_pos)}
             lvar = stack.list.slice(for_pos+1,in_pos)
         }
         var if_pos = stack.find_next_at_same_level(in_pos,'keyword','if')
@@ -281,7 +280,7 @@ function $py2js(src,module){
     var br_list = ['[','(','{']
     for(var ibr=0;ibr<br_list.length;ibr++){
         var bracket = br_list[ibr]
-        var pos = stack.list.length-1
+        pos = stack.list.length-1
         while(true){
             var br_elt = stack.find_previous(pos,"bracket",bracket)
             if(br_elt==null){break}
@@ -314,8 +313,7 @@ function $py2js(src,module){
                             // each kv has attributes start and end = position in args
                             var elts = kv.split(':')
                             if(elts.length!=2){
-                                document.line_num = pos2line[br_pos]
-                                $raise("SyntaxError","invalid syntax")
+                                $SyntaxError(module,"invalid syntax",br_pos)
                             }
                             var key = elts[0] // key.start = position in kv
                             var value = elts[1]
@@ -364,9 +362,45 @@ function $py2js(src,module){
     }
     var dobj = new Date()
     times['displays'] = dobj.getTime()-t0
+    
+    // methods and functions
+    var fkw = ['class','def'],$funcs=[]
+    for(i=0;i<fkw.length;i++){
+        pos = 0
+        var kw=fkw[i]
+        while(true){
+            var fpos = stack.find_next(pos,'keyword',kw)
+            if(fpos===null){break}
+            var block = stack.find_block(fpos)
+            var func_name = stack.list[fpos+1]
+            var parent = -1
+            var offset = 0
+            for(var j=$funcs.length-1;j>=0;j--){
+                if(fpos>$funcs[j][2] && fpos<$funcs[j][3]){parent = j;break}
+            }
+            $funcs.push([kw,func_name[1],block[0],block[1],parent])
+            // mark methods
+            if(kw=='def' && parent>-1 && $funcs[parent][0]=='class'){
+                stack.list[fpos+1][0]='method_id'
+            }
+            // add first line inside classes to set local var $instance to self
+            if(kw==='class'){
+                var block_indent = stack.list[block[0]+2][1]
+                stack.list.splice(block[0]+2,0,['indent',block_indent],
+                    ['code','var $instance=this'],['newline','\n'])
+                offset += 3
+            }
+            // add empty parameter list for classes without arguments
+            if(kw==='class' && !stack.list[fpos+2].match(['bracket','('])){
+                stack.list.splice(fpos+2,0,['bracket','('],['bracket',')'])
+                offset += 2
+            }
+            pos = fpos+offset+1
+        }
+    }          
 
     // conversion of arguments in function definitions
-    var pos = stack.list.length-1
+    pos = stack.list.length-1
     while(true){
         var def_pos = stack.find_previous(pos,"keyword","def")
         if(def_pos==null){break}
@@ -377,17 +411,18 @@ function $py2js(src,module){
         var f_indent = '\n'
         while(indent>0){f_indent+=' ';indent--}
         document.line_num = pos2line[func_token[2]]
-        if(!func_token[0]=='id'){$raise("SyntaxError","wrong type after def")}
+        if(func_token[0]!=='id' && func_token[0]!=='method_id'){
+            $SyntaxError(module,"wrong type after def",def_pos)
+        }
         if(arg_start[0]!='bracket' || arg_start[1]!='('){
-            $raise("SyntaxError","missing ( after function name")
+            $SyntaxError(module,"missing ( after function name",def_pos)
         }
         var end_def = stack.find_next_at_same_level(def_pos,"delimiter",":")
         if(end_def==null){
-            $raise("SyntaxError","Unable to find definition end "+end_def)
+            $SyntaxError(module,"Unable to find definition end "+end_def,def_pos)
         }
         var has_args = false
-        if(func_token[0]=='id' && arg_start[0]=='bracket'
-            && arg_start[1]=='(' && 
+        if(arg_start[0]=='bracket' && arg_start[1]=='(' && 
             !(stack.list[def_pos+3].match(["bracket",")"]))){
             // function definition
             has_args = true
@@ -403,6 +438,7 @@ function $py2js(src,module){
             var has_defaults = false
             var other_args = null
             var other_kw = null
+            var instance = null // initialised to first argument if class method
             for(var i=args.length-1;i>=0;i--){
                 arg = args[i]
                 var op = null
@@ -425,8 +461,13 @@ function $py2js(src,module){
                         // argument with default value
                         defaults.push([elts[0].list[0][1],elts[1].to_js()])
                         has_defaults = true
-                    } else {  // required positional argument
-                        required.push(arg.list[0][1])
+                    } else {  // positional argument
+                        if(i==0 && func_token[0]==='method_id'){
+                            // for methods, first argument is the instance
+                            var instance = arg
+                        }else{
+                            required.push(arg.list[0][1])
+                        }
                     }
                     // remove argument
                     if(i==0){
@@ -472,6 +513,10 @@ function $py2js(src,module){
             ['indent',block_indent],['code',"$ns=$MakeArgs("+arg_code+")"],['newline','\n'],
             ['indent',block_indent],['code','for($var in $ns){eval("var "+$var+"=$ns[$var]")}'],
             ['newline','\n'])
+        }
+        if(func_token[0]==='method_id'){ // set first argument to instance
+            stack.list.splice(block[0]+11,0,['indent',block_indent],
+                ['code','var '+instance.list[0][1]+'=$instance'],['newline','\n'])
         }
         if(document.$debug){
             var block = stack.find_block(def_pos) // begins with [delimiter,newline,indent]
@@ -598,8 +643,7 @@ function $py2js(src,module){
         if(imp_pos==null){break}
         var imported = stack.atom_at(imp_pos+1,true)
         if(imported.type != 'id' && imported.type != 'tuple'){
-            document.line_num = pos2line[stack.list[imp_pos][2]]
-            $raise("SyntaxError","invalid syntax")
+            $SyntaxError(module,"invalid syntax",imp_pos)
         }
         for(var i=0;i<imported.list().length;i++){
             if(stack.list[imported.start+i][0]=="id"){
@@ -640,7 +684,7 @@ function $py2js(src,module){
             clauses.push(exc_pos)
         }
         // end of try..except blocks
-        if(clauses.length==0){$raise('SyntaxError','invalid syntax')}
+        if(clauses.length==0){$SyntaxError(module,'invalid syntax',exc_pos)}
         var last_block = stack.find_block(clauses[clauses.length-1])
         // indent except blocks
         for(var i=clauses[0]-1;i<last_block[1];i++){
@@ -666,7 +710,7 @@ function $py2js(src,module){
                         }
                         stack.list.splice(clauses[i]+1,exc_list.length,
                             ['code','if(['+exc_str.join(',')+'].indexOf($err'+$err_num+'.name)>-1)'])
-                    }else{$raise('SyntaxError','invalid syntax')}
+                    }else{$SyntaxError(module,'invalid syntax',clause[3])}
                 }
             }
         }
@@ -721,7 +765,7 @@ function $py2js(src,module){
 
     // replace if,elif,else,def,for,try,catch,finally by equivalents
     var kws = {'if':'if','else':'else','elif':'else if',
-        'def':'function','for':'for','while':'while',
+        'class':'function','def':'function','for':'for','while':'while',
         'try':'try','catch':'catch','finally':'finally'}
     var has_parenth = $List2Dict('if','elif','while','for','catch')
     var $funcs = []
@@ -741,13 +785,12 @@ function $py2js(src,module){
                     pos = kw_pos+1
                     continue
                 }
-                document.line_num = pos2line[stack.list[kw_pos][2]]
-                $raise('SyntaxError')
+                $SyntaxError(module,'no condition',stack.list[kw_pos][2])
             }
             // block[0] = position of :
             // block[1] = last newline of block
             s = new Stack(stack.list.slice(block[0],block[1]+1))
-            if(block==null){console.log('anomalie '+kw);pos=kw_pos-1;continue}
+            if(block==null){$SyntaxError(module,'missing block after '+kw,kw_pos)}
             var multiline = (s.find_next(0,'newline')!=null)
             // replace by Javascript keyword
             stack.list[kw_pos][1] = kws[kw]
@@ -765,7 +808,7 @@ function $py2js(src,module){
                     var _in_list = stack.list.slice(_in.start,_in.end+1)
                     if(_in_list.length != 1 || 
                         _in_list[0][0]!="operator" || _in_list[0][1]!="in"){
-                        $raise("SyntaxError","missing 'in' after 'for'",src,src_pos)
+                        $SyntaxError(module,"missing 'in' after 'for'",src_pos)
                     }
                     var iterable = stack.atom_at(_in.end+1,true)
                     // create temporary variable for iterator
@@ -805,13 +848,16 @@ function $py2js(src,module){
                 }
             } else if(kws[kw]=="function"){
                 var func_name = stack.list[kw_pos+1]
-                var i=0,parent = false
+                var i=0,parent = -1
                 for(i=$funcs.length-1;i>=0;i--){
-                    if(kw_pos>$funcs[i][1] && kw_pos<$funcs[i][2]){parent = true;break}
+                    if(kw_pos>$funcs[i][2] && kw_pos<$funcs[i][3]){parent = i;break}
                 }
-                $funcs.push([func_name[1],block[0],block[1],parent])
+                $funcs.push([kw,func_name[1],block[0],block[1],parent])
                 // function name is a special id (for to_js())
                 stack.list[kw_pos+1][0]="function_id"
+                // if class, change name foo to $foo
+                var fname = stack.list[kw_pos+1][1]
+                if(kw=="class"){stack.list[kw_pos+1][1]='$'+fname}
                 seq = stack.list.slice(kw_pos+1,block[0]+1)
                 var fbody = stack.list.slice(block[0]+1,block[1])
                 // globals ?
@@ -840,15 +886,28 @@ function $py2js(src,module){
                 stack.list = stack.list.slice(0,kw_pos+1)
                 stack.list = stack.list.concat(seq)
                 // make function visible at window level
-                var fname = stack.list[kw_pos+1][1]
                 var indent = stack.indent(kw_pos)
                 var f_indent = ''
                 while(indent>0){f_indent+=' ';indent--}
-                if(!parent){
+                if(parent==-1){
                     var code = '\n'+f_indent+'window.'+fname+'='+fname
                     module_level_functions.push(fname)
                     tail.splice(0,0,['func_end',code])
+                }else if($funcs[parent][0]=='class'){
+                    var class_name = $funcs[parent][1]
+                    // replace "function foo" by "this.foo = function"
+                    stack.list.splice(kw_pos,2,["code",'this.'+fname+'='],
+                        ['keyword','function'])
                 }
+                if(kw=='class'){
+                    var code = '\n'+f_indent+'function '+fname+'(){'
+                    code += '\n'+f_indent+'var obj=new $'+fname+'()'
+                    code += '\n'+f_indent+'obj.__getattr__ = function(attr){return obj[attr]}'
+                    code += '\n'+f_indent+'obj.__setattr__ = function(attr,value){obj[attr]=value}'
+                    code += '\n'+f_indent+'obj.__init__.apply(obj,arguments)'
+                    code += '\n'+f_indent+'return obj}'
+                    tail.splice(0,0,['func_end',code])
+                }                
             } else {
                 stack.list = stack.list.slice(0,block[1])
             }
@@ -931,8 +990,8 @@ function $py2js(src,module){
             // left operand
             var lo = stack.atom_before(op,false)
             if(!lo.type in $lo_ok){
-                document.line_num = pos2line[stack.list[op][2]]
-                $raise("SyntaxError","Bad left operand type "+lo.type+" for "+op_sign)
+                $SyntaxError(module,"Bad left operand type "+lo.type+" for "+op_sign,
+                    stack.list[op][2])
             }
             var par_before_lo = false
             if(lo.type!="tuple"){
@@ -944,7 +1003,7 @@ function $py2js(src,module){
                 }
             }
             if(op==stack.list.length-1){
-                $raise("SyntaxError","Bad right operand ",src,stack.list[op][2])
+                $SyntaxError(module,"Bad right operand ",stack.list[op][2])
             }
             var ro = stack.atom_at(op+1,false)
             if(op_sign in $List2Dict("+=","-=","*=","/=","//=","%=","**=")){
@@ -1055,6 +1114,10 @@ function $py2js(src,module){
         while(true){
             var func_pos = stack.find_next(pos,'id',key)
             if(func_pos==null){break}
+            // check that it's followed by (
+            if(!stack.list[func_pos+1].match(['bracket','('])){
+                $SyntaxError(module,'missing ( after function '+key,func_pos)
+            }
             stack.list[func_pos][0]='code' // to avoid resolution
             stack.list[func_pos][1]=js2py[key]
             pos = func_pos+1
@@ -1120,10 +1183,10 @@ function $py2js(src,module){
             pos = left.start+seq.length-1
         } else if(left.type=='str' || left.type=='int' || left.type=='float'){
             pos = left.list()[0][2]
-            document.line_num = pos2line[pos]
-            $raise("SyntaxError","can't assign to literal")
+            $SyntaxError(module,"can't assign to literal",pos)
         }else if(left.type=='id' && $tags.indexOf(left.list()[0][1])>-1){
-            $raise("SyntaxError","can't assign to reserved word "+left.list()[0][1])
+            $SyntaxError(module,"can't assign to reserved word "+left.list()[0][1],
+                left.list()[0][2])
         } else if(left.type=='qualified_id' || left.type=='slicing' || left.type=="function_call"){
             pos = assign-1
         } else {
@@ -1157,7 +1220,7 @@ function $py2js(src,module){
         
         // create arguments for subscription or slicing
         var args = stack.list.slice(br_pos+1,end)
-        if(args.length==0){$raise('SyntaxError','invalid syntax')}
+        if(args.length==0){$SyntaxError(module,'invalid syntax',br_pos)}
         var args1 = new Stack(args)
         var items = args1.split(":") // items are instances of Stack
         // replace : by ,
