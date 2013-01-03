@@ -315,7 +315,13 @@ function $string_find(obj){
         if(!isinstance(start,int)||!isinstance(end,int)){$raise('TypeError',
             "slice indices must be integers or None or have an __index__ method")}
         var s = obj.substring(start,end)
-        var res = s.search(sub)
+        var escaped = list('*.[]()')
+        var esc_sub = ''
+        for(var i=0;i<sub.length;i++){
+            if(escaped.indexOf(sub.charAt(i))>-1){esc_sub += '\\'}
+            esc_sub += sub.charAt(i)
+        }
+        var res = s.search(esc_sub)
         if(res==-1){return -1}
         else{return start+res}
     }
