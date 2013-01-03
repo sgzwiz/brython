@@ -23,7 +23,7 @@ function $JS2Py(src){
 }
 
 // exceptions
-function $raise(name,msg,module) {
+function $raise(name,msg) {
     // raises exception with specified name and message
     if(msg===undefined){msg=''}
     if(document.$debug){
@@ -39,6 +39,34 @@ function $raise(name,msg,module) {
     err.py_error = true
     if(document.$stderr!==null){document.$stderr_buff = err.message}
     throw err
+}
+
+function $src_error(name,module,msg,pos) {
+    // map position to line number
+    var pos2line = {}
+    var lnum=1
+    var src = document.$py_src[module]
+    for(i=0;i<src.length;i++){
+        pos2line[i]=lnum
+        if(src.charAt(i)=='\n'){lnum+=1}
+    }
+    var line_num = pos2line[pos]
+    var lines = src.split('\n')
+    msg += "\nmodule '"+module+"' line "+line_num
+    msg += '\n'+lines[line_num-1]
+    err = new Error(name+": "+msg)
+    err.name = name
+    err.py_error = true
+    if(document.$stderr!==null){document.$stderr_buff = err.message}
+    throw err
+}
+
+function $SyntaxError(module,msg,pos) {
+    $src_error('SyntaxError',module,msg,pos)
+}
+
+function $IndentationError(module,msg,pos) {
+    $src_error('IndentationError',module,msg,pos)
 }
 
 // escaping double quotes
@@ -145,7 +173,7 @@ Array.prototype.indexOf = function(obj){
 // in case console is not defined
 try{console}
 catch(err){
-    console = {'log':function(data){alert(data)}}
+    console = {'log':function(data){void(0)}}
 }
 
 function $List2Dict(){
