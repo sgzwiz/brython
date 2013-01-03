@@ -367,13 +367,12 @@ function $import(){
         }else{// code for IE6, IE5
             var $xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
         }
+        $xmlhttp.overrideMimeType("text/plain")
         $xmlhttp.onreadystatechange = function(){
             if($xmlhttp.readyState==4){
                 window.clearTimeout(timer)
-                if($xmlhttp.status==200){res = $xmlhttp.responseText}
+                if($xmlhttp.status==200 || $xmlhttp.status==0){res=$xmlhttp.responseText}
                 else{
-                    document.$context = calling.context
-                    document.line_num = calling.line
                     $raise('ImportError',"No module named '"+module+"'")
                 }
             }
