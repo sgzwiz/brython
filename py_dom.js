@@ -342,6 +342,10 @@ Node.prototype.__add__ = function(other){
 
 Node.prototype.__class__ = DOMObject
 
+Node.prototype.__delitem__ = function(key){
+    this.removeChild(this.childNodes[key])
+}
+
 Node.prototype.__eq__ = function(other){
     if('isEqualNode' in this){return this.isEqualNode(other)}
     else if('$brython_id' in this){return this.$brython_id===other.$brython_id}
