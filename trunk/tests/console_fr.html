@@ -27,13 +27,15 @@ def to_str(xx):
 
 doc['version'].text = '.'.join(map(to_str,sys.version_info))
 
-sys.stdout = object()
-def write(data):
-    doc["console"].value += str(data)
-sys.stdout.write = write
+class cons_out:
 
-sys.stderr = object()
-sys.stderr.write = write
+    def __init__(self,target):
+        self.target = doc[target]
+    def write(self,data):
+        self.target.value += str(data)
+
+sys.stdout = cons_out("console")
+sys.stderr = cons_out("console")
 
 output = ''
 
