@@ -21,7 +21,7 @@ var $augmented_assigns = {
 var $first_op_letter = {}
 for(op in $operators){$first_op_letter[op.charAt(0)]=0}
 
-function $tokenize(src){
+function $tokenize(src,module){
     var delimiters = [["#","\n","comment"],['"""','"""',"triple_string"],
         ["'","'","string"],['"','"',"string"],
         ["r'","'","raw_string"],['r"','"',"raw_string"]]
@@ -34,7 +34,7 @@ function $tokenize(src){
         "nonlocal","while","del","global","with",
         "as","elif","if","yield","assert","else","import","pass",
         "break","except","raise"]
-    var unsupported = ["class","is","from","nonlocal","with",
+    var unsupported = ["is","from","nonlocal","with",
         "as","yield"]
     // causes errors for some browsers
     // complete list at http://www.javascripter.net/faq/reserved.htm
@@ -90,29 +90,29 @@ function $tokenize(src){
                 if(indent>$last(indent_stack)){
                     if(stack[stack.length-2][0] != "delimiter" &&
                         stack[stack.length-2][1] != ":"){
-                        $raise("IndentationError","unexpected indent")
+                        $IndentationError(module,"unexpected indent",pos)
                     }else{
                         indent_stack.push(indent)
                     }
                 }else if(indent==$last(indent_stack)){
                     if(stack[stack.length-2][0]=="delimiter" &&
                         stack[stack.length-2][1]==":"){
-                        $raise("IndentationError","expected an indented block")
+                        $IndentationError(module,"expected an indented block",pos)
                     }
                 }else if(indent<$last(indent_stack)){
                     indent_stack.pop()
                     while(true){
                         if(indent_stack.length==0){
-                            $raise('IndentationError','unexpected indent')
+                            $IndentationError(module,'unexpected indent',pos)
                         }
                         if(indent>$last(indent_stack)){
-                            $raise('IndentationError','unexpected indent')
+                            $IndentationError(module,'unexpected indent',pos)
                         }else if(indent==$last(indent_stack)){break}
                         else{indent_stack.pop()}
                     }
                 }
             }else if(indent>0){
-                $raise("IndentationError","unexpected indent")
+                $IndentationError(module,"unexpected indent",pos)
             }
             stack.push(["indent",indent,pos-indent])
             continue
@@ -176,7 +176,7 @@ function $tokenize(src){
             }
             if(!found){
                 document.line_num = pos2line[pos]
-                $raise('SyntaxError',"String end not found ")
+                $SyntaxError(module,"String end not found",pos)
             }
             continue
         }
@@ -194,18 +194,16 @@ function $tokenize(src){
                 if(kwdict.indexOf(name)>-1){
                     if(unsupported.indexOf(name)>-1){
                         document.line_num = pos2line[pos]
-                        $raise('SyntaxError',"Unsupported Python keyword '"+name+"'")                    
+                        $SyntaxError(module,"Unsupported Python keyword '"+name+"'",pos)                    
                     }
                     stack.push(["keyword",name,pos-name.length])
                 } else if(name in $operators) { // and, or
                     stack.push(["operator",name,pos-name.length])
                 } else if(stack.length>1 && $last(stack)[0]=="point"
                     && (['id','str','int','float','qualifier','bracket'].indexOf(stack[stack.length-2][0])>-1)) {
-                    stack.push(["qualifier",name,pos-name.length])
-                } else if(forbidden.indexOf(name)>-1) {
-                    document.line_num = pos2line[pos]
-                    $raise('SyntaxError',"Forbidden name '"+name+"' : might conflict with Javascript variables")                    
+                    stack.push(["qualifier",name,pos-name.length])                 
                 } else {
+                    if(forbidden.indexOf(name)>-1){name='$$'+name}
                     stack.push(["id",name,pos-name.length])
                 }
                 name=""
@@ -254,11 +252,10 @@ function $tokenize(src){
         }
         if(car in br_close){
             if(br_stack==""){
-                document.line_num = pos2line[pos]
-                $raise('SyntaxError',"Unexpected closing bracket")
+                $SyntaxError(module,"Unexpected closing bracket",pos)
             } else if(br_close[car]!=$last(br_stack)){
                 document.line_num = pos2line[pos]
-                $raise('SyntaxError',"Unbalanced bracket ")
+                $SyntaxError(module,"Unbalanced bracket",pos)
             } else {
                 br_stack = br_stack.substr(0,br_stack.length-1)
                 stack.push(["bracket",car,pos])
@@ -306,14 +303,14 @@ function $tokenize(src){
         if(car=='\\' && src.charAt(pos+1)=='\n'){
             lnum++;pos+=2;continue
         }
-        if(car!=' '){$raise('SyntaxError','unknown token ['+car+']')}
+        if(car!=' '){$SyntaxError(module,'unknown token ['+car+']',pos)}
         pos += 1
     }
 
     if(br_stack.length!=0){
         pos = br_pos.pop()
         document.line_num = pos2line[pos]
-        $raise('SyntaxError',"Unbalanced bracket "+br_stack.charAt(br_stack.length-1))
+        $SyntaxError(module,"Unbalanced bracket "+br_stack.charAt(br_stack.length-1),pos)
     } 
     
     return stack
