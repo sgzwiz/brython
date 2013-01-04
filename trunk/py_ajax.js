@@ -7,9 +7,9 @@ function $XmlHttpClass(obj){
         else{return getattr(obj,attr)}
     }
     
-    this.get_text = function(){return str(obj.responseText)}
+    this.get_text = function(){return obj.responseText}
     
-    this.get_xml = function(){alert(obj.responseXML);return $DomElement(obj.responseXML)}
+    this.get_xml = function(){return $DomObject(obj.responseXML)}
 }
 
 function $AjaxClass(){
