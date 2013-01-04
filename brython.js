@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130104-080027
+// version 1.0.20130104-083118
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
