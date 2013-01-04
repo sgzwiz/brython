@@ -513,6 +513,7 @@ function $Tag(tagName,args){
     var elt = null
     var elt = $DomObject(document.createElement(tagName))
     elt.parent = this
+    elt.name = tagName
     if(args!=undefined && args.length>0){
         $start = 0
         $first = args[0]
@@ -552,8 +553,6 @@ function $Tag(tagName,args){
     return elt
 }
 
-function A(){return $Tag('A',arguments)}
-
 // class used for tag sums
 function $TagSumClass(){
     this.__class__ = $TagSum
@@ -590,6 +589,10 @@ function $TagSum(){
     return new $TagSumClass()
 }
 
+function A(){
+    var res = $Tag('A',arguments)
+    res.name = 'A'
+}
 
 var $src = A+'' // source of function A
 $tags = ['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
@@ -621,4 +624,5 @@ $tags = $tags.concat(['ARTICLE','ASIDE','FIGURE','FOOTER','HEADER','NAV',
 for($i=0;$i<$tags.length;$i++){
     $code = $src.replace(/A/gm,$tags[$i])
     eval($code)
+    eval($tags[$i]+'.name="'+$tags[$i]+'"')
 }
