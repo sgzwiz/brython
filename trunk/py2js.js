@@ -35,7 +35,7 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
                 throw new TypeError($fname+"() got multiple values for argument '"+$arg.name+"'")
             } else if($required.indexOf($arg.name)>-1){
                 var ix = $required.indexOf($arg.name)
-                eval($required[ix]+"=$PyVar")
+                eval('var '+$required[ix]+"=$PyVar")
                 $ns[$required[ix]]=$PyVar
             } else if($arg.name in $defaults){
                 $ns[$arg.name]=$PyVar
@@ -47,7 +47,7 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
             if($arg.name in $defaults){delete $defaults[$arg.name]}
         }else{ // positional arguments
             if($i<$required.length){
-                eval($required[$i]+"=$PyVar")
+                eval('var '+$required[$i]+"=$PyVar")
                 $ns[$required[$i]]=$PyVar
             } else if($i<$required.length+$def_names.length) {
                 $ns[$def_names[$i-$required.length]]=$PyVar
@@ -163,7 +163,7 @@ function $py2js(src,module){
     tokens = $tokenize(src,module)
 
     stack = new Stack(tokens)
-    
+
     var $err_num = 0
     // add a line number at the end of each line in source code
     // used for traceback
