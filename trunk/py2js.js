@@ -1342,6 +1342,7 @@ function $py2js(src,module){
 function brython(debug){
     document.$debug = debug
     document.$py_src = {}
+    document.$brython_path = null
     var elts = document.getElementsByTagName("script")
     
     for(var $i=0;$i<elts.length;$i++){
@@ -1349,6 +1350,19 @@ function brython(debug){
         if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
             exec(src)
+        }
+        else{ // get path of brython.js
+            var br_scripts = ['brython.js','py_tokenizer.js']
+            for(var j=0;j<br_scripts.length;j++){
+                var bs = br_scripts[j]
+                if(elt.src.substr(elt.src.length-bs.length)==bs){
+                    if(elt.src.length===bs.length ||
+                        elt.src.charAt(elt.src.length-bs.length-1)=='/'){
+                            document.$brython_path = elt.src.substr(0,elt.src.length-bs.length)
+                            break
+                    }
+                }
+            }
         }
     }
 }
