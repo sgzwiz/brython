@@ -3,12 +3,26 @@
 <meta charset="iso-8859-1">
 <link rel="stylesheet" href="../../brython.css">
 <script src="../../brython.js"></script>
+<script src="../../py_dom.js"></script>
 <title>Brython</title>
 <script type="text/python">
 # all links in the banner should point to the target _top
 for elt in doc[A]:
     if elt.className == "banner":
         elt.target="_top"
+</script>
+<script>
+function foo(){
+    var tags = document.getElementsByTagName('A')
+    var f = tags[0]
+    alert(typeof f)
+    ch = ''
+    for(attr in f){ch+=attr+' '}
+    alert(ch)
+    var res = []
+    for(var i=0;i<tags.length;i++){res.push(tags[i])}
+    alert(res)
+}
 </script>
 </head>
 <body onLoad="brython()">
