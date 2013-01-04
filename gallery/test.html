@@ -11,16 +11,21 @@
 <script src="/py2js.js"></script>
 <script src="/py_ajax.js"></script>
 </head>
-<body onload="brython(2)">
+<body onload="brython(1)">
 <script type="text/python">
-x = I('r')
-x += B('br')+P('p')
-t = TABLE()
-tb = TBODY()
-tb <= TD(x)
-t <= tb
-doc <= t
+canvas = doc['clock']
+if not hasattr(canvas,'getContext'):
+    doc['navig_zone'].html = 'maudit ie !'
+if hasattr(canvas,'getContext'):
+    doc['navig_zone'].html = 'context ok'
+
 </script>
+
+<p><canvas width="250" height="250" id="clock">
+<i>désolé, Brython n'arrive pas à faire fonctionner la démo sur votre navigateur ;<br>vérifiez que Javascript est activé
+<br><div id="navig_zone"></div></i>
+</canvas>
+
 </body>
 </html>
 
