@@ -9,5 +9,5 @@ sys = {
         if(attr==="stderr"){document.$stderr=value}
     },
     has_local_storage:typeof(Storage)!=="undefined",
-    version_info:[1,0,"20130104-083118"]
+    version_info:[1,0,"20130104-091055"]
 }
