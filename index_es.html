@@ -80,31 +80,6 @@ def set_clock():
     angle = second*2*math.pi/60 - math.pi/2
     needle(angle,0.05,0.85,"#FF0000") # in red
     
-time.set_interval(set_clock,100)
-
-canvas = doc["clock"]
-
-# draw clock border
-ctx = canvas.getContext("2d")
-ctx.beginPath()
-ctx.lineWidth = 10
-ctx.arc(width/2,height/2,ray,0,2*math.pi)
-ctx.stroke()
-
-for i in range(60):
-    ctx.lineWidth = 1
-    if i%5 == 0:
-        ctx.lineWidth = 3
-    angle = i*2*math.pi/60 - math.pi/3
-    x1 = width/2+ray*cos(angle)
-    y1 = height/2+ray*sin(angle)
-    x2 = width/2+ray*cos(angle)*0.9
-    y2 = height/2+ray*sin(angle)*0.9
-    ctx.beginPath()
-    ctx.moveTo(x1,y1)
-    ctx.lineTo(x2,y2)
-    ctx.stroke()
-
 def show_hours():
     ctx.beginPath()
     ctx.arc(width/2,height/2,ray*0.05,0,2*math.pi)
@@ -121,15 +96,41 @@ def show_hours():
     # cell for hour
     ctx.fillStyle = "#000"
     ctx.fillRect(width*0.65,height*0.47,width*0.1,height*0.06)
-show_hours()
 
+canvas = doc["clock"]
+# draw clock border
+if hasattr(canvas,'getContext'):
+    ctx = canvas.getContext("2d")
+    ctx.beginPath()
+    ctx.lineWidth = 10
+    ctx.arc(width/2,height/2,ray,0,2*math.pi)
+    ctx.stroke()
+    
+    for i in range(60):
+        ctx.lineWidth = 1
+        if i%5 == 0:
+            ctx.lineWidth = 3
+        angle = i*2*math.pi/60 - math.pi/3
+        x1 = width/2+ray*cos(angle)
+        y1 = height/2+ray*sin(angle)
+        x2 = width/2+ray*cos(angle)*0.9
+        y2 = height/2+ray*sin(angle)*0.9
+        ctx.beginPath()
+        ctx.moveTo(x1,y1)
+        ctx.lineTo(x2,y2)
+        ctx.stroke()
+    time.set_interval(set_clock,100)
+    show_hours()
+else:
+    doc['navig_zone'].html = "On Internet Explorer 9 or more, use a Standard rendering engine"
 </script>
 
 <p>
 <div style="text-align:center;padding-left:15%;padding-right:15%;">
 Muy cierto que has visto relojes de este tipo en demos de HTML5
 <p><canvas width="250" height="250" id="clock">
-<i>El navegador no soporta HTML5 canvas, o el Javascript es apagado</i>
+<i>El navegador no soporta HTML5 canvas<br>o el Javascript es apagado
+<br><div id="navig_zone"></div></i>
 </canvas>
 <p>
 Pero, mira el código fuente de esta página...
