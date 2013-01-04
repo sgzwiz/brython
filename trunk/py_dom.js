@@ -513,7 +513,6 @@ function $Tag(tagName,args){
     var elt = null
     var elt = $DomObject(document.createElement(tagName))
     elt.parent = this
-    elt.name = tagName
     if(args!=undefined && args.length>0){
         $start = 0
         $first = args[0]
@@ -544,7 +543,11 @@ function $Tag(tagName,args){
                 } else {
                     if($arg.value!==false){
                         // option.selected=false sets it to true :-)
-                        elt.setAttribute($arg.name.toLowerCase(),$arg.value)
+                        try{
+                            elt.setAttribute($arg.name.toLowerCase(),$arg.value)
+                        }catch(err){
+                            $raise('ValueError',"can't set attribute "+$arg.name)
+                        }
                     }
                 }
             }
@@ -589,10 +592,7 @@ function $TagSum(){
     return new $TagSumClass()
 }
 
-function A(){
-    var res = $Tag('A',arguments)
-    res.name = 'A'
-}
+function A(){return $Tag('A',arguments)}
 
 var $src = A+'' // source of function A
 $tags = ['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
