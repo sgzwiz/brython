@@ -10,11 +10,11 @@ sources = ['py_classes','py_list','py_string',
     'py_ajax','py_dom','py_svg','py_local_storage']
 
 # update version number in module sys
-sys_src = open('sys.js').read()
+sys_src = open('libs/sys.js').read()
 
 sys_src = re.sub('version_info:\[1,0,".*?"\]',
     'version_info:[1,0,"%s"]' %now,sys_src)
-out = open('sys.js','w')
+out = open('libs/sys.js','w')
 out.write(sys_src)
 out.close()
 
