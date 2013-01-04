@@ -121,9 +121,6 @@ function $tokenize(src,module){
         if(car=="#"){
             var end = src.substr(pos+1).search('\n')
             if(end==-1){end=src.length-1}
-            //stack.push(["newline",lnum,pos+1+end])
-            //alert(src.charAt(pos+end)+src.charAt(pos+end+1)+src.charAt(pos+end+2))
-            lnum += 1
             pos += end+1;continue
         }
         // string
