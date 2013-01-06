@@ -59,15 +59,16 @@ Brython est conforme à la syntaxe de Python 3
 <a name="integr"><h3>Mots clés et fonction intégrées</h3>
 
 Brython supporte l'essentiel des mots-clés et des fonctions de Python 3 :
-<ul><li>mots clés : <code>assert break continue def del elif else except False finally for global if import None pass return True try while </code>
+<ul><li>mots clés : <code>assert break class continue def del elif else except False finally for global if import None pass return True try while </code>
 <li>fonctions intégrées : <code>abs() all() any() bool() dict() dir() enumerate() exec() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
 Par défaut, <code>print()</code> affiche sur la console du navigateur, et les messages d'erreur sont également affichés sur cette console. <code>sys.stderr</code> et <code>sys.stdout</code> peuvent être affectés à un objet qui implémente une méthode <code>write()</code>, ce qui permet par exemple d'afficher les messages d'erreurs dans une fenêtre
+<p>Pour lancer une impression sur imprimante, utiliser <code>win.print</code>
 
 <p>Ne sont pas pris en charge : 
 <ul>
-<li>les mots-clés <code>as class from is lambda nonlocal raise with yield</code>
+<li>les mots-clés <code>as from is lambda nonlocal raise with yield</code>
 <li>parmi les fonctions intégrées :
 <ul><li>certaines seront peut-être intégrées dans des versions futures : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), eval(), format(), frozenset(), globals() ,hex(), id(), locals(), ord(), pow(), repr(), sorted(), type(), vars()</code>
 <li>d'autres ont peu de chances d'être intégrées : <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code>
@@ -75,7 +76,7 @@ Par défaut, <code>print()</code> affiche sur la console du navigateur, et les me
 <li>le type des nombres complexes n'est pas supporté
 </ul>
 </ul>
-Le mot-clé <code>class</code> n'étant pas pris en charge, on ne peut pas définir de classe autre que les types intégrés (listes, dictionnaires, ensembles). En revanche, contrairement à Python, on peut ajouter des attributs aux objects créés par la fonction intégrée <code>object()</code> :
+Contrairement à Python, on peut ajouter des attributs aux objects créés par la fonction intégrée <code>object()</code> :
 <p><pre>x = object()
 x.foo = 44
 del x.foo
@@ -136,19 +137,22 @@ doc <= P()+'Je répète : le site est '+link.clone()
 </pre>
 
 
-<p>En général, les instances des classes HTML ont des attributs de même nom que les objets Javascript correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT
-<p>Par exception, le contenu d'un noeud DOM peut être lu ou modifié par les attributs <tt>text</tt> ou <tt>html</tt>, correspondant respectivement à <i>innerText</i> (ou <i>textContent</i>) et à <i>innerHTML</i> en Javascript
-<p>La collection <code>options</code> associée à un objet SELECT a l'interface d'une liste Python :
+<p>Les instances des classes HTML ont des attributs de même nom que les objets DOM correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT. Mais Brython ajoute quelques "sucres syntaxiques" pour rendre la manipulation plus conforme aux habitudes des codeurs Python
+<ul>
+<li>pour la recherche d'objets par leur identifiant, ou par leur nom de balise, on utilise la syntaxe suivante :
+<ul>
+<li><pre style="display:inline">doc[obj_id]</pre> renvoie l'objet d'après son identifiant, ou déclenche une exception <code>KeyError</code>
+<li><pre style="display:inline">doc[A]</pre> renvoie une liste de tous les objets de type A (lien hypertexte) dans le document
+</ul>
+<li>le contenu d'un noeud DOM peut être lu ou modifié par les attributs <tt>text</tt> ou <tt>html</tt>, correspondant respectivement aux attributs <i>innerText</i> (ou <i>textContent</i>) et à <i>innerHTML</i> des objets DOM
+<li>la collection <code>options</code> associée à un objet SELECT a l'interface d'une liste Python :
 <ul>
 <li>accès à une option par son index : <pre style="display:inline">option = elt.options[index]</pre>
 <li>insertion d'une option à la position <em>index</em> : <pre style="display:inline">elt.options.insert(index,option)</pre>
 <li>insertion d'une option en fin de liste : <pre style="display:inline">elt.options.append(option)</pre>
 <li>suppression d'une option : <pre style="display:inline">del elt.options[index]</pre>
 </ul>
-<p>Pour la recherche d'objets par leur identifiant, ou par leur nom de balise, on utilise la syntaxe suivante :
-<ul>
-<li><pre style="display:inline">doc[obj_id]</pre> renvoie l'objet d'après son identifiant, ou déclenche une exception <code>KeyError</code>
-<li><pre style="display:inline">doc[A]</pre> renvoie une liste de tous les objets de type A (lien hypertexte) dans le document
+<li>on peut itérer sur les enfants d'un objet par la syntaxe classique Python : <pre style="display:inline">for child in dom_object:</pre>
 </ul>
 <hr>
 <a name="ajax"><h3>Ajax</h3>
@@ -175,7 +179,15 @@ Pour interagir avec le serveur, il faut définir les attributs suivants, correspo
 </ul>
 
 <h4>Exemple</h4>
-<pre>req = ajax()
+On suppose qu'il y a un DIV avec l'id "result" dans la page HTML
+<p>
+<pre>
+def on_complete(req):
+    if req.status==200 or req.status==0:
+        doc["result"].html = req.text
+    else:
+        doc["result"].html = "error "+req.text
+req = ajax()
 req.on_complete = on_complete
 req.set_timeout(timeout,err_msg)
 req.open('POST',url,True)
