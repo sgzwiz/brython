@@ -780,7 +780,7 @@ function $py2js(src,module){
         pos = if_pos-1
     }
 
-    // replace if,elif,else,def,for,try,catch,finally by equivalents
+    // replace if,elif,else,class,def,for,try,catch,finally by equivalents
     var kws = {'if':'if','else':'else','elif':'else if',
         'class':'function','def':'function','for':'for','while':'while',
         'try':'try','catch':'catch','finally':'finally'}
