@@ -286,8 +286,6 @@ function $py2js(src,module){
         pos = br_pos+1
     }
 
-
-
     // for each opening bracket, define after which token_types[,token values] 
     // they are *not* the start of a display
     var not_a_display = { 
@@ -921,8 +919,12 @@ function $py2js(src,module){
                 if(kw=='class'){
                     var code = '\n'+f_indent+'function '+fname+'(){'
                     code += '\n'+f_indent+'var obj=new $'+fname+'()'
-                    code += '\n'+f_indent+'obj.__getattr__ = function(attr){return obj[attr]}'
+                    code += '\n'+f_indent+'obj.__getattr__ = function(attr)'
+                    code += '{if(obj[attr]!==undefined){return obj[attr]}'
+                    code += 'else{$raise("AttributeError",obj+" has no attribute \'"+attr+"\'")}}'
                     code += '\n'+f_indent+'obj.__setattr__ = function(attr,value){obj[attr]=value}'
+                    code += '\n'+f_indent+'obj.__str__ = function(){return "<object \''+fname+'\'>"}'
+                    code += '\n'+f_indent+'obj.toString = obj.__str__'
                     code += '\n'+f_indent+'if("__init__" in obj)'
                     code += '{obj.__init__.apply(obj,arguments)}'
                     code += '\n'+f_indent+'return obj'+'\n'+f_indent+'}'
