@@ -1108,7 +1108,7 @@ function $py2js(src,module){
             test_end = stack.find_next_matching(test_end+3)
         }
         stack.list.splice(test_end,0,['bracket',')'])
-        stack.list.splice(test_pos,0,['code','$test_expr'],['bracket','('])
+        stack.list.splice(test_pos,0,['id','$test_expr'],['bracket','('])
         pos = test_end
     }
 
