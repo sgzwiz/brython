@@ -1,0 +1,612 @@
+<html>
+    <head>
+        <title>Pseudo Kanban for Brython</title>
+
+        <meta name="description" content="Pseudo Kanban simulation for Brython"/>
+        <meta name="keywords" content="Python,Brython,Kanban"/>
+        <meta name="author" content="Pedro Rodriguez"/>
+        <meta charset="utf-8"/>
+
+        <script src="/brython.js"></script>
+
+        <script type="text/javascript">
+            function popup_dump(s) {
+                var w = window.open("", "", "");
+                w.document.open("text/plain");
+                w.document.write(s);
+                w.document.close();
+                w.document.title = "DB DUMP";
+            }
+
+            function disclaimer() {
+                var copyright =
+                        'Copyright (c) 2013, Pedro Rodriguez pedro.rodriguez.web@gmail.com\n' +
+                        'All rights reserved.\n' +
+                        '\n' +
+                        'Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:\n' +
+                        '\n' +
+                        'Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer. \n' +
+                        'Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution. \n' +
+                        'Neither the name of the <ORGANIZATION> nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission. \n' +
+                        '\n' +
+                        'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n';
+
+                ret = confirm( "Click OK to accept condition of use\n\n" + copyright );
+                if( ! ret ) {
+                    document.open("about:blank")
+                }
+            }
+
+        </script>
+
+        <style text="text/css">
+
+            .listing {
+                font-family : monospace;
+                }
+
+            .board {
+                float : left;
+                width : 100%;
+                display : table;
+                }
+
+            .step {
+                display : table-cell;
+                padding-bottom : 5em;
+                height : 100%;
+                }
+
+            .step_header {
+                padding : 0.2em;
+                border-radius : 5px;
+                border : 2px solid black;
+                background-color : rgba(255, 255, 255, 0.4);
+                margin : 5px;
+                outline : 0px none;
+                vertical-align : baseline;
+                font-weight : bold;
+                }
+
+            .step_title {
+                display : table-cell;
+                cursor : cell;
+                width : 100%;
+                text-align : center;
+                }
+
+            .step_count {
+                display : table-cell;
+                padding-left : 1em;
+                padding-right : 1em;
+                text-align : center;
+                }
+
+            .task {
+                cursor : pointer;
+                padding : 0.2em;
+                min-height : 3em;
+                border-radius : 5px;
+                border : 1px solid black;
+                margin : 5px;
+                padding-bottom : 2em;
+                outline : 0px none;
+                vertical-align : baseline;
+                }
+
+            .task_command {
+                height : 1.2em;
+                width : 100%;
+                }
+
+            .task_command_delete {
+                height : 1.2em;
+                border : 1px solid black;
+                text-align : center;
+                padding-left : 2px;
+                padding-right : 2px;
+                vertical-align : middle;
+                }
+
+            .task_progress {
+                position : relative;
+                width : 100%;
+                height : 1.2em;
+                border : 1px solid black;
+                background-color : rgba(255, 255, 255, 0.5)
+                }
+
+            .task_progress_bar {
+                height : inherit;
+                position : absolute;
+                background-color : rgba(0, 0, 0, .3)
+                }
+
+            .task_progress_text {
+                height : inherit;
+                position : absolute;
+                width : 100%;
+                text-align : center;
+                margin : 0px;
+                /* font-weight : bold; */
+                vertical-align : middle;
+                }
+
+            .task_desc {
+                margin : 1px;
+                }
+
+        </style>
+    </head>
+
+    <body onLoad="disclaimer(); brython(1)">
+
+        <script type="text/python">
+
+            # ----------------------------------------------------------
+            import time
+            
+            DB = {
+                "REVISION" : 0
+                , "STEPS" : {}
+                , "STEPS_ORDERED" : []
+                , "STEPS_COLORS" : []
+                , "TASKS" : {}
+                , "TASKS_COLORS" : []
+                }
+
+            def Step(desc, color):
+                DB["REVISION"] += 1
+
+                step = instance( id=str(DB["REVISION"]), parent_id = "0", desc = desc, color = color )
+
+                DB["STEPS"][step.id] = step
+                DB["STEPS_ORDERED"].append(step.id)
+
+                return step
+
+            def Task(parent_id, desc, color):
+                DB["REVISION"] += 1
+
+                task = instance( id=str(DB["REVISION"]), parent_id = parent_id, desc=desc, color=color, progress=0)
+
+                DB["TASKS"][task.id] = task
+
+                return task
+
+            def task_get_parent(task):
+                parent_id = task.parent_id
+                return get_id(parent_id)
+
+            def get_id(id):
+                if id in DB["TASKS"]:
+                    return DB["TASKS"][id]
+
+                return DB["STEPS"][id]
+
+            def dump():
+                code = "DB = " + instance_repr(DB)
+                popup_dump(code)
+
+            # ----------------------------------------------------------
+            def clear_node(node):
+                for child in list(node):
+                    node.remove(child)
+
+            def draw_board(board):
+                clear_node(board)
+
+                width = 100 / len(DB["STEPS"])
+
+                step_ids = DB["STEPS_ORDERED"]
+                for step_id in step_ids:
+                    step = DB["STEPS"][step_id]
+                    draw_step(step, board, width)
+
+                for task in DB["TASKS"].values():
+                    tparent = task_get_parent(task)
+                    parent_node = doc[tparent.id]
+                    draw_task(task, parent_node)
+
+                update_step_counters()
+
+            def draw_step(step, parent_node, width):
+                step_node = DIV(id=step.id, Class="step")
+                step_node.style.width = percent(width)
+                step_node.style.backgroundColor = DB["STEPS_COLORS"][step.color]
+                parent_node <= step_node
+
+                step_header = DIV(Class="step_header")
+                step_node <= step_header
+
+                step_title = PRE(step.desc, Class="step_title")
+                step_header <= step_title
+
+                step_count = PRE(0, id="step count %s" % step.id, Class="step_count")
+                step_header <= step_count
+
+                setattrs( step_node, ondrop = drag_drop, drop_id = step.id, ondragover = drag_over )
+                setattrs( step_title, onclick = task_create, step = step, step_node = step_node )
+
+            def draw_task(task, parent_node):
+                task_node = DIV(Class="task", id=task.id, draggable=True)
+                task_node.style.backgroundColor = DB["TASKS_COLORS"][task.color]
+                parent_node <= task_node
+
+                task_progress = DIV(Class="task_progress")
+
+                task_progress_text = P("%d" % task.progress + "%", Class="task_progress_text")
+                task_progress <= task_progress_text
+
+                task_progress_bar = DIV(Class="task_progress_bar")
+                task_progress_bar.style.width = percent(task.progress)
+                task_progress <= task_progress_bar
+
+                task_command_delete = DIV("X", Class="task_command_delete")
+
+                task_command = TABLE(
+                    TR( TD(task_progress, Class="task_command") + TD(task_command_delete) )
+                    , Class="task_command"
+                    )
+                task_node <= task_command
+
+                task_desc = P(Class="task_desc")
+                task_node <= task_desc
+
+                setattrs_all( task_node
+                    , ondragstart = drag_start
+                    , ondrop = drag_drop
+                    , drop_id = task.id
+                    , ondragover = drag_over
+                    , onclick = task_color_change
+                    , task = task )
+
+                setattrs_all(task_progress, task_progress_bar = task_progress_bar, task_progress_text = task_progress_text, task = task, onclick = task_make_progress)
+                setattrs_all(task_command_delete, onclick = task_delete, task = task)
+                setattrs_all(task_desc, onclick = task_edit, task_desc = task_desc, task = task)
+
+                task_set_text(task_desc, task)
+
+            def update_step_counters():
+                for step_id in DB["STEPS_ORDERED"]:
+                    step = DB["STEPS"][step_id]
+                    count = 0
+                    for task in DB["TASKS"].values():
+                        if task.parent_id == step.id:
+                            count += 1
+                    doc["step count %s" % step.id].text = count
+
+            # ----------------------------------------------------------
+            def task_create(ev):
+                ev.stopPropagation()
+                node = ev.target
+                step = node.step
+                desc = prompt("New task", "%s %s" % (step.desc, time.strftime("%Y/%m/%d %H:%M:%S")))
+                if desc:
+                    task = Task(step.id, desc, 0)
+                    draw_task(task, node.step_node )
+
+                    update_step_counters()
+
+            def task_delete(ev):
+                ev.stopPropagation()
+                node = ev.target
+                task = node.task
+
+                tasks = DB["TASKS"].values()
+                to_be_deleted = [ task.id ]
+                updated = True
+                while updated:
+                    updated = False
+                    for task in tasks:
+                        if task.id not in to_be_deleted and task.parent_id in to_be_deleted:
+                            to_be_deleted.append(task.id)
+                            updated = True
+
+                l = [ "Confirm deletion of:" ]
+                for id in to_be_deleted:
+                    l.append( "- " + DB["TASKS"][id].desc )
+                s = "\n".join(l)
+                ret = confirm(s)
+                if ret:
+                    to_be_deleted.reverse()
+                    for id in to_be_deleted:
+                        del doc[id]
+                        del DB["TASKS"][id]
+
+                    update_step_counters()
+
+            def task_edit(ev):
+                ev.stopPropagation()
+                node = ev.target
+                task = node.task
+                ret = prompt("Task", task.desc)
+                if ret:
+                    task.desc = ret
+                    task_set_text(node, task)
+
+            def task_color_change(ev):
+                ev.stopPropagation()
+                node = ev.target
+                task = node.task
+                task.color = ( task.color + 1 ) % len(DB["TASKS_COLORS"])
+                doc[task.id].style.backgroundColor = DB["TASKS_COLORS"][task.color]
+
+            def task_make_progress(ev):
+                ev.stopPropagation()
+                task_progress_bar = ev.target.task_progress_bar
+                task_progress_text = ev.target.task_progress_text
+                task = task_progress_bar.task
+
+                task.progress = ( task.progress + 25 ) % 125
+                task_progress_bar.style.width = percent(task.progress)
+                task_progress_text.text = percent(task.progress)
+
+            def task_set_text(node, task):
+                task_desc = node.task_desc
+                clear_node(task_desc)
+                task_desc.innerHTML = task.desc
+                setattrs_all(task_desc, onclick = task_edit, task_desc = task_desc, task = task)
+
+            # ----------------------------------------------------------
+            def percent(p):
+                return ( "%d" % p ) + "%"
+
+            def instance(**kwargs):
+                o = object()
+                setattrs(o, **kwargs)
+                return o
+
+            def setattrs(l, **kwargs):
+                for key, value in kwargs.items():
+                    setattr(l, key, value)
+
+            def setattrs_all(l, **kwargs):
+                setattrs(l, **kwargs)
+                for child in l:
+                    setattrs_all(child, **kwargs)
+
+            def instance_repr(o):
+                if isinstance(o, dict):
+                    l = []
+                    for key, value in o.items():
+                        repr_key = instance_repr(key)
+                        repr_value = instance_repr(value)
+                        l.append( "%s : %s" % (repr_key, repr_value) )
+                    s = "{ %s }" % "\n, ".join(l)
+
+                elif isinstance(o, list):
+                    l = []
+                    for i in o:
+                        repr_i = instance_repr(i)
+                        l.append(repr_i)
+                    s = "[ %s ]" % "\n, ".join(l)
+
+                elif isinstance(o, set):
+                    l = []
+                    for i in o:
+                        repr_i = instance_repr(i)
+                        l.append(repr_i)
+                    s = "{ %s }" % "\n, ".join(l)
+
+                elif isinstance(o, float):
+                    s = str(o)
+
+                elif isinstance(o, int):
+                    s = str(o)
+
+                elif isinstance(o, str):
+                    s = quoted_escape_string(o)
+
+                else:
+                    attributes = dir(o)
+                    l = []
+                    for n in attributes:
+                        if not n.startswith("__"):
+                            repr_key = escape_string(n)
+                            repr_value = instance_repr( getattr(o, n) )
+                            l.append( "%s = %s" % (repr_key, repr_value) )
+                    s = "instance( %s )" % ", ".join(l)
+
+                return s
+
+            def quoted_escape_string(s):
+                s = "'%s'" % escape_string(s)
+                return s
+
+            def escape_string(s):
+                # TODO other control characters
+                s = s.replace("'", "\\'")
+                return s
+
+            # ----------------------------------------------------------
+            def nop(ev):
+                return false
+
+            def drag_start(ev):
+                ev.data['text'] = ev.target.task.id
+                ev.data.effectAllowed = 'move'
+
+            def drag_over(ev):
+                ev.preventDefault()
+                ev.data.dropEffect = 'move'
+
+            def drag_drop(ev):
+                ev.preventDefault()
+
+                src_id = ev.data['text']
+                dst_id = ev.target.drop_id
+
+                # prevent drop on itself
+                if src_id == dst_id:
+                    return
+
+                # prevent drop on related
+                o = get_id(dst_id)
+                while o.parent_id != "0":
+                    if o.parent_id == src_id:
+                        return
+                    o = get_id(o.parent_id)
+
+                # move at DOM level
+                src_node = doc[src_id]
+                dst_node = doc[dst_id]
+                dst_node <= src_node
+
+                # move at DB level
+                src = get_id(src_id)
+                src.parent_id = dst_id
+
+                update_step_counters()
+
+            # ----------------------------------------------------------
+            def save_kanban():
+                global DB
+                local_storage["kanban"] = instance_repr(DB)
+
+            def load_kanban():
+                global DB
+                s = local_storage["kanban"]
+                l = "DB = " + s
+                eval(l)
+
+                draw_board( doc["board"] )
+
+            # ----------------------------------------------------------
+            #step_todo = Step("TODO", 0)
+            #step_specification = Step("SPECIFICATION", 1)
+            #step_design = Step("DESIGN", 2)
+            #step_development = Step("DEVELOPMENT", 3)
+            #step_validation = Step("VALIDATION", 4)
+            #step_ready = Step("READY", 5)
+
+            #task_aaa = Task(step_todo.id, "Func AAA", 0)
+            #task_bbb = Task(step_todo.id, "Func BBB", 1)
+            #task_ccc = Task(step_design.id, "Func CCC", 2)
+            #task_ddd = Task(task_ccc.id, "Func DD'D", 3)
+
+            #DB["STEPS_COLORS"] = [
+            #    "#777777"
+            #    , "#888888"
+            #    , "#999999"
+            #    , "#AAAAAA"
+            #    , "#BBBBBB"
+            #    , "#CCCCCC"
+            #    ]
+
+            #DB["TASKS_COLORS"] = [
+            #    "#EE0000"
+            #    , "#00CC00"
+            #    , "#0088EE"
+            #    , "#EEEE00"
+            #    , "#EEA500"
+            #    ]
+
+            DB = { 'REVISION' : 23
+            , 'STEPS' : { '1' : instance( color = 0, desc = 'TODO', id = '1', parent_id = '0' )
+            , '2' : instance( color = 1, desc = 'SPECIFICATION', id = '2', parent_id = '0' )
+            , '3' : instance( color = 2, desc = 'DESIGN', id = '3', parent_id = '0' )
+            , '4' : instance( color = 3, desc = 'DEVELOPMENT', id = '4', parent_id = '0' )
+            , '5' : instance( color = 4, desc = 'VALIDATION', id = '5', parent_id = '0' )
+            , '6' : instance( color = 5, desc = 'READY', id = '6', parent_id = '0' ) }
+            , 'STEPS_ORDERED' : [ '1'
+            , '2'
+            , '3'
+            , '4'
+            , '5'
+            , '6' ]
+            , 'STEPS_COLORS' : [ '#777777'
+            , '#888888'
+            , '#999999'
+            , '#AAAAAA'
+            , '#BBBBBB'
+            , '#CCCCCC' ]
+            , 'TASKS' : { '7' : instance( color = 0, desc = 'Project A<br>Add new Feature <b>A3</b>', id = '7', parent_id = '1', progress = 0 )
+            , '8' : instance( color = 3, desc = 'Project B<br>Feature <b>B1</b>', id = '8', parent_id = '2', progress = 50 )
+            , '9' : instance( color = 1, desc = 'Project D', id = '9', parent_id = '6', progress = 100 )
+            , '14' : instance( color = 3, desc = 'A1', id = '14', parent_id = '3', progress = 75 )
+            , '15' : instance( color = 0, desc = 'A2 Coding', id = '15', parent_id = '4', progress = 0 )
+            , '16' : instance( color = 0, desc = 'Project B<br>Add new Feature <b>B2</b>', id = '16', parent_id = '1', progress = 0 )
+            , '17' : instance( color = 4, desc = 'Check B1.1 with XXX', id = '17', parent_id = '8', progress = 75 )
+            , '18' : instance( color = 4, desc = 'Wait for YYY to clarify B1.2', id = '18', parent_id = '8', progress = 25 )
+            , '19' : instance( color = 2, desc = 'Started B1.3', id = '19', parent_id = '8', progress = 25 )
+            , '20' : instance( color = 2, desc = 'Dynamic design', id = '20', parent_id = '14', progress = 75 )
+            , '21' : instance( color = 1, desc = 'Static design', id = '21', parent_id = '14', progress = 100 )
+            , '22' : instance( color = 3, desc = 'Project C', id = '22', parent_id = '5', progress = 0 )
+            , '23' : instance( color = 4, desc = 'Waiting QA', id = '23', parent_id = '22', progress = 0 ) }
+            , 'TASKS_COLORS' : [ '#EE0000'
+            , '#00CC00'
+            , '#0088EE'
+            , '#EEEE00'
+            , '#EEA500' ] }
+
+            # ----------------------------------------------------------
+            draw_board( doc["board"] )
+
+        </script>
+
+        <div id="board" class="board"></div>
+        <button onclick="dump()">Dump</button>
+        <button onclick="save_kanban()">Save</button>
+        <button onclick="load_kanban()">Load</button>
+        <p><b>Mini help for a pseudo Kanban simulator</b></p>
+        <table>
+            <tr>
+                <td style="vertical-align : top">
+                    <dl>
+                        <dt><b><i>Process</i></b></dt>
+                            <dd>- A flow of tasks running through different steps</dd>
+                    </dl>
+                </td>
+                <td style="vertical-align : top">
+                    <dl>
+                        <dt><b><i>Actions on a process</i></b></dt>
+                            <dd>- Drag task to free space of step to signal process evolution</dd>
+                            <dd>- Click on save to save to browser local storage (if browser allows)</dd>
+                            <dd>- Click on load to restore from browser local storage (if browser allows)</dd>
+                    </dl>
+                </td>
+            </tr>
+            <tr>
+                <td style="vertical-align : top">
+                    <dl>
+                        <dt><b><i>Step</i></b></dt>
+                            <dd>- Represented by a column</dd>
+                            <dd>- Contains a number of tasks</dd>
+                            <dd>- Name of the step is shown on top of the column</dd>
+                            <dd>- Number ot top level tasks is show on top right</dd>
+                    </dl>
+                </td>
+                <td style="vertical-align : top">
+                    <dl>
+                        <dt><b><i>Action on a step</i></b></dt>
+                            <dd>- Click on step's name to create a new task</dd>
+                    </dl>
+                </td>
+            </tr>
+            <tr>
+                <td style="vertical-align : top">
+                    <dl>
+                        <dt><b><i>Task</i></b></dt>
+                            <dd>- Represented by a colored box</dd>
+                            <dd>- Can be nested (sub-task)</dd>
+                            <dd>- Progress of the task is shown in bar on top of the box</dd>
+                            <dd>- Textual description of the task is below the progress bar</dd>
+                    </dl>
+                </td>
+                <td style="vertical-align : top">
+                    <dl>
+                        <dt><b><i>Actions on a task</i></b></dt>
+                            <dd>- Click on <b>X</b> box to delete task (with contained sub-tasks)</dd>
+                            <dd>- Click on bar to change progress level</dd>
+                            <dd>- Click on description to edit it (html tags accepted)</dd>
+                            <dd>- Click on free space of the box to change color</dd>
+                            <dd>- Drag to part below description to nest task</dd>
+                    </dl>
+                </td>
+            </tr>
+        </table>
+
+    </body>
+</html>
+
