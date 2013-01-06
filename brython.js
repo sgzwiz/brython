@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130104-083118
+// version 1.0.20130106-214656
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -297,13 +297,13 @@ try{getattr(obj,attr);return True}
 catch(err){return False}
 }
 function $import(){
-var js_modules=$List2Dict('time','datetime','dis','math','random','sys')
+var js_modules=['time','datetime','dis','math','random','sys']
 var calling={'line':document.line_num,'context':document.$context}
 for(var i=0;i<arguments.length;i++){
 module=arguments[i]
 if(!isinstance(module,str)){$raise('SyntaxError',"invalid syntax")}
 var res=''
-var is_js=module in js_modules
+var is_js=js_modules.indexOf(module)>-1
 if(window.XMLHttpRequest){
 var $xmlhttp=new XMLHttpRequest()
 }else{
@@ -1545,7 +1545,7 @@ if($arg.name in $PyVars){
 throw new TypeError($fname+"() got multiple values for argument '"+$arg.name+"'")
 }else if($required.indexOf($arg.name)>-1){
 var ix=$required.indexOf($arg.name)
-eval($required[ix]+"=$PyVar")
+eval('var '+$required[ix]+"=$PyVar")
 $ns[$required[ix]]=$PyVar
 }else if($arg.name in $defaults){
 $ns[$arg.name]=$PyVar
@@ -1557,7 +1557,7 @@ throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"
 if($arg.name in $defaults){delete $defaults[$arg.name]}
 }else{
 if($i<$required.length){
-eval($required[$i]+"=$PyVar")
+eval('var '+$required[$i]+"=$PyVar")
 $ns[$required[$i]]=$PyVar
 }else if($i<$required.length+$def_names.length){
 $ns[$def_names[$i-$required.length]]=$PyVar
@@ -1573,22 +1573,22 @@ throw TypeError(msg)
 if($other_kw!=null){$ns[$other_kw]=dict($dict_items)}
 return $ns
 }
-function $list_comp(loops,expr,cond,env){
-for(var i=0;i<env.length;i+=2){
-eval('var '+env[i]+'=env['+(i+1)+']')
+function $list_comp($loops,$expr,$cond,$env){
+for(var i=0;i<$env.length;i+=2){
+eval('var '+$env[i]+'=$env['+(i+1)+']')
 }
 var py='res = []\n'
-for(var i=0;i<loops.length;i++){
+for(var i=0;i<$loops.length;i++){
 for(j=0;j<4*i;j++){py +=' '}
-py +='for '+loops[i][0]+' in '+loops[i][1]+':\n'
+py +='for '+$loops[i][0]+' in '+$loops[i][1]+':\n'
 }
-if(cond){
+if($cond){
 for(var j=0;j<4*i;j++){py +=' '}
-py +='if '+cond+':\n'
+py +='if '+$cond+':\n'
 i++
 }
 for(var j=0;j<4*i;j++){py +=' '}
-py +='tvar = '+expr+'\n'
+py +='tvar = '+$expr+'\n'
 for(var j=0;j<4*i;j++){py +=' '}
 py +='res.append(tvar)'
 var js=$py2js(py).to_js()
@@ -1707,12 +1707,15 @@ if(end-br_pos<5){pos=br_pos+1;continue}
 var for_pos=stack.find_next_at_same_level(br_pos+1,'keyword','for')
 if(for_pos===null){pos=br_pos+1;continue}
 var expr=stack.list.slice(br_pos+1,for_pos)
+var s_expr=new Stack(expr)
+var res_env=s_expr.ids_in()
 var in_pos=stack.find_next_at_same_level(for_pos+1,'operator','in')
 if(in_pos===null){$SyntaxError(module,"missing 'in' in list comprehension",br_pos)}
 var qesc=new RegExp('"',"g")
 var loops=[]
 var env=[]
 var lvar=new Stack(stack.list.slice(for_pos+1,in_pos))
+var local_env=lvar.ids_in()
 while(true){
 for_pos=stack.find_next_at_same_level(in_pos+1,'keyword','for')
 if(for_pos===null){break}
@@ -1721,7 +1724,8 @@ env=env.concat(s.ids_in())
 loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
 in_pos=stack.find_next_at_same_level(for_pos+1,'operator','in')
 if(in_pos===null){$SyntaxError(module,"missing 'in' in list comprehension",br_pos)}
-lvar=stack.list.slice(for_pos+1,in_pos)
+lvar=new Stack(stack.list.slice(for_pos+1,in_pos))
+local_env=local_env.concat(lvar.ids_in())
 }
 var if_pos=stack.find_next_at_same_level(in_pos,'keyword','if')
 if(if_pos===null){
@@ -1743,10 +1747,16 @@ if(i<loops.length-1){seq +=','}
 seq +='],'
 s=new Stack(expr)
 seq +='"'+s.to_js()+'",'
-if(cond){
-s=new Stack(cond)
-seq +='"'+s.to_js().replace(qesc,'\\"')+'",['
+if(cond.length>0){
+var c_start=cond[0][2]
+var c_end=stack.list[end][2]-1
+var c_src=src.slice(c_start,c_end)
+seq +='"'+c_src.replace(qesc,'\\"')+'",['
 }else{seq +='"",['}
+for(var k=0;k<res_env.length;k++){
+if(env.indexOf(res_env[k])==-1 &&
+local_env.indexOf(res_env[k])==-1){env.push(res_env[k])}
+}
 for(var i=0;i<env.length;i++){
 seq+="'"+env[i]+"',"+env[i]
 if(i<env.length-1){seq+=','}
@@ -2316,8 +2326,12 @@ stack.list.splice(kw_pos,2,["code",'this.'+fname+'='],
 if(kw=='class'){
 var code='\n'+f_indent+'function '+fname+'(){'
 code +='\n'+f_indent+'var obj=new $'+fname+'()'
-code +='\n'+f_indent+'obj.__getattr__ = function(attr){return obj[attr]}'
+code +='\n'+f_indent+'obj.__getattr__ = function(attr)'
+code +='{if(obj[attr]!==undefined){return obj[attr]}'
+code +='else{$raise("AttributeError",obj+" has no attribute \'"+attr+"\'")}}'
 code +='\n'+f_indent+'obj.__setattr__ = function(attr,value){obj[attr]=value}'
+code +='\n'+f_indent+'obj.__str__ = function(){return "<object \''+fname+'\'>"}'
+code +='\n'+f_indent+'obj.toString = obj.__str__'
 code +='\n'+f_indent+'if("__init__" in obj)'
 code +='{obj.__init__.apply(obj,arguments)}'
 code +='\n'+f_indent+'return obj'+'\n'+f_indent+'}'
@@ -2474,7 +2488,7 @@ while(test_end<stack.list.length-1 && stack.list[test_end+1][0]=='operator'
 test_end=stack.find_next_matching(test_end+3)
 }
 stack.list.splice(test_end,0,['bracket',')'])
-stack.list.splice(test_pos,0,['code','$test_expr'],['bracket','('])
+stack.list.splice(test_pos,0,['id','$test_expr'],['bracket','('])
 pos=test_end
 }
 var dobj=new Date()
@@ -2727,7 +2741,6 @@ break
 "^":"pow","<":"lt",">":"gt",
 "<=":"le",">=":"ge","==":"eq","!=":"ne",
 "or":"or","and":"and","in":"in","not":"not",
-"in":"in","not":"not",
 "not_in":"not_in","is_not":"is_not" 
 }
 var $augmented_assigns={
@@ -2826,7 +2839,6 @@ continue
 if(car=="#"){
 var end=src.substr(pos+1).search('\n')
 if(end==-1){end=src.length-1}
-lnum +=1
 pos +=end+1;continue
 }
 if(car=='"' || car=="'"){
@@ -3005,25 +3017,16 @@ return stack
 }
 function $JS2Py(src){
 if(src===null){return None}
+if(src.__class__!==undefined){return src}
 if(src===false){return False}
 if(src===true){return True}
 if(isinstance(src,[str,int,float,list,dict,set])){return src}
 if(typeof src=="object"){
 if(src.constructor===Array){return src}
-else if(src.tagName!==undefined && src.nodeName!==undefined){return src}
-else{
-try{if(src.constructor==DragEvent){return new $MouseEvent(src)}}
-catch(err){void(0)}
-try{if(src.constructor==MouseEvent){return new $MouseEvent(src)}}
-catch(err){void(0)}
-try{if(src.constructor==KeyboardEvent){return new $DomWrapper(src)}}
-catch(err){void(0)}
-if(src.__class__!==undefined){return src}
-return new $DomWrapper(src)
+else if($isNode(src)){console.log('is node');return $DOMNode(src)}
+else if($isEvent(src)){console.log('is event');return $DOMEvent(src)}
 }
-}else{
 return src
-}
 }
 function $raise(name,msg){
 if(msg===undefined){msg=''}
@@ -3515,8 +3518,8 @@ this.__getattr__=function(attr){
 if('get_'+attr in this){return this['get_'+attr]()}
 else{return getattr(obj,attr)}
 }
-this.get_text=function(){return str(obj.responseText)}
-this.get_xml=function(){alert(obj.responseXML);return $DomElement(obj.responseXML)}
+this.get_text=function(){return obj.responseText}
+this.get_xml=function(){return $DomObject(obj.responseXML)}
 }
 function $AjaxClass(){
 if(window.XMLHttpRequest){
@@ -3608,6 +3611,36 @@ res.__getattr__=function(attr){return this[attr]}
 res.__class__="MouseCoords"
 return res
 }
+var $DOMNodeAttrs=['nodeName','nodeValue','nodeType','parentNode',
+'childNodes','firstChild','lastChild','previousSibling','nextSibling',
+'attributes','ownerDocument']
+function $isNode(obj){
+for(var i=0;i<$DOMNodeAttrs.length;i++){
+if(obj[$DOMNodeAttrs[i]]===undefined){return false}
+}
+return true
+}
+var $DOMEventAttrs_W3C=['NONE','CAPTURING_PHASE','AT_TARGET','BUBBLING_PHASE',
+'type','target','currentTarget','eventPhase','bubbles','cancelable','timeStamp',
+'stopPropagation','preventDefault','initEvent']
+var $DOMEventAttrs_IE=['altKey','altLeft','button','cancelBubble',
+'clientX','clientY','contentOverflow','ctrlKey','ctrlLeft','data',
+'dataFld','dataTransfer','fromElement','keyCode','nextPage',
+'offsetX','offsetY','origin','propertyName','reason','recordset',
+'repeat','screenX','screenY','shiftKey','shiftLeft',
+'source','srcElement','srcFilter','srcUrn','toElement','type',
+'url','wheelDelta','x','y']
+function $isEvent(obj){
+flag=true
+for(var i=0;i<$DOMEventAttrs_W3C.length;i++){
+if(obj[$DOMEventAttrs_W3C[i]]===undefined){flag=false;break}
+}
+if(flag){return true}
+for(var i=0;i<$DOMEventAttrs_IE.length;i++){
+if(obj[$DOMEventAttrs_IE[i]]===undefined){console.log('no attr '+$DOMEventAttrs_IE[i]);return false}
+}
+return true
+}
 function DOMObject(){}
 DOMObject.__class__=$type
 DOMObject.toString=function(){return "<class 'DOMObject'>"}
@@ -3633,21 +3666,17 @@ DOMEvent.__class__=$type
 DOMEvent.toString=function(){return "<class 'DOMEvent'>"}
 function $DOMEvent(ev){
 ev.__class__=DOMEvent
-ev.__getattr__=function(attr){return $JS2Py(ev[attr])}
-ev.preventDefault=function(){ev.returnValue=false}
-ev.stopPropagation=function(){ev.cancelBubble=true}
-ev.toString=function(){return '<DOMEvent object>'}
+ev.__getattr__=function(attr){
+if(attr=="x"){return $mouseCoords(ev).x}
+if(attr=="y"){return $mouseCoords(ev).y}
+if(attr=="data"){return new $Clipboard(ev.dataTransfer)}
+return getattr(ev,attr)
+}
+if(ev.preventDefault===undefined){ev.preventDefault=function(){ev.returnValue=false}}
+if(ev.stopPropagation===undefined){ev.stopPropagation=function(){ev.cancelBubble=true}}
+ev.__str__=function(){return '<DOMEvent object>'}
+ev.toString=ev.__str__
 return ev
-}
-function $MouseEvent(ev){
-this.event=ev
-this.__class__="MouseEvent"
-}
-$MouseEvent.prototype.__getattr__=function(attr){
-if(attr=="x"){return $mouseCoords(this.event).x}
-if(attr=="y"){return $mouseCoords(this.event).y}
-if(attr=="data"){return new $Clipboard(this.event.dataTransfer)}
-return getattr(this.event,attr)
 }
 function $DomWrapper(js_dom){
 this.value=js_dom
@@ -3706,7 +3735,7 @@ return $JS2Py(obj)
 }
 this.__class__='options'
 this.__getitem__=function(key){
-return $DomObject(parent.options[key])
+return $DOMNode(parent.options[key])
 }
 this.__delitem__=function(arg){
 parent.options.remove(arg)
@@ -3733,66 +3762,6 @@ return parent.options.namedItem(name)
 }
 this.get_remove=function(arg){parent.options.remove(arg)}
 }
-document.__class__=DOMObject
-document.__delitem__=function(key){
-if(typeof key==="string"){
-var res=document.getElementById(key)
-if(res){res.parentNode.removeChild(res)}
-else{$raise("KeyError",key)}
-}else{
-try{
-var elts=document.getElementsByTagName(key),res=list()
-for(var $i=0;$i<elts.length;$i++){res.append(elts[$i])}
-return res
-}catch(err){
-$raise("KeyError",key)
-}
-}
-}
-document.__getattr__=function(attr){return getattr(this,attr)}
-document.__getitem__=function(key){
-if(typeof key==="string"){
-var res=document.getElementById(key)
-if(res){return $DomObject(res)}
-else{$raise("KeyError",key)}
-}else{
-try{
-var elts=document.getElementsByTagName(key.name),res=[]
-for(var $i=0;$i<elts.length;$i++){res.push($DomObject(elts[$i]))}
-return res
-}catch(err){
-$raise("KeyError",str(key))
-}
-}
-}
-document.__item__=function(i){
-var res=$DomObject(document.childNodes[i])
-return res
-}
-document.__le__=function(other){
-if(isinstance(other,$TagSum)){
-var $i=0
-for($i=0;$i<other.children.length;$i++){
-document.body.appendChild(other.children[$i])
-}
-}else if(isinstance(other,[str,int,float,list,dict,set,tuple])){
-txt=document.createTextNode(str(other))
-document.body.appendChild(txt)
-}else{document.body.appendChild(other)}
-}
-document.__len__=function(){return document.childNodes.length}
-document.__setattr__=function(attr,value){
-if(attr in $events){
-if(window.addEventListener){document.addEventListener(attr.substr(2),value)}
-else if(window.attachEvent){
-var callback=function(ev){return value($DOMEvent(window.event))}
-document.attachEvent(attr,callback)
-}
-}
-else{document[attr]=value}
-}
-document.toString=$DOMtoString
-doc=document
 function $Location(){
 var obj=new object()
 for(var x in window.location){obj[x]=window.location[x]}
@@ -3824,25 +3793,17 @@ $events=$List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'onselectstart','onstart','onstop','onsubmit','onunload',
 'ontouchstart','ontouchmove','ontouchend'
 )
-$hasNode=(typeof Node==="object")
-if($hasNode){
-function $DomObject(elt){
-elt.__class__=DOMObject
-elt.toString=$DOMtoString
-return elt
-}
-}else{
-function Node(){}
-function $DomObject(elt){
+function DOMNode(){}
+function $DOMNode(elt){
 if(!('$brython_id' in elt)){
 elt.$brython_id=Math.random().toString(36).substr(2, 8)
-for(var attr in Node.prototype){elt[attr]=Node.prototype[attr]}
-elt.toString=$DOMtoString
+for(var attr in DOMNode.prototype){elt[attr]=DOMNode.prototype[attr]}
+elt.__str__=$DOMtoString
+elt.toString=elt.__str__
 }
 return elt
 }
-}
-Node.prototype.__add__=function(other){
+DOMNode.prototype.__add__=function(other){
 var res=$TagSum()
 res.children=[this]
 if(isinstance(other,$TagSum)){
@@ -3852,41 +3813,59 @@ res.children.push(document.createTextNode(str(other)))
 }else{res.children.push(other)}
 return res
 }
-Node.prototype.__class__=DOMObject
-Node.prototype.__delitem__=function(key){
+DOMNode.prototype.__class__=DOMObject
+DOMNode.prototype.__delitem__=function(key){
 this.removeChild(this.childNodes[key])
 }
-Node.prototype.__eq__=function(other){
+DOMNode.prototype.__eq__=function(other){
 if('isEqualNode' in this){return this.isEqualNode(other)}
 else if('$brython_id' in this){return this.$brython_id===other.$brython_id}
 else{$raise('NotImplementedError','__eq__ is not implemented')}
 }
-Node.prototype.__getattr__=function(attr){
+DOMNode.prototype.__getattr__=function(attr){
 if('get_'+attr in this){return this['get_'+attr]()}
 return getattr(this,attr)
 }
-Node.prototype.__getitem__=function(key){
-return $DomObject(this.childNodes[key])
+DOMNode.prototype.__getitem__=function(key){
+if(this.nodeType===9){
+if(typeof key==="string"){
+var res=document.getElementById(key)
+if(res){return $DOMNode(res)}
+else{$raise("KeyError",key)}
+}else{
+try{
+var elts=document.getElementsByTagName(key.name),res=[]
+for(var $i=0;$i<elts.length;$i++){res.push($DOMNode(elts[$i]))}
+return res
+}catch(err){
+$raise("KeyError",str(key))
 }
-Node.prototype.__in__=function(other){return other.__contains__(this)}
-Node.prototype.__item__=function(key){
-return $DomObject(this.childNodes[key])
 }
-Node.prototype.__le__=function(other){
+}else{
+return $DOMNode(this.childNodes[key])
+}
+}
+DOMNode.prototype.__in__=function(other){return other.__contains__(this)}
+DOMNode.prototype.__item__=function(key){
+return $DOMNode(this.childNodes[key])
+}
+DOMNode.prototype.__le__=function(other){
+var obj=this
+if(this.nodeType===9){obj=this.body;console.log('append to '+obj)}
 if(isinstance(other,$TagSum)){
 var $i=0
 for($i=0;$i<other.children.length;$i++){
-this.appendChild(other.children[$i])
+obj.appendChild(other.children[$i])
 }
 }else if(typeof other==="string" || typeof other==="number"){
 var $txt=document.createTextNode(other.toString())
-this.appendChild($txt)
+obj.appendChild($txt)
 }else{
-this.appendChild(other)
+obj.appendChild(other)
 }
 }
-Node.prototype.__len__=function(){return this.childNodes.length}
-Node.prototype.__mul__=function(other){
+DOMNode.prototype.__len__=function(){return this.childNodes.length}
+DOMNode.prototype.__mul__=function(other){
 if(isinstance(other,int)&& other.valueOf()>0){
 var res=$TagSum()
 for(var i=0;i<other.valueOf();i++){
@@ -3898,17 +3877,19 @@ return res
 $raise('ValueError',"can't multiply "+this.__class__+"by "+other)
 }
 }
-Node.prototype.__ne__=function(other){return !this.__eq__(other)}
-Node.prototype.__radd__=function(other){
+DOMNode.prototype.__ne__=function(other){return !this.__eq__(other)}
+DOMNode.prototype.__radd__=function(other){
 var res=$TagSum()
 var txt=document.createTextNode(other)
 res.children=[txt,this]
 return res 
 }
-Node.prototype.__setattr__=function(attr,value){
+DOMNode.prototype.__setattr__=function(attr,value){
 if(attr.substr(0,2)=='on'){
-if(window.addEventListener){this.addEventListener(attr.substr(2),value)}
-else if(window.attachEvent){
+if(window.addEventListener){
+var callback=function(ev){return value($DOMEvent(ev))}
+this.addEventListener(attr.substr(2),callback)
+}else if(window.attachEvent){
 var callback=function(ev){return value($DOMEvent(window.event))}
 this.attachEvent(attr,callback)
 }
@@ -3916,78 +3897,79 @@ this.attachEvent(attr,callback)
 else if(attr in this){this[attr]=value}
 else{setattr(this,attr,value)}
 }
-Node.prototype.__setitem__=function(key,value){
+DOMNode.prototype.__setitem__=function(key,value){
 this.childNodes[key]=value
 }
-Node.prototype.get_clone=function(){
-res=$DomObject(this.cloneNode(true))
+DOMNode.prototype.get_clone=function(){
+res=$DOMNode(this.cloneNode(true))
 for(var evt in $events){
 if(this[evt]){res[evt]=this[evt]}
 }
 var func=function(){return res}
 return func
 }
-Node.prototype.get_remove=function(){
+DOMNode.prototype.get_remove=function(){
 var obj=this
 return function(child){obj.removeChild(child)}
 }
-Node.prototype.get_getContext=function(){
+DOMNode.prototype.get_getContext=function(){
 if(!('getContext' in this)){$raise('AttributeError',
 "object has no attribute 'getContext'")}
 var obj=this
 return function(ctx){return new $DomWrapper(obj.getContext(ctx))}
 }
-Node.prototype.get_parent=function(){
-if(this.parentElement){return $DomObject(this.parentElement)}
+DOMNode.prototype.get_parent=function(){
+if(this.parentElement){return $DOMNode(this.parentElement)}
 else{return None}
 }
-Node.prototype.get_options=function(){
+DOMNode.prototype.get_options=function(){
 return new $OptionsClass(this)
 }
-Node.prototype.get_left=function(){
+DOMNode.prototype.get_left=function(){
 return int($getPosition(this)["left"])
 }
-Node.prototype.get_top=function(){
+DOMNode.prototype.get_top=function(){
 return int($getPosition(this)["top"])
 }
-Node.prototype.get_children=function(){
+DOMNode.prototype.get_children=function(){
 var res=[]
 for(var i=0;i<this.childNodes.length;i++){
-res.push($DomObject(this.childNodes[i]))
+res.push($DOMNode(this.childNodes[i]))
 }
 return res
 }
-Node.prototype.get_reset=function(){
+DOMNode.prototype.get_reset=function(){
 var $obj=this
 return function(){$obj.reset()}
 }
-Node.prototype.get_style=function(){
+DOMNode.prototype.get_style=function(){
 return new $DomWrapper(this.style)
 }
-Node.prototype.set_style=function(style){
+DOMNode.prototype.set_style=function(style){
 for(var i=0;i<style.$keys.length;i++){
 this.style[style.$keys[i]]=style.$values[i]
 }
 }
-Node.prototype.get_submit=function(){
+DOMNode.prototype.get_submit=function(){
 var $obj=this
 return function(){$obj.submit()}
 }
-Node.prototype.get_text=function(){
+DOMNode.prototype.get_text=function(){
 return this.innerText || this.textContent
 }
-Node.prototype.get_html=function(){return this.innerHTML}
-Node.prototype.get_value=function(value){return this.value}
-Node.prototype.set_html=function(value){this.innerHTML=str(value)}
-Node.prototype.set_text=function(value){
+DOMNode.prototype.get_html=function(){return this.innerHTML}
+DOMNode.prototype.get_value=function(value){return this.value}
+DOMNode.prototype.set_html=function(value){this.innerHTML=str(value)}
+DOMNode.prototype.set_text=function(value){
 this.innerText=str(value)
 this.textContent=str(value)
 }
-Node.prototype.set_value=function(value){this.value=value.toString()}
+DOMNode.prototype.set_value=function(value){this.value=value.toString()}
+doc=$DOMNode(document)
 function $Tag(tagName,args){
 var $i=null
 var elt=null
-var elt=$DomObject(document.createElement(tagName))
+var elt=$DOMNode(document.createElement(tagName))
 elt.parent=this
 if(args!=undefined && args.length>0){
 $start=0
@@ -4015,7 +3997,11 @@ eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
 elt.set_style($arg.value)
 }else{
 if($arg.value!==false){
+try{
 elt.setAttribute($arg.name.toLowerCase(),$arg.value)
+}catch(err){
+$raise('ValueError',"can't set attribute "+$arg.name)
+}
 }
 }
 }
@@ -4023,7 +4009,6 @@ elt.setAttribute($arg.name.toLowerCase(),$arg.value)
 }
 return elt
 }
-function A(){return $Tag('A',arguments)}
 function $TagSumClass(){
 this.__class__=$TagSum
 this.children=[]
@@ -4054,6 +4039,7 @@ return res
 function $TagSum(){
 return new $TagSumClass()
 }
+function A(){return $Tag('A',arguments)}
 var $src=A+'' 
 $tags=['A', 'ABBR', 'ACRONYM', 'ADDRESS', 'APPLET',
 'B', 'BDO', 'BIG', 'BLOCKQUOTE', 'BUTTON',
@@ -4080,6 +4066,7 @@ $tags=$tags.concat(['ARTICLE','ASIDE','FIGURE','FOOTER','HEADER','NAV',
 for($i=0;$i<$tags.length;$i++){
 $code=$src.replace(/A/gm,$tags[$i])
 eval($code)
+eval($tags[$i]+'.name="'+$tags[$i]+'"')
 }
 SVG={
 __getattr__:function(attr){return this[attr]}
