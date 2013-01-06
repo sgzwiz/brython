@@ -64,23 +64,23 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     return $ns
 }
 
-function $list_comp(loops,expr,cond,env){
+function $list_comp($loops,$expr,$cond,$env){
     // create local variables passed from the list comp environment
-    for(var i=0;i<env.length;i+=2){
-        eval('var '+env[i]+'=env['+(i+1)+']')
+    for(var i=0;i<$env.length;i+=2){
+        eval('var '+$env[i]+'=$env['+(i+1)+']')
     }
     var py = 'res = []\n'
-    for(var i=0;i<loops.length;i++){
+    for(var i=0;i<$loops.length;i++){
         for(j=0;j<4*i;j++){py += ' '} // indent
-        py += 'for '+loops[i][0]+' in '+loops[i][1]+':\n'
+        py += 'for '+$loops[i][0]+' in '+$loops[i][1]+':\n'
     }
-    if(cond){
+    if($cond){
         for(var j=0;j<4*i;j++){py += ' '} // indent
-        py += 'if '+cond+':\n'
+        py += 'if '+$cond+':\n'
         i++
     }
     for(var j=0;j<4*i;j++){py += ' '} // indent
-    py += 'tvar = '+expr+'\n'
+    py += 'tvar = '+$expr+'\n'
     for(var j=0;j<4*i;j++){py += ' '} // indent
     py += 'res.append(tvar)'
     var js = $py2js(py).to_js()
@@ -190,7 +190,7 @@ function $py2js(src,module){
     }
     var dobj = new Date()
     times['add line nums'] = dobj.getTime()-t0
-    
+
     // replace "not in" and "is not" by operator
     var repl = [['not','in'],['is','not']]
     for(i=0;i<repl.length;i++){
@@ -205,7 +205,7 @@ function $py2js(src,module){
             pos = op_pos-2
         }
     }
-
+    
     // list comprehensions
     pos = 0
     while(true){
@@ -214,14 +214,20 @@ function $py2js(src,module){
         var end = stack.find_next_matching(br_pos)
         if(end-br_pos<5){pos=br_pos+1;continue}
         var for_pos = stack.find_next_at_same_level(br_pos+1,'keyword','for')
+
         if(for_pos===null){pos = br_pos+1;continue}
+
         var expr = stack.list.slice(br_pos+1,for_pos)
+
+        var s_expr = new Stack(expr)
+        var res_env = s_expr.ids_in()
         var in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
         if(in_pos===null){$SyntaxError(module,"missing 'in' in list comprehension",br_pos)}
         var qesc = new RegExp('"',"g") // to escape double quotes in arguments
         var loops = []
         var env = [] // variables found in iterables and conditions
         var lvar = new Stack(stack.list.slice(for_pos+1,in_pos))
+        var local_env = lvar.ids_in()
         // there may be other for ... in ...
         while(true){
             for_pos = stack.find_next_at_same_level(in_pos+1,'keyword','for')
@@ -232,7 +238,8 @@ function $py2js(src,module){
             loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
             in_pos = stack.find_next_at_same_level(for_pos+1,'operator','in')
             if(in_pos===null){$SyntaxError(module,"missing 'in' in list comprehension",br_pos)}
-            lvar = stack.list.slice(for_pos+1,in_pos)
+            lvar = new Stack(stack.list.slice(for_pos+1,in_pos))
+            local_env = local_env.concat(lvar.ids_in())
         }
         var if_pos = stack.find_next_at_same_level(in_pos,'keyword','if')
         if(if_pos===null){
@@ -254,10 +261,20 @@ function $py2js(src,module){
         seq += '],'
         s = new Stack(expr)
         seq += '"'+s.to_js()+'",'
-        if(cond){
-            s=new Stack(cond)
-            seq += '"'+s.to_js().replace(qesc,'\\"')+'",['
+        if(cond.length>0){
+            var c_start = cond[0][2]
+            var c_end = stack.list[end][2]-1
+            var c_src = src.slice(c_start,c_end)
+            seq += '"'+c_src.replace(qesc,'\\"')+'",['
         }else{seq += '"",['}
+        // add to env the variables in result variables that are not defined inside
+        // the list comprehension
+        // eg in [ obj for i in range(10) ], add 'obj' to env
+        // in [i for i in range(10)] don't add 'i'
+        for(var k=0;k<res_env.length;k++){
+            if(env.indexOf(res_env[k])==-1 &&
+                local_env.indexOf(res_env[k])==-1){env.push(res_env[k])}
+        }
         // pass environment variables as arguments with name and value
         for(var i=0;i<env.length;i++){
             seq+="'"+env[i]+"',"+env[i]
@@ -268,6 +285,8 @@ function $py2js(src,module){
         stack.list = stack.list.slice(0,br_pos).concat([['code',seq]]).concat(tail)
         pos = br_pos+1
     }
+
+
 
     // for each opening bracket, define after which token_types[,token values] 
     // they are *not* the start of a display
