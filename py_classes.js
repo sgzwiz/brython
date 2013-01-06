@@ -354,13 +354,13 @@ function hasattr(obj,attr){
 
 function $import(){
 
-    var js_modules = $List2Dict('time','datetime','dis','math','random','sys')
+    var js_modules = ['time','datetime','dis','math','random','sys']
     var calling={'line':document.line_num,'context':document.$context}
     for(var i=0;i<arguments.length;i++){
         module = arguments[i]
         if(!isinstance(module,str)){$raise('SyntaxError',"invalid syntax")}
         var res = ''
-        var is_js = module in js_modules
+        var is_js = js_modules.indexOf(module)>-1
 
         if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
             var $xmlhttp=new XMLHttpRequest();
