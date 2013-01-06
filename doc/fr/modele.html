@@ -23,7 +23,7 @@ Le fichier <b>brython.js</b> est généré par compilation de plusieurs scripts :
 
 La traduction et l'exécution d'un script Brython passent par les phases suivantes :
 <ol>
-<li>si le niveau de débogage est supérieur à 0, on ajoute après chaque ligne du code source Python une ligne contenant le numéro de la prochaine ligne exécutée (sauf quand cela provoquerait une erreur de syntaxe, par exemple juste avant un <tt>except</tt> ou un <tt>else</tt>
+<li>si le niveau de débogage est supérieur à 0, on ajoute après chaque ligne du code source Python une ligne contenant le numéro de la prochaine ligne exécutée (sauf quand cela provoquerait une erreur de syntaxe, par exemple juste avant un <tt>except</tt> ou un <tt>else</tt>)
 <p>
 <li>découpage du code source en jetons (tokens)
 <br>Fonction réalisée par le script <tt>py_tokenizer.js</tt>. Les jetons générés sont des listes Javascript à 3 éléments [<em>type,valeur,position</em>]. <em>position</em> est le rang du premier caractère du jeton dans le code source Python. Leus deux autres éléments peuvent prendre les valeurs suivantes :
@@ -49,21 +49,23 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 <li>parenthèses non équilibrées
 <li>caractère illégal
 <li>mot clé Python non géré par Brython
-<li>identifiant inutilisable parce qu'il entre en conflit avec les mots réservés Javascript (par exemple <em>window, document, status...</em>)
 </ul>
 <p>
 <li>Traduction des jetons en code Javascript
 <p>Elle est réalisée par les scripts <tt>py2js.js</tt> et <tt>py_utils.js</tt>, dans l'ordre suivant :
 <ol>
 <li>remplacement de la séquence <tt>not in</tt> par l'opérateur <tt>__not_in__</tt>
+<li>conversion des listes en extansion (list comprehensions)
 <li>transformation des parenthèses, crochets et accolades en tuples, listes et dictionnaires
+<li>marquage différent des fonctions et des méthodes de classes pour traitement ultérieur
 <li>conversion des arguments dans la définition des fonctions (<tt>def foo(x,y=1,*args,**kw)</tt>)
 <li>conversion des arguments sous forme de mots-clés dans les appels de fonctions (<tt>foo(b=1)</tt>)
 <li>résolution des suites de + et de - (++ devient +, -+- devient -, etc.) et des opérateurs unaires - et +
 <li>remplacement de <tt>import foo</tt> par <tt>$import(foo)</tt>
 <li>traduction des suites <tt>try / except / finally / else</tt>
 <li>traduction de <tt>assert</tt>
-<li>traduction de l'indentation en accolades pour les blocs commençant par <tt>if, else, elif, def, for, try, finally</tt>
+<li>conversion de l'opérateur ternaire
+<li>traduction de l'indentation en accolades pour les blocs commençant par <tt>if, else, elif, class, def, for, try, finally</tt>. Dans cette phase, des transformations spécifiques à chaque type de bloc sont réalisées (génération du code pour la définition des classes par exemple)
 <li>remplacement de <tt>not x</tt> par <tt>$not(x)</tt>
 <li>remplacement des assignations augmentées (<tt>x += 1</tt>) par des assignations et opérations simples (<tt>x = x+1</tt>)
 <li>remplacement des opérateurs par les fonctions équivalentes : <tt>x+y</tt> devient <tt>x.__add__(y)</tt>
@@ -74,8 +76,15 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 </ol>
 <p>
 <li>Exécution du code Javascript généré
+<p>Au début de l'exécution de chaque fonction, la fonction $MakeArgs dans py2js.js est utilisée pour analyser les arguments ; la fonction $JS2Py dans py_utils.js est appelée pour transformer chaque objet Javacript fourni comme argument dans un équivalent exploitable par Brython
+<p>En cours d'exécution :
+<ul>
+<li>$list_comp dans py2js.js est appelée pour chaque liste en extansion
+<li>$raise dans py_utils.js est appelée pour lever des exceptions
+<li>$test_expr et $test_item dans py_utils.js sont utilisés dans l'évaluation de conditions combinées par <code>and</code> ou <code>or</code>
+</ul>
 <p>Les classes définies dans les autres modules sont utilisées pour la syntaxe Python et l'interface avec le navigateur
-<p>En cas d'erreur d'exécution, une trace aussi proche que possible de celle générée par Python est imprimée dans la console du navigateur
+<p>En cas d'erreur d'exécution, une trace aussi proche que possible de celle générée par Python est imprimée dans la console du navigateur, ou vers un autre élément défini par <code>sys.stderr</code>
 
 </ol>
 </body>
