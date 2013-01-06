@@ -1,25 +1,16 @@
 // transform native JS types into Brython types
 function $JS2Py(src){
     if(src===null){return None}
+    if(src.__class__!==undefined){return src}
     if(src===false){return False}
     if(src===true){return True}
     if(isinstance(src,[str,int,float,list,dict,set])){return src}
     if(typeof src=="object"){
         if(src.constructor===Array){return src}
-        else if(src.tagName!==undefined && src.nodeName!==undefined){return src}
-        else{
-            try{if(src.constructor==DragEvent){return new $MouseEvent(src)}}
-            catch(err){void(0)}
-            try{if(src.constructor==MouseEvent){return new $MouseEvent(src)}}
-            catch(err){void(0)}
-            try{if(src.constructor==KeyboardEvent){return new $DomWrapper(src)}}
-            catch(err){void(0)}
-            if(src.__class__!==undefined){return src}
-            return new $DomWrapper(src)
-        }
-    }else{
-        return src
+        else if($isNode(src)){console.log('is node');return $DOMNode(src)}
+        else if($isEvent(src)){console.log('is event');return $DOMEvent(src)}
     }
+    return src
 }
 
 // exceptions
