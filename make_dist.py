@@ -6,7 +6,7 @@ import datetime
 now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
 sources = ['py_classes','py_list','py_string',
-    'py2js','py_tokenizer','py_utils',
+    'py2js','py_tokenizer','py_tokens','py_utils',
     'py_ajax','py_dom','py_svg','py_local_storage']
 
 # update version number in module sys
