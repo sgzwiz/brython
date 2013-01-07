@@ -382,7 +382,6 @@ function $import(){
         // request - some use the cache after the first request
         var fake_qs = '?foo='+Math.random().toString(36).substr(2,8)
         // open in synchronous mode !
-        console.log(document.$brython_path+'libs/'+module+'.js'+fake_qs)
         if(is_js){$xmlhttp.open('GET',document.$brython_path+'libs/'+module+'.js'+fake_qs,false)}
         else{$xmlhttp.open('GET',module+'.py'+fake_qs,false)}
         var timer = setTimeout( function() {
