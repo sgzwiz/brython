@@ -9,7 +9,7 @@ function $SVGTag(tag_name,args){
     // represents an SVG tag
     var $i = null
     var $obj = this
-    elt = document.createElementNS($svgNS,tag_name)
+    elt = $DOMNode(document.createElementNS($svgNS,tag_name))
     if(args!=undefined && args.length>0){
         $start = 0
         $first = args[0]
