@@ -75,7 +75,7 @@ function $isEvent(obj){
     }
     if(flag){return true}
     for(var i=0;i<$DOMEventAttrs_IE.length;i++){
-        if(obj[$DOMEventAttrs_IE[i]]===undefined){console.log('no attr '+$DOMEventAttrs_IE[i]);return false}
+        if(obj[$DOMEventAttrs_IE[i]]===undefined){return false}
     }
     return true
 }
