@@ -234,12 +234,31 @@ function $Location(){
     return obj
 }
 
-win = { 
-    __getattr__ : function(attr){
-        if(attr=='location'){return $Location()}
-        return getattr(window,attr)
-   }
+function JSObject(){}
+JSObject.__class__ = $type
+JSObject.__str__ = function(){return "<class 'JSObject'>"}
+JSObject.toString = JSObject.__str__
+
+function $py(js){
+    this.js = js
+    this.__getattr__ = function(attr){
+        var obj = this
+        if(obj.js[attr] !== undefined){
+            var res = obj.js[attr]
+            if(typeof res==='function'){
+                return $bind(res,obj.js)
+            }
+            return $JS2Py(res)
+        }else{
+            $raise("AttributeError","no attribute "+attr)
+        }
+    }
+    this.__class__ = JSObject
+    this.__str__ = function(){return "<object 'JSObject'>"}
+    this.toString = this.__str__
 }
+
+win =  new $py(window)
 
 $events = $List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'onbeforeactivate','onbeforecopy','onbeforecut','onbeforedeactivate',
@@ -334,7 +353,7 @@ DOMNode.prototype.__item__ = function(key){ // for iteration
 DOMNode.prototype.__le__ = function(other){
     var obj = this
     // for document, append child to document.body
-    if(this.nodeType===9){obj = this.body;console.log('append to '+obj)} 
+    if(this.nodeType===9){obj = this.body} 
     if(isinstance(other,$TagSum)){
         var $i=0
         for($i=0;$i<other.children.length;$i++){
