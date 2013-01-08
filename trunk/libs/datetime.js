@@ -12,9 +12,7 @@ function $Date(args){
 
     this.__getattr__ = function(attr){return getattr(this,attr)}
     
-    this.__str__ = function(){
-        return str(this.year.value+'-'+this.month.value+'-'+this.day.value)
-    }
+    this.__str__ = function(){console.log('date str');return this.strftime('%Y-%m-%d')}
 
     this.strftime = function(fmt){return this.$dt.strftime(fmt)}
 }
@@ -73,7 +71,7 @@ function $DateTime(args){
     }
     this.strftime = function(fmt){
         if(!isinstance(fmt,str)){throw new TypeError("strftime() argument should be str, not "+$str(fmt.__class__))}
-        var res = fmt.value
+        var res = fmt
         res = res.replace('%d',this.norm_str(this.day,2))
         res = res.replace('%f',this.norm_str(this.microsecond,6))
         res = res.replace('%H',this.norm_str(this.hour,2))
@@ -125,7 +123,8 @@ datetime.date.__getattr__= function(attr){
             var obj = new Date()
             var args = [int(obj.getFullYear()),int(obj.getMonth()+1),
                 int(obj.getDate())]
-            return new $Date(args)}
+            return new $Date(args)
+        }
     }
     $raise('AttributeError','datetime.datetime has no attribute '+attr)
 }
