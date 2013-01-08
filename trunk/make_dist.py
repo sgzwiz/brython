@@ -5,7 +5,7 @@ import datetime
 
 now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
-sources = ['py_classes','py_list','py_string',
+sources = ['py_classes','py_list','py_string','py_import',
     'py2js','py_tokenizer','py_tokens','py_utils',
     'py_ajax','py_dom','py_svg','py_local_storage']
 
@@ -82,13 +82,15 @@ except IOError:
 
 print('size : originals %s compact %s gain %.2f' %(src_size,len(res),100*(src_size-len(res))/src_size))
 
-# zip file
+# zip files
 import os
 import tarfile
+import zipfile
+
 dest_dir = os.path.join(os.getcwd(),'dist')
 if not os.path.exists(dest_dir):
     os.mkdir(dest_dir)
-name = 'Brython-%s' %now
+name = 'Brython_site_mirror-%s' %now
 dest_path = os.path.join(dest_dir,name)
 dist = tarfile.open(dest_path+'.gz',mode='w:gz')
 
@@ -111,3 +113,33 @@ for path in os.listdir(os.getcwd()):
         arcname=os.path.join(name,path))
 
 dist.close()
+
+# minimum package
+name = 'Brython-%s' %now
+dest_path = os.path.join(dest_dir,name)
+dist1 = tarfile.open(dest_path+'.gz',mode='w:gz')
+dist2 = tarfile.open(dest_path+'.bz2',mode='w:bz2')
+dist3 = zipfile.ZipFile(dest_path+'.zip',mode='w',compression=zipfile.ZIP_DEFLATED)
+
+def is_valid(filename):
+    if filename.startswith('.'):
+        return False
+    if not filename.lower().endswith('.js'):
+        return False
+    return True
+
+for arc,wfunc in (dist1,dist1.add),(dist2,dist2.add),(dist3,dist3.write):
+
+    for path in 'brython.js','brython.png','README.txt','LICENCE.txt','test.html':
+        wfunc(os.path.join(os.getcwd(),path),
+                arcname=os.path.join(name,path))
+    
+    for path in os.listdir(os.path.join(os.getcwd(),'libs')):
+        if os.path.splitext(path)[1]!='.js':
+            continue
+        abs_path = os.path.join(os.getcwd(),'libs',path)
+        print('add',path)
+        wfunc(os.path.join(os.getcwd(),'libs',path),
+            arcname=os.path.join(name,'libs',path))
+
+    arc.close()
