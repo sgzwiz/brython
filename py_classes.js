@@ -435,7 +435,8 @@ function $import(){
 }
 
 function int(value){
-    if(typeof value=="number" ||
+    if(isinstance(value,int)){return value}
+    else if(typeof value=="number" ||
         (typeof value=="string" && parseInt(value)!=NaN)){
         var res = new Number(parseInt(value))
         res.__class__ = int
@@ -446,7 +447,7 @@ function int(value){
         res.__class__ = int
         return res
     }else{ $raise('ValueError',
-        "Invalid literal for int() with base 10: '"+str(value)+"'")
+        "Invalid literal for int() with base 10: '"+str(value)+"'"+value.__class__)
     }
 }
 int.__class__ = $type
