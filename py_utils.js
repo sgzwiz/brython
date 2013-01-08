@@ -91,13 +91,14 @@ function $list_comp($loops,$expr,$cond,$env){
 function $JS2Py(src){
     if(src===null){return None}
     if(src.__class__!==undefined){return src}
-    if(src===false){return False}
-    if(src===true){return True}
-    if(isinstance(src,[str,int,float,list,dict,set])){return src}
+    if(typeof src==='number'){
+        if(src%1===0){return int(src)}
+        else{return float(src)}
+    }
     if(typeof src=="object"){
         if(src.constructor===Array){return src}
-        else if($isNode(src)){console.log('is node');return $DOMNode(src)}
-        else if($isEvent(src)){console.log('is event');return $DOMEvent(src)}
+        else if($isNode(src)){return $DOMNode(src)}
+        else if($isEvent(src)){return $DOMEvent(src)}
     }
     return new $py(src)
 }
