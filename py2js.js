@@ -563,6 +563,44 @@ function $py2js(src,module){
         }
         pos=sign+1
     }
+
+    // replace "from module import a,b" by "$import([module],[a,b])
+    pos = 0
+    while(pos<stack.list.length){
+        var from_pos = stack.find_next(pos,"keyword","from")
+        if(from_pos==null){break}
+        if(stack.list[from_pos-1][0]!=='indent'){
+            $SyntaxError("invalid syntax",from_pos)
+        }
+        if(from_pos<=stack.length-3 || 
+            stack.list[from_pos+1][0]!=='id'){
+            $SyntaxError("invalid syntax",from_pos)
+        }
+        var module = stack.list[from_pos+1][1]
+        if(!stack.list[from_pos+2].match(['keyword','import'])){
+            $SyntaxError("missing 'import' after 'from'",from_pos)
+        }
+        var names = []
+        if(stack.list[from_pos+3].match(['operator','*'])){
+            var names = ['*'],end=from_pos+3
+        }else{
+            var _names = stack.atom_at(from_pos+3,true)
+            if(_names.type==="tuple"){
+                for(var i=0;i<_names.items.length;i++){
+                    names.push(_names.items[i].list()[0][1])
+                }
+            }else{ // 1 name to import
+                names = [_names.list()[0][1]]
+            }
+            var end = _names.end
+        }
+        alert('module '+module+' names '+names+' end '+end)
+        stack.list.splice(from_pos,end-from_pos+1,
+            ['id','$import_from'],['bracket','('],['str','"'+module+'"'],
+            ['delimiter',','],['code',names+''],['bracket',')'])
+        stack.dump()
+        pos = from_pos+1
+    }
     
     // replace import module_list by $import(module_list)
     pos = 0
