@@ -2,30 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="iso-8859-1">
-<script src="/py_tokenizer.js"></script>
-<script src="/py_utils.js"></script>
-<script src="/py_classes.js"></script>
-<script src="/py_list.js"></script>
-<script src="/py_string.js"></script>
-<script src="/py_dom.js"></script>
-<script src="/py2js.js"></script>
-<script src="/py_ajax.js"></script>
+<script src="../brython.js"></script>
+<script src="../py_dom.js"></script>
 </head>
 <body onload="brython(1)">
 <script type="text/python">
-canvas = doc['clock']
-if not hasattr(canvas,'getContext'):
-    doc['navig_zone'].html = 'maudit ie !'
-if hasattr(canvas,'getContext'):
-    doc['navig_zone'].html = 'context ok'
-
+w = win.open('','','')
+w.document.open("text/plain")
+w.document.write('coucou')
+w.document.close()
+w.document.title = "DB DUMP"
 </script>
 
-<p><canvas width="250" height="250" id="clock">
-<i>désolé, Brython n'arrive pas à faire fonctionner la démo sur votre navigateur ;<br>vérifiez que Javascript est activé
-<br><div id="navig_zone"></div></i>
-</canvas>
-
+<canvas id="zone" width="80" height="80"></canvas>
 </body>
 </html>
 
