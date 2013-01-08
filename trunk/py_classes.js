@@ -437,18 +437,20 @@ function $import(){
 function int(value){
     if(typeof value=="number" ||
         (typeof value=="string" && parseInt(value)!=NaN)){
-        return parseInt(value)
+        var res = new Number(parseInt(value))
+        res.__class__ = int
+        console.log('create int '+value+' '+res.__class__)
+        return res
     }else if(isinstance(value,float)){
-        return parseInt(value.value)
+        var res = new Number(parseInt(value.value))
+        res.__class__ = int
+        return res
     }else{ $raise('ValueError',
         "Invalid literal for int() with base 10: '"+str(value)+"'")
     }
 }
 int.__class__ = $type
 int.toString = function(){return "<class 'int'>"}
-
-// Python integers are Javascript numbers
-Number.prototype.__class__ = int
 
 Number.prototype.__floordiv__ = function(other){
     if(isinstance(other,int)){
