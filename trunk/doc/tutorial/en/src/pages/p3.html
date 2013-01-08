@@ -1,0 +1,57 @@
+<html>
+<head>
+<title>Brython Tutorial</title>
+<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<link rel="stylesheet" href="../brython.css">
+<script src="../../brython.js"></script>
+</head>
+<body onload="brython()">
+
+<h3>DOM</h3>
+
+Unchanged from the last page, we have
+
+<xmp><html>
+    <head>
+        <title>
+            This title appears at the top of the page!
+        </title>
+    </head>
+
+    <body>
+
+        <table border="1">
+            <tr>
+                <th>The First Header</th>
+                <th>The Second Header</th>
+                <th>Third Cell Header</th>
+            </tr>
+            <tr>
+                <td>Under one</td>
+                <td>Under two</td>
+                <td>Under three</td>
+            </tr>
+            <tr>
+                <td>Another cell</td>
+                <td>Words</td>
+                <td>I refuse to put foo</td>
+            </tr>
+        </table>
+
+</body>
+</html>
+</xmp>
+
+Instead of thinking of this as HTML tags, we could consider it a tree with HTML as the root. Under HTML would be HEAD and BODY, and so forth. Using a tool available at <a href="http://livedom.validator.nu/"> http://livedom.validator.nu/</a> we get a nice picture of the DOM tree for our page.<p>
+
+<img src="../imgs/dom.png"><p>
+
+We can see that to get to the first TH tag, we need to traverse the tree like so:
+
+<code>HTML -> BODY -> TABLE -> TBODY -> TR -> TH</code>. 
+<p>
+If we add an id to the TABLE tag, like so,<xmp><table border="1" id="my_table"></xmp>
+we can call it by name instead of some vague description.
+<p>With these basic ideas of HTML and the DOM, we are now ready to enter the world of Brython.
+</body>
+</html>

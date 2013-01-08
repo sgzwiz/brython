@@ -1,0 +1,43 @@
+<html>
+<head>
+<script src="../../brython.js"></script>
+</head>
+<body onLoad="brython(1)">
+<script type="text/python">
+
+def on_button_click():
+    tr = TR()
+    tr <= TD(doc["field1"].value) + TD(doc["field2"].value) + TD(doc["field3"].value)
+    doc_table <= tr
+
+
+def make_table(lsts):
+    '''Returns a table made from a list of lists'''
+    table = TABLE(border = '2')
+    #table.border = '1'
+    for row in lsts:
+        tr = TR()
+        for elem in row:
+            tr <= TD(elem)
+        table <= tr
+        
+    return table
+
+
+
+tst =   [ 
+            ['drere', 'bla'    ,'micheal'],
+            ['drere', 'micheal', 'bla'],
+            ['derp' , 'LALAL'  ,  'sd']
+        ]
+
+doc_table = make_table(tst)
+doc <= doc_table
+
+doc <= P()
+
+</script>
+<input id="field1"><input id="field2"> <input id="field3">
+<button onclick="on_button_click()">clic !</button>
+</body>
+</html>

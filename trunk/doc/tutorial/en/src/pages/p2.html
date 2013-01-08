@@ -1,0 +1,76 @@
+<html>
+<head>
+<title>Brython Tutorial</title>
+<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<link rel="stylesheet" href="../brython.css">
+<script src="../../brython.js"></script>
+</head>
+<body onload="brython()">
+
+
+
+<h3>HTML</h3>
+Let's start by looking at some HTML.
+<p>
+<xmp><html>
+    <body>
+        Page text here.
+    </body>
+</html>
+</xmp>
+<p>
+
+If you've never seen HTML before, it's fairly simple. Each part with an angle bracket is called a tag. The first of each pair is called an opening tag. The second (with a /) is called a closing tag. If you copy that into your editor, and save it as <code>name.html</code>, you could open it with your browser. <a href="http://127.0.0.1:8000/example_files/0-simple-html/1.html" target="_top">Let us do so.</a> (If you got a 404 error, make sure the server is running!).<p>
+
+What is happening here? Nothing too complicated. The <xmp><html></xmp> tag tells the browser that this is an HTML document. The <xmp><body></xmp> tag contains most of the "stuff" that goes into a web page. But we can do better than that. Let's try:
+
+<p>
+<xmp><html>
+    <body style="background-color:green">
+        Page text here.
+    </body>
+</html>
+</xmp>
+<p>
+I'm sure you can figure out what that does, and <a href="http://127.0.0.1:8000/example_files/0-simple-html/2.html" target="_top">here is your confirmation</a>.<p>
+
+Adding a bit more depth to it, we come to something like a complete webpage.
+
+<xmp><html>
+    <head>
+        <title>
+            This title appears at the top of the page!
+        </title>
+    </head>
+
+    <body>
+
+        <table border="1">
+            <tr>
+                <th>The First Header</th>
+                <th>The Second Header</th>
+                <th>Third Cell Header</th>
+            </tr>
+            <tr>
+                <td>Under one</td>
+                <td>Under two</td>
+                <td>Under three</td>
+            </tr>
+            <tr>
+                <td>Another cell</td>
+                <td>Words</td>
+                <td>I refuse to put foo</td>
+            </tr>
+        </table>
+
+</body>
+</html>
+</xmp>
+
+Once again, it isn't too difficult to see what's happening <a href="http://127.0.0.1:8000/example_files/0-simple-html/3.html" target="_top">here.</a> The <xmp>head</xmp> section contains information about the title which is displayed in the title bar or tab of the browser. The body contains a <xmp>table</xmp>. The table in turn contains a few <xmp>tr</xmp> tags, which stands for "Table Row". Each row contains a <xmp><th></xmp> or <xmp><td></xmp> which are Table Headers and Table Data respectively. The Table Headers are the bolded elements. The Table Data are the normal cells. Inside the table tag <xmp><table border="1"></xmp> the cell boarders are set to a width of one pixel.<p>
+
+At this point I encourage you to copy some of these files over to the playground folder. Try and make the table 4x4 instead of 3x3. What happens if a cell is empty? What happens if you miss a tag?<p>
+
+
+</body>
+</html>
