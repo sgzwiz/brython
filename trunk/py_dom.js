@@ -310,7 +310,13 @@ DOMNode.prototype.__add__ = function(other){
 DOMNode.prototype.__class__ = DOMObject
 
 DOMNode.prototype.__delitem__ = function(key){
-    this.removeChild(this.childNodes[key])
+    if(this.nodeType===9){ // document : remove by id
+        var res = document.getElementById(key)
+        if(res){res.parentNode.removeChild(res)}
+        else{$raise("KeyError",key)}
+    }else{ // other node : remove by rank in child nodes
+        this.removeChild(this.childNodes[key])
+    }
 }
 
 DOMNode.prototype.__eq__ = function(other){
