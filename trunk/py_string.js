@@ -1,5 +1,6 @@
 function str(arg){
     if(arg===undefined){return '<undefined>'}
+    else if(arg.__str__!==undefined){return arg.__str__()}
     else{return arg.toString()}
 }
 str.__class__ = $type
