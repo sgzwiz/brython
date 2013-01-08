@@ -37,6 +37,8 @@ function $SVGTag(tag_name,args){
                     eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
                 }else if($arg.name.toLowerCase()=="style"){
                     elt.set_style($arg.value)
+                }else if($arg.name.toLowerCase().indexOf("href") !== -1){ // xlink:href
+                    elt.setAttributeNS( "http://www.w3.org/1999/xlink","href",$arg.value)
                 } else {
                     if($arg.value!==false){
                         // option.selected=false sets it to true :-)
