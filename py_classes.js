@@ -352,106 +352,21 @@ function hasattr(obj,attr){
     catch(err){return False}
 }
 
-function $import(){
-
-    var js_modules = ['time','datetime','dis','math','random','sys']
-    var calling={'line':document.line_num,'context':document.$context}
-    for(var i=0;i<arguments.length;i++){
-        module = arguments[i]
-        if(!isinstance(module,str)){$raise('SyntaxError',"invalid syntax")}
-        var res = ''
-        var is_js = js_modules.indexOf(module)>-1
-
-        if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
-            var $xmlhttp=new XMLHttpRequest();
-        }else{// code for IE6, IE5
-            var $xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
-        }
-        if('overrideMimeType' in $xmlhttp){$xmlhttp.overrideMimeType("text/plain")}
-        $xmlhttp.onreadystatechange = function(){
-            if($xmlhttp.readyState==4){
-                window.clearTimeout(timer)
-                if($xmlhttp.status==200 || $xmlhttp.status==0){res=$xmlhttp.responseText}
-                else{
-                    // don't throw an exception here, it will not be caught (issue #30)
-                    res = Error('ImportError',"No module named '"+module+"'")
-                }
-            }
-        }
-        // we must add a fake query string to force the browser to execute the
-        // request - some use the cache after the first request
-        var fake_qs = '?foo='+Math.random().toString(36).substr(2,8)
-        // open in synchronous mode !
-        if(is_js){$xmlhttp.open('GET',document.$brython_path+'libs/'+module+'.js'+fake_qs,false)}
-        else{$xmlhttp.open('GET',module+'.py'+fake_qs,false)}
-        var timer = setTimeout( function() {
-            $xmlhttp.abort()
-            document.$context = calling.context
-            document.line_num = calling.line
-            $raise('ImportError',"No module named '"+module+"'")}, 5000)
-        $xmlhttp.send()
-        if(res.constructor===Error){throw res} // module not found
-        if(is_js){
-            try{eval(res)}catch(err){$raise('ImportError',err.message)}
-        }else{
-            // if module was found, res is set to the Python source code
-            var stack = $py2js(res,module)
-            // insert module name as a JS object
-            stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
-            // search for module-level names
-            // functions
-            var $pos=0           
-            while(true){
-                var $mlname_pos = stack.find_next_at_same_level($pos,"keyword","function")
-                if($mlname_pos===null){break}
-                var $func_name = stack.list[$mlname_pos+1][1]
-                stack.list.splice($mlname_pos,2,['code',module+'.'+$func_name+"=function"])
-                // modify declaration at the end of function
-                var br_pos = stack.find_next($mlname_pos,'bracket','{')
-                var br_end = stack.find_next_matching(br_pos)
-                var $fend = stack.find_next(br_end,"func_end")
-                var $fend_code = stack.list[$fend][1]
-                $fend_code = module+'.'+$fend_code.substr(1)
-                $pv_pos = $fend_code.search(';')
-                $fend_code = ";"+$fend_code.substr(0,$pv_pos)
-                stack.list[$fend][1] = $fend_code
-                $pos = $mlname_pos+1
-            }
-            // variables
-            var $pos=0           
-            while(true){
-                var $mlname_pos = stack.find_next_at_same_level($pos,"assign_id")
-                if($mlname_pos===null){break}
-                stack.list[$mlname_pos][1]=module+'.'+stack.list[$mlname_pos][1]
-                $pos = $mlname_pos+1
-            }
-            try{
-                eval(stack.to_js())
-            }catch(err){
-                $raise(err.name,err.message)
-            }
-        }
-    }
-}
-
 function int(value){
     if(isinstance(value,int)){return value}
     else if(typeof value=="number" ||
         (typeof value=="string" && parseInt(value)!=NaN)){
-        var res = new Number(parseInt(value))
-        res.__class__ = int
-        console.log('create int '+value+' '+res.__class__)
-        return res
+        return parseInt(value)
     }else if(isinstance(value,float)){
-        var res = new Number(parseInt(value.value))
-        res.__class__ = int
-        return res
+        return parseInt(value.value)
     }else{ $raise('ValueError',
         "Invalid literal for int() with base 10: '"+str(value)+"'"+value.__class__)
     }
 }
 int.__class__ = $type
 int.toString = function(){return "<class 'int'>"}
+
+Number.prototype.__class__ = int
 
 Number.prototype.__floordiv__ = function(other){
     if(isinstance(other,int)){
