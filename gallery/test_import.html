@@ -3,16 +3,19 @@
 <head>
 <meta charset="iso-8859-1">
 <script src="../brython.js"></script>
+<script src="../py_classes.js"></script>
 
 </head>
-<body onLoad="brython()">
+<body onLoad="brython(1)">
 
 <script type="text/python">
+import datetime
 import sidebar
 menu_items = [('The Brython site','http://www.brython.info'),
     ('Development site','http://code.google.com/p/brython/'),
     ('Group (en)','https://groups.google.com/forum/?fromgroups=#!forum/brython')]
 doc <= sidebar.menu('Brython',menu_items)
+doc <= P()+str(datetime.date.today())
 </script>
 </body>
 </html>
