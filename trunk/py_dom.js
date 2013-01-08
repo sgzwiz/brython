@@ -124,39 +124,6 @@ function $DOMEvent(ev){
     return ev
 }
 
-function $DomWrapper(js_dom){ // used for styles and for context on CANVAS element
-    this.value=js_dom
-    this.__class__ = "$DomWrapper"
-}
-
-$DomWrapper.prototype.__getattr__ = function(attr){
-    if(attr in this.value){
-        var obj = this.value,obj_attr = this.value[attr]
-        if(typeof this.value[attr]=='function'){
-            return function(){
-                var args = []
-                for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-                var res = obj_attr.apply(obj,args)
-                if(typeof res == 'object'){return new $DomWrapper(res)}
-                else if(res===undefined){return None}
-                else{return $JS2Py(res)}
-            }
-        }else{
-            return $JS2Py(this.value[attr])
-        }
-    }else{
-        $raise('AttributeError','object has no attribute '+attr)
-    }
-}
-
-$DomWrapper.prototype.__setattr__ = function(attr,value){
-    if(isinstance(value,"$DomWrapper")){
-        this.value[attr]=value.value
-    }else{
-        this.value[attr]=value
-    }
-}
-
 function $Clipboard(data){ // drag and drop dataTransfer
     this.data = data
     this.__class__ = "Clipboard"
@@ -234,31 +201,49 @@ function $Location(){
     return obj
 }
 
-function JSObject(){}
+function JSObject(obj){return new $JSObject(obj)}
 JSObject.__class__ = $type
 JSObject.__str__ = function(){return "<class 'JSObject'>"}
 JSObject.toString = JSObject.__str__
 
-function $py(js){
+function $JSObject(js){
     this.js = js
-    this.__getattr__ = function(attr){
-        var obj = this
-        if(obj.js[attr] !== undefined){
-            var res = obj.js[attr]
-            if(typeof res==='function'){
-                return $bind(res,obj.js)
-            }
-            return $JS2Py(res)
-        }else{
-            $raise("AttributeError","no attribute "+attr)
-        }
-    }
     this.__class__ = JSObject
     this.__str__ = function(){return "<object 'JSObject'>"}
     this.toString = this.__str__
 }
 
-win =  new $py(window)
+$JSObject.prototype.__getattr__ = function(attr){
+    var obj = this
+    if(obj.js[attr] !== undefined){
+        var obj = this.js,obj_attr = this.js[attr]
+        if(typeof this.js[attr]=='function'){
+            return function(){
+                var args = []
+                for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+                var res = obj_attr.apply(obj,args)
+                if(typeof res == 'object'){return new $JSObject(res)}
+                else if(res===undefined){return None}
+                else{return $JS2Py(res)}
+            }
+        }else{
+            return $JS2Py(this.js[attr])
+        }
+    }else{
+        $raise("AttributeError","no attribute "+attr)
+    }
+}
+
+$JSObject.prototype.__setattr__ = function(attr,value){
+    if(isinstance(value,JSObject)){
+        this.js[attr]=value.js
+    }else{
+        this.js[attr]=value
+    }
+}
+
+
+win =  new $JSObject(window)
 
 $events = $List2Dict('onabort','onactivate','onafterprint','onafterupdate',
 'onbeforeactivate','onbeforecopy','onbeforecut','onbeforedeactivate',
@@ -435,7 +420,7 @@ DOMNode.prototype.get_getContext = function(){ // for CANVAS tag
     if(!('getContext' in this)){$raise('AttributeError',
         "object has no attribute 'getContext'")}
     var obj = this
-    return function(ctx){return new $DomWrapper(obj.getContext(ctx))}
+    return function(ctx){return new $JSObject(obj.getContext(ctx))}
 }
 
 DOMNode.prototype.get_parent = function(){
@@ -469,7 +454,7 @@ DOMNode.prototype.get_reset = function(){ // for FORM
 }
 
 DOMNode.prototype.get_style = function(){
-    return new $DomWrapper(this.style)
+    return new $JSObject(this.style)
 }
     
 DOMNode.prototype.set_style = function(style){ // style is a dict
