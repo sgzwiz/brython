@@ -1,0 +1,112 @@
+<html>
+<head>
+<title>Brython Tutorial</title>
+<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<link rel="stylesheet" href="../brython.css">
+<script src="../../brython.js"></script>
+</head>
+<body onload="brython()">
+
+Up to this point, everything we have covered has been covered by many excellent tutorials, books and other resources. If you have any questions about th first small part of this tutorial, a simple Google search will undoubtedly turn up some wonderful resources. I am going to assume that you have at least basic Python syntax and code structure down. If you find you're having a hard time following this because of vocabulary used, some reading on CPython would likely help. If you're finding this hard to follow because the ideas are not clearly presented, please contact me on the Brython Google Group (link at the top right of the tutorial). I will see any questions regarding the tutorial there.
+<p>
+And Onward! Presented below is the basic webpage layout used for most of this tutorial. 
+<xmp>
+</body>
+</html>
+
+<html>
+<head>
+<script src="../../brython.js"></script>
+</head>
+<body onLoad="brython(1)">
+<script type="text/python">
+
+<!--This is an HTML comment. In the body tag, 
+    but outside the script tag, you can create 
+    a layout using HTML. 
+
+    We are going to take another approach, though.-->
+
+<script language="text/python">
+
+## And this is a Python comment. Indeed,
+## We can code python directly inside our HTML now.
+
+
+</script>
+</body>
+</html>
+</xmp>
+
+What is happening here? Let us go through the new parts.
+<xmp><script src="../../brython.js"></script></xmp>
+We load a <code>script</code> from two directories up called <code>brython.js</code>. It is sitting in the folder with <code>tutorial.html</code>, and it is the compiler which translates our Python code to something the browser can understand. Next,
+<xmp><body onload="brython(1)"></xmp>
+The <code>onload="brython(1)</code>" says that, "When this HTML element is finished loading, execute this code." <code>brython(1)</code> is a normal python function. The argument, <code>1</code>, sets the debug mode to 1, which shows python errors. An argument of <code>2</code> shows the JavaScript code which is compiled from the python code. No argument disables debug mode, and allows the code to run slightly faster. Generally for development, keep whichever of the debug modes you find more helpful active. I will be defaulting it to 1 for the rest of the tutorial. The function itself sets up the environment for more python scripting.
+<p>
+Next, <xmp><script language="text/python"></xmp> begins a python environment. Here, html 
+tags will cause errors, but Python syntax is valid until the end of the tag.
+<p>
+Let us add some Python!
+
+<xmp>
+<html>
+<head>
+<script src="../../brython.js"></script>
+</head>
+<body onLoad="brython(1)">
+<script type="text/python">
+
+log('Hello, Brython')
+
+</script>
+</body>
+</html>
+</xmp>
+
+Here it is worth noting that Brython uses Python 3 syntax, not Python 2. <code>log()</code>  is the Brython equivalent to <code>print()</code>. It sends a string to the console.<p>
+
+Wait. Which console? Most modern browsers come with a JavaScript console which Brython makes heavy use of. From a <a href="http://webmasters.stackexchange.com/questions/8525/how-to-open-the-javascript-console-in-different-browsers">stack exchange article</a>:
+
+<xmp>
+Chrome:
+Press either CTRL + SHIFT + J to open the "Console" tab of the Developer Tools.
+Alternative method:
+
+Press either CTRL + SHIFT + I or F12 to open the Developer Tools.
+
+Press ESC (or click on "Show console" in the bottom right corner) to slide the console up.
+
+Note: In Chrome's dev tools, there is a "Console" tab. However, a smaller "slide-up" console can be opened while any of the other tabs is active.
+
+Safari:
+Press CTRL + ALT + I to open the Web Inspector.
+
+See Chrome's step 2. (Chrome and Safari have pretty much identical dev tools.)
+
+Note: Step 1 only works if the "Show Develop menu in menu bar" check box in the Advanced tab of the Preferences menu is checked!
+
+IE9:
+Press F12 to open the developer tools.
+
+Click the "Console" tab.
+
+Firefox:
+Press CTRL + SHIFT + K to open the Web console.
+or, if Firebug is installed (recommended):
+
+Press F12 to open Firebug.
+
+Click on the "Console" tab.
+
+Opera:
+Press CTRL + SHIFT + I to open Dragonfly.
+
+Click on the "Console" tab.
+
+</xmp>
+
+Now that we know how to see our console, let's have a <a href="http://127.0.0.1:8000/example_files/0-simple-html/4.html" target="_top">look at the page!</a>
+
+</body>
+</html>

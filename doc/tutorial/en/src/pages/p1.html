@@ -1,0 +1,36 @@
+
+<html>
+<head>
+<title>Brython Tutorial</title>
+<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<link rel="stylesheet" href="../brython.css">
+<script src="../../brython.js"></script>
+</head>
+<body onload="brython()">
+
+
+    <h3>Starting the Server</h3>
+
+    As I mentioned in the last section, almost everything you need to get started in included with this tutorial. The file <code>/brython.js</code> in the tutorial directory is Brython version 20130106-224621. You can update this by <a href="http://code.google.com/p/brython/downloads/list">downloading the latest version</a> from Google Code, renaming it <code>brython.js</code>, and replacing <code>/brython.js</code> with the new one.
+    <p>
+
+
+    To run the server if you have python 2 installed, run <code>/server_python2.py</code>. If you have python 3, <code>/server_python3.py</code>. If you are on Mac OS or Linux you probably already have one of these installed, or the installation is easy following the instructions on <a href="http://python.org/">http://python.org/</a>. If you are on windows and do not have a Python installation, <a href="#">here is a .exe (link broken)</a>. Download it, and place it next to the two <code>.py</code> files. It is a small standalone server.
+    <p>
+
+    When you start to use this tutorial, run the server. When you are done, simply close it. It will handle any asynchronous requests (and don't worry if you don't know what that means yet).
+    <p>
+
+    <h3>Using this Tutorial</h3>
+
+    As you most likely saw, there are two subfolders in this tutorial. <code>/src/</code> contains the tutorial itself. <code>/example_files/</code> contains the source for the finished numbered entries (see below).
+    <p>
+
+    On the menu on the left side of the screen there are several numbered pages. These are full working examples with explanations. To view the examples, they need to be running on a web server. Following the steps in <b>Starting the server</b> (aka, double cliking the server file) will allow you to view these. We will discuss why later in the tutorial. All links to examples assume you are running one of the provided servers.
+    <p>
+
+    If you want modify or play with the source of one of the example files, copy the contents of its directory to <code>/example_files/playground/</code> and modify it from there. Assuming that the server is running, there is a link to the playground in the title bar. It will return 404 if the server is not running or no files have been copied.
+
+
+</body>
+</html>
