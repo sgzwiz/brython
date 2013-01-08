@@ -26,6 +26,7 @@ Stack.prototype.atom_at = function(pos,implicit_tuple){
     else{
         var items = this.tuple_at(pos) // array of raw atoms
         atom = new Atom(this)
+        atom.items = items
         if(items.length==1){return items[0]}
         else{
             atom.type="tuple"
