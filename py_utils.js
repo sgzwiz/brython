@@ -90,17 +90,17 @@ function $list_comp($loops,$expr,$cond,$env){
 // transform native JS types into Brython types
 function $JS2Py(src){
     if(src===null){return None}
-    if(src.__class__!==undefined){return src}
     if(typeof src==='number'){
-        if(src%1===0){return int(src)}
+        if(src%1===0){return src}
         else{return float(src)}
     }
+    if(src.__class__!==undefined){return src}
     if(typeof src=="object"){
         if(src.constructor===Array){return src}
         else if($isNode(src)){return $DOMNode(src)}
         else if($isEvent(src)){return $DOMEvent(src)}
     }
-    return new $py(src)
+    return JSObject(src)
 }
 
 // exceptions
