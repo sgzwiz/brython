@@ -20,11 +20,12 @@ several lines of text much as you would do in C."
 log(hello)
 
 word = 'Help' + 'A'
-log(word)
-log('<' + word*5 + '>')
+assert word=='HelpA'
+assert '<' + word*5 + '>'=='<HelpAHelpAHelpAHelpAHelpA>'
 
-log('str' 'ing')
-log('str'.strip() + 'ing')
+x = 'str' 'ing'
+assert x=='string'
+assert 'str'.strip() + 'ing'=='string'
 
 # string methods
 x='fooss'
@@ -40,7 +41,7 @@ try:
 except ValueError:
     log('erreur')
 log(x.split('h'))
-log(x.split('h',1))
+#log(x.split('h',1))
 log(x.startswith('aZ'))
 log(x.strip('auy'))
 log(x.upper())
