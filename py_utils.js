@@ -125,7 +125,6 @@ function $bind(func, thisValue) {
     return function() {return func.apply(thisValue, arguments)}
 }
 
-
 // exceptions
 function $raise(name,msg) {
     // raises exception with specified name and message
@@ -174,6 +173,24 @@ function $IndentationError(module,msg,pos) {
     $src_error('IndentationError',module,msg,pos)
 }
 
+// generic code for class constructor
+function $class_constructor(class_name,class_func){
+    var f = function(){
+        var obj = new class_func()
+        obj.__class__ = class_func
+        obj.__getattr__ = function(attr){
+            if(obj[attr]!==undefined){return obj[attr]}
+            else{$raise("AttributeError",obj+" has no attribute '"+attr+"'")}
+        }
+        obj.__setattr__ = function(attr,value){obj[attr]=value}
+        obj.__str__ = function(){return "<object '"+class_name+"'>"}
+        obj.toString = obj.__str__
+        if(obj.__init__ !== undefined){obj.__init__.apply(obj,arguments)}
+        return obj
+        }
+    f.__getattr__ = function(attr){console.log('attr '+attr);return f,attr)}
+    return f
+}
 // escaping double quotes
 var $dq_regexp = new RegExp('"',"g") // to escape double quotes in arguments
 function $escape_dq(arg){return arg.replace($dq_regexp,'\\"')}
