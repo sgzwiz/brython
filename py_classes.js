@@ -25,6 +25,22 @@ function any(iterable){
     }
 }
 
+// not in Python but used for tests until unittest works
+// "assert_raises(exception,function,*args)" becomes "if condition: pass else: raise AssertionError"
+function assert_raises(){
+    var $ns=$MakeArgs('assert_raises',arguments,['exc','func'],{},'args','kw')
+    var args = $ns['args']
+    try{$ns['func'].apply(this,args)}
+    catch(err){
+        if(err.name!==$ns['exc']){
+            $raise('AssertionError',
+                "exception raised '"+err.name+"', expected '"+$ns['exc']+"'")
+        }
+        return
+    }
+    $raise('AssertionError',"no exception raised, expected '"+$ns['exc']+"'")
+}
+
 function bool(obj){ // return true or false
     if(obj===null){return False}
     else if(isinstance(obj,dict)){return obj.keys.length>0}
@@ -76,7 +92,7 @@ $DictClass.prototype.toString = function(){
     if(this.$keys.length==0){return '{}'}
     var res = "{",key=null,value=null,i=null        
     var qesc = new RegExp('"',"g") // to escape double quotes in arguments
-    for(i=0;i<this.$keys.length;i++){
+    for(var i=0;i<this.$keys.length;i++){
         if(typeof this.$keys[i]==="string"){key='"'+$escape_dq(this.$keys[i])+'"'}
         else{key = str(this.$keys[i])}
         if(typeof this.$values[i]==="string"){value='"'+$escape_dq(this.$values[i])+'"'}
@@ -128,7 +144,7 @@ $DictClass.prototype.__eq__ = function(other){
 }
 
 $DictClass.prototype.__getattr__ = function(attr){
-    return getattr(this,attr)
+    return $getattr(this,attr)
 }
 
 $DictClass.prototype.__getitem__ = function(arg){
@@ -328,19 +344,10 @@ for($op in $operators){
     }
 }
 
-// this trick is necessary to set "this" to the instance inside functions
-// found at http://yehudakatz.com/2011/08/11/understanding-javascript-function-invocation-and-this/
-function $bind(func, thisValue) {
-    return function() {return func.apply(thisValue, arguments)}
-}
-
 function getattr(obj,attr,_default){
-    if(attr in obj){
-        var res = obj[attr]
-        if(typeof res==="function"){
-            res = $bind(res, obj)
-        }
-        return $JS2Py(res)
+    if(obj.__getattr__!==undefined &&
+        obj.__getattr__(attr)!==undefined){
+            return obj.__getattr__(attr)
     }
     else if(_default !==undefined){return _default}
     else{$raise('AttributeError',
