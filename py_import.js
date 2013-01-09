@@ -65,7 +65,7 @@ function $import_py(module){
     }
     $xmlhttp.open('GET',module+'.py'+fake_qs,false)
     $xmlhttp.send()
-    if(res.constructor===Error){throw res} // module not found    
+    if(res.constructor===Error){throw res} // module not found
     var stack = $py2js(res,module)
     // insert module name as a JS object
     stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
