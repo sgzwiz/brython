@@ -873,21 +873,15 @@ function $py2js(src,module){
                 }else if($funcs[parent][0]=='class'){
                     var class_name = $funcs[parent][1]
                     // replace "function foo" by "this.foo = function"
+                    // if foo has been replace by $$foo in py_tokenizer,
+                    // restore to foo
+                    if(fname.substr(0,2)==='$$'){fname=fname.substr(2)}
                     stack.list.splice(kw_pos,2,["code",'this.'+fname+'='],
                         ['keyword','function'])
                 }
                 if(kw=='class'){
-                    var code = '\n'+f_indent+'function '+fname+'(){'
-                    code += '\n'+f_indent+'var obj=new $'+fname+'()'
-                    code += '\n'+f_indent+'obj.__getattr__ = function(attr)'
-                    code += '{if(obj[attr]!==undefined){return obj[attr]}'
-                    code += 'else{$raise("AttributeError",obj+" has no attribute \'"+attr+"\'")}}'
-                    code += '\n'+f_indent+'obj.__setattr__ = function(attr,value){obj[attr]=value}'
-                    code += '\n'+f_indent+'obj.__str__ = function(){return "<object \''+fname+'\'>"}'
-                    code += '\n'+f_indent+'obj.toString = obj.__str__'
-                    code += '\n'+f_indent+'if("__init__" in obj)'
-                    code += '{obj.__init__.apply(obj,arguments)}'
-                    code += '\n'+f_indent+'return obj'+'\n'+f_indent+'}'
+                    var code = '\n'+f_indent+fname+"=$class_constructor('"
+                    code += fname+"',$"+fname+")"
                     tail.splice(0,0,['func_end',code])
                 }                
             } else {
