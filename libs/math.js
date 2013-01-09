@@ -10,3 +10,5 @@ math = {
     sin : function(x){return float(Math.sin(x))},
     sqrt : function(x){return float(Math.sqrt(x))}
 }
+math.__class__ = $module // defined in $py_utils
+math.__str__ = function(){return "<module 'math'>"}

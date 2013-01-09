@@ -1,3 +1,7 @@
+function $DateClass(){return function(){return new $Date(arguments)}}
+$DateClass.__class__ = $type
+$DateClass.__str__ = function(){return "<class 'datetime.date'>"}
+
 function $Date(args){
 
     if(args.length>3){$raise('TypeError',"Too many arguments - required 3, got "+args.length)}
@@ -8,14 +12,18 @@ function $Date(args){
     this.day = obj.day
     this.$dt = obj
     
-    this.__class__ = datetime.date
+    this.__class__ = $DateClass
 
-    this.__getattr__ = function(attr){return getattr(this,attr)}
+    this.__getattr__ = function(attr){return $getattr(this,attr)}
     
-    this.__str__ = function(){console.log('date str');return this.strftime('%Y-%m-%d')}
+    this.__str__ = function(){return this.strftime('%Y-%m-%d')}
 
     this.strftime = function(fmt){return this.$dt.strftime(fmt)}
 }
+
+function $DateTimeClass(){return function(){return new $DateTime(arguments)}}
+$DateTimeClass.__class__ = $type
+$DateTimeClass.__str__ = function(){return "<class 'datetime.datetime'>"}
 
 function $DateTime(args){
 
@@ -58,7 +66,7 @@ function $DateTime(args){
     this.$js_date = new Date(year,month-1,day,hour,minute,
         second,microsecond/1000)
         
-    this.__getattr__ = function(attr){return getattr(this,attr)}
+    this.__getattr__ = function(attr){return $getattr(this,attr)}
     
     this.toString = function(){
         return str(this.year+'-'+this.month+'-'+this.day)
@@ -101,8 +109,8 @@ function $datetime(year,month,day,hour,minute,second,microsecond){
 
 datetime = {
     __getattr__ : function(attr){return this[attr]},
-    date : function(){return new $Date(arguments)},
-    datetime : function(){return new $DateTime(arguments)}
+    date : $DateClass,
+    datetime : $DateTimeClass
 }
 
 datetime.datetime.__getattr__= function(attr){
