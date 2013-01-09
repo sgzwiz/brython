@@ -708,6 +708,17 @@ function $py2js(src,module){
         pos = assert_pos-1
     }
 
+    // cheat for assert_raises until Exception classes are not implemented
+    // assert_raises(Exception,... becomes assert_raises('Exception',...)
+    pos = 0
+    while(true){
+        var ar_pos = stack.find_next(pos,'id','assert_raises')
+        if(ar_pos===null){break}
+        stack.list[ar_pos+2][0]='str'
+        stack.list[ar_pos+2][1]='"'+stack.list[ar_pos+2][1]+'"'
+        pos = ar_pos+1
+    }
+
     // ternary operator
     var pos = stack.list.length-1
     while(true){
