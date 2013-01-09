@@ -103,6 +103,22 @@ function $JS2Py(src){
     return JSObject(src)
 }
 
+// this trick is necessary to set "this" to the instance inside functions
+// found at http://yehudakatz.com/2011/08/11/understanding-javascript-function-invocation-and-this/
+function $bind(func, thisValue) {
+    return function() {return func.apply(thisValue, arguments)}
+}
+
+function $getattr(obj,attr){ // generic attribute getter
+    if(obj[attr]!==undefined){
+        var res = obj[attr]
+        if(typeof res==="function"){
+            res = $bind(res, obj)
+        }
+        return $JS2Py(res)
+    }    
+}
+
 // exceptions
 function $raise(name,msg) {
     // raises exception with specified name and message
