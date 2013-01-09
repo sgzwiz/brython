@@ -1,37 +1,35 @@
-function norm_str(arg,nb){
-    // left padding with 0
-    var res = arg.toString()
-    while(res.length<nb){res = '0'+res}
-    return res
-}
+time =  {
 
-function $TimeClass(){
-    
-    this.__getattr__ = function(attr){return this[attr]}
+    $norm_str: function(arg,nb){
+        // left padding with 0
+        var res = arg.toString()
+        while(res.length<nb){res = '0'+res}
+        return res
+    },
 
-    this.clear_interval = function(int_id){window.clearInterval(int_id)}
+    __getattr__ : function(attr){return this[attr]},
+
+    clear_interval : function(int_id){window.clearInterval(int_id)},
     
-    this.set_interval = function(func,interval){
+    set_interval : function(func,interval){
         return int(window.setInterval(func,interval))
-    }
-    this.set_timeout = function(func,interval){
-        window.setTimeout(func,interval)
-    }
-    this.time = function(){
-        var obj = new Date()
-        return obj.getTime()
-    }
-    this.strftime = function(format,arg){
+    },
+
+    set_timeout : function(func,interval){window.setTimeout(func,interval)},
+
+    time : function(){return (new Date()).getTime()},
+    
+    strftime : function(format,arg){
+        var ns = time.$norm_str
         if(arg){var obj = new Date(arg)}else{var obj=new Date()}
         var res = format
-        res = res.replace(/%H/,norm_str(obj.getHours(),2))
-        res = res.replace(/%M/,norm_str(obj.getMinutes(),2))
-        res = res.replace(/%S/,norm_str(obj.getSeconds(),2))
-        res = res.replace(/%Y/,norm_str(obj.getFullYear(),4))
-        res = res.replace(/%y/,norm_str(obj.getFullYear(),4).substr(2))
-        res = res.replace(/%m/,norm_str(obj.getMonth()+1,2))
-        res = res.replace(/%d/,norm_str(obj.getDate(),2))
+        res = res.replace(/%H/,ns(obj.getHours(),2))
+        res = res.replace(/%M/,ns(obj.getMinutes(),2))
+        res = res.replace(/%S/,ns(obj.getSeconds(),2))
+        res = res.replace(/%Y/,ns(obj.getFullYear(),4))
+        res = res.replace(/%y/,ns(obj.getFullYear(),4).substr(2))
+        res = res.replace(/%m/,ns(obj.getMonth()+1,2))
+        res = res.replace(/%d/,ns(obj.getDate(),2))
         return res
     }
 }
-time = new $TimeClass()
