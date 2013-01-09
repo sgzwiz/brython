@@ -2,7 +2,7 @@
 <head>
 <meta charset="iso-8859-1">
 <title>Brython</title>
-<link rel="stylesheet" href="brython.css">
+<link rel="stylesheet" href="../doc_brython.css">
 </head>
 <body>
 <a name="modele"><h3>Compilation et exécution</h3>
@@ -11,10 +11,12 @@ Le fichier <b>brython.js</b> est généré par compilation de plusieurs scripts :
 <ul>
 <li><b>py_tokenizer.js</b> : découpe le code source Python en jetons (tokens) : identifiants, littéraux, opérateurs, délimiteurs, etc
 <li><b>py2js.js</b> : opère la conversion entre les jetons et le code Javascript
-<li><b>py_utils.js</b> : fonctions utilitaires (manipulation des jetons, conversion de types entre Javascript et Python)
+<li><b>py_tokens.js</b> : classes pour manipuler les jetons
+<li><b>py_utils.js</b> : fonctions utilitaires (conversion de types entre Javascript et Python)
 <li><b>py_string.js</b> : implémentation de la classe str de Python à partir de l'objet Javascript String
-<li><b>py_classes.js</b> : implémentation de la classe list de Python à partir de l'objet Javascript Array
-<li><b>py_list.js</b> : regroupe tous les autres types et fonctions intégrés de Python
+<li><b>py_list.js</b> : implémentation de la classe list de Python à partir de l'objet Javascript Array
+<li><b>py_classes.js</b> : regroupe tous les autres types et fonctions intégrés de Python
+<li><b>py_import.js</b> : implémentation du mot-clé <tt>import</tt>
 <li><b>py_dom.js</b> : interaction avec le document HTML (DOM)
 <li><b>py_ajax.js</b> : implémentation d'Ajax
 <li><b>py_local_storage.js</b> : implémentation du stockage local HTML5
@@ -23,10 +25,8 @@ Le fichier <b>brython.js</b> est généré par compilation de plusieurs scripts :
 
 La traduction et l'exécution d'un script Brython passent par les phases suivantes :
 <ol>
-<li>si le niveau de débogage est supérieur à 0, on ajoute après chaque ligne du code source Python une ligne contenant le numéro de la prochaine ligne exécutée (sauf quand cela provoquerait une erreur de syntaxe, par exemple juste avant un <tt>except</tt> ou un <tt>else</tt>)
-<p>
 <li>découpage du code source en jetons (tokens)
-<br>Fonction réalisée par le script <tt>py_tokenizer.js</tt>. Les jetons générés sont des listes Javascript à 3 éléments [<em>type,valeur,position</em>]. <em>position</em> est le rang du premier caractère du jeton dans le code source Python. Leus deux autres éléments peuvent prendre les valeurs suivantes :
+<p>Fonction réalisée par le script <tt>py_tokenizer.js</tt>. Les jetons générés sont des listes Javascript à 3 éléments [<em>type,valeur,position</em>]. <em>position</em> est le rang du premier caractère du jeton dans le code source Python. Leus deux autres éléments peuvent prendre les valeurs suivantes :
 <ul>
 <li><tt>["indent",<em>indentation</em>]</tt> : toujours présent au début de chaque ligne. <em>indentation</em> est un nombre
 <li><tt>["newline","\n"]</tt> : saut de ligne
@@ -35,8 +35,8 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 <li><tt>["float",<em>number</em>]</tt> : littéral de type réel
 <li><tt>["id",<em>string</em>]</tt> : identifiant de variable (chaine de caractères)
 <li><tt>["qualifier",<em>string</em>]</tt> : nom suivant un point, comme <tt>bar</tt> dans <tt>foo.bar</tt>
-<li><tt>["keyword",<em>value</em>]</tt> : mot-clé Python (chaine de caractères)
-<li><tt>["bracket",<em>value</em>]</tt> : parenthèse, crochet ou accolade ouvrante ou fermante. La valeur peut être <em>()[]{}</em>
+<li><tt>["keyword",<em>string</em>]</tt> : mot-clé Python (chaine de caractères)
+<li><tt>["bracket",<em>string</em>]</tt> : parenthèse, crochet ou accolade ouvrante ou fermante. La valeur peut être <em>()[]{}</em>
 <li><tt>["point","."]</tt> : le point
 <li><tt>["delimiter",<em>string</em>]</tt> : un délimiteur, valeur <em>:</em>, <em>,</em> ou <em>=</em> à l'intérieur d'une parenthèse (syntaxe <tt>foo(x=0)</tt>
 <li><tt>["assign",<em>string</em>]</tt> : le signe = quand il n'est pas à l'intérieur d'une parenthèse, et les opérateurs d'assignation augmentée : +=, *= etc.
@@ -52,8 +52,13 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 </ul>
 <p>
 <li>Traduction des jetons en code Javascript
-<p>Elle est réalisée par les scripts <tt>py2js.js</tt> et <tt>py_utils.js</tt>, dans l'ordre suivant :
+<p>Elle est réalisée par les scripts <tt>py2js.js, py_tokens.js</tt> et <tt>py_utils.js</tt>, dans l'ordre suivant :
 <ol>
+<li>si le niveau de débogage est supérieur à 0, on ajoute avant chaque ligne du code source Python une ligne de la forme
+<p><tt>document.$line_info = [ <i>nom_module, numero_ligne</i> ]</tt>
+<p>où <i>nom_module</i> vaut __main__ pour le script principal et le nom du module s'il est importé
+<p>Cette ligne sert à identifier l'origine des exceptions levées pendant l'exécution. Elle n'est pas ajoutée si l'insertion provoque une erreur de syntaxe, par exemple juste avant un <tt>except</tt> ou un <tt>else</tt>)
+<p>
 <li>remplacement de la séquence <tt>not in</tt> par l'opérateur <tt>__not_in__</tt>
 <li>conversion des listes en extansion (list comprehensions)
 <li>transformation des parenthèses, crochets et accolades en tuples, listes et dictionnaires
@@ -76,14 +81,25 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 </ol>
 <p>
 <li>Exécution du code Javascript généré
-<p>Au début de l'exécution de chaque fonction, la fonction $MakeArgs dans py2js.js est utilisée pour analyser les arguments ; la fonction $JS2Py dans py_utils.js est appelée pour transformer chaque objet Javacript fourni comme argument dans un équivalent exploitable par Brython
-<p>En cours d'exécution :
+<p>Le script généré peut faire appel en cours d'exécution :
 <ul>
-<li>$list_comp dans py2js.js est appelée pour chaque liste en extansion
-<li>$raise dans py_utils.js est appelée pour lever des exceptions
-<li>$test_expr et $test_item dans py_utils.js sont utilisés dans l'évaluation de conditions combinées par <code>and</code> ou <code>or</code>
+<li>aux classes intégrées définies dans <tt>py_classes.js, py_string.js, py_list.js, py_dom.js, py_ajax.js, py_local_storage.js, py_svg.js</tt>
+<li>à des fonctions internes, non accessibles en Python (leur nom commence systématiquement par $) qui sont pour la plupart dans <tt>$py_utils.js</tt>. Les plus importantes sont :
+<ul>
+<li><tt>$JS2py</tt> : prend un seul argument et renvoie :
+<ul>
+<li>l'argument sans changement s'il est d'un type reconnu par Brython (c'est-à-dire s'il possède un attribut <tt>__class__</tt>)
+<li>une instance de DOMObject (respectivement DOMEvent) si l'argument est un objet (resp. un événement) DOM
+<li>une instance de JSObject "enveloppant" l'argument sinon
 </ul>
-<p>Les classes définies dans les autres modules sont utilisées pour la syntaxe Python et l'interface avec le navigateur
+<li><tt>$MakeArgs</tt> appelée au début de l'exécution de chaque fonction dont la signature comporte au moins un argument. Elle construit un espace de noms à partir des arguments passés à la fonction, en appelant notamment la fonction $JS2py sur tous les arguments
+<li><tt>$list_comp</tt> est appelée pour chaque liste en extansion
+<li><tt>$raise</tt> est appelée pour lever des exceptions
+<li><tt>$test_expr</tt> et <tt>$test_item</tt> sont utilisés dans l'évaluation de conditions combinées par <code>and</code> ou <code>or</code>
+</ul>
+<li>au fonctions définies dans le script <tt>py_import.js</tt> pour la gestion des imports
+</ul>
+
 <p>En cas d'erreur d'exécution, une trace aussi proche que possible de celle générée par Python est imprimée dans la console du navigateur, ou vers un autre élément défini par <code>sys.stderr</code>
 
 </ol>
