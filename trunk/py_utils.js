@@ -174,7 +174,7 @@ function $IndentationError(module,msg,pos) {
 }
 
 // generic code for class constructor
-function $class_constructor(class_name,class_func){
+function $class_constructor(class_name,class_func){  
     var f = function(){
         var obj = new class_func()
         obj.__class__ = class_func
@@ -188,7 +188,7 @@ function $class_constructor(class_name,class_func){
         if(obj.__init__ !== undefined){obj.__init__.apply(obj,arguments)}
         return obj
         }
-    f.__getattr__ = function(attr){console.log('attr '+attr);return f,attr)}
+    f.__getattr__ = function(attr){console.log('attr '+attr);return class_func[attr]}
     return f
 }
 // escaping double quotes
