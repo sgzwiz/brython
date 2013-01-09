@@ -81,9 +81,14 @@ String.prototype.__getitem__ = function(arg){
         if(pos>=0 && pos<this.length){return this.charAt(pos)}
         else{$raise('IndexError','string index out of range')}
     } else if(isinstance(arg,slice)) {
-        var start = arg.start===None ? 0 : arg.start
-        var stop = arg.stop===None ? this.__len__() : arg.stop
         var step = arg.step===None ? 1 : arg.step
+        if(step>0){
+            var start = arg.start===None ? 0 : arg.start
+            var stop = arg.stop===None ? this.__len__() : arg.stop
+        }else{
+            var start = arg.start===None ? this.__len__()-1 : arg.start
+            var stop = arg.stop===None ? 0 : arg.stop
+        }
         if(start<0){start=this.length+start}
         if(stop<0){stop=this.length+stop}
         var res = '',i=null
@@ -97,7 +102,7 @@ String.prototype.__getitem__ = function(arg){
         } else {
             if(stop>=start){return ''}
             else {
-                for(i=start;i>stop;i+=step){
+                for(i=start;i>=stop;i+=step){
                     res += this.charAt(i)
                 }
             }

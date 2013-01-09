@@ -128,9 +128,14 @@ Array.prototype.__getitem__ = function(arg){
         if(pos>=0 && pos<items.length){return items[pos]}
         else{$raise('IndexError','list index out of range')}
     } else if(isinstance(arg,slice)) {
-        var start = arg.start===None ? 0 : arg.start
-        var stop = arg.stop===None ? this.__len__() : arg.stop
         var step = arg.step===None ? 1 : arg.step
+        if(step>0){
+            var start = arg.start===None ? 0 : arg.start
+            var stop = arg.stop===None ? this.__len__() : arg.stop
+        }else{
+            var start = arg.start===None ? this.__len__()-1 : arg.start
+            var stop = arg.stop===None ? 0 : arg.stop
+        }
         if(start<0){start=int(this.length+start)}
         if(stop<0){stop=this.length+stop}
         var res = [],i=null,items=this.valueOf()
@@ -145,7 +150,7 @@ Array.prototype.__getitem__ = function(arg){
         } else {
             if(stop>=start){return res}
             else {
-                for(i=start;i>stop;i+=step){
+                for(i=start;i>=stop;i+=step){
                     if(items[i]!==undefined){res.push(items[i])}
                 }
                 return res
@@ -207,7 +212,7 @@ Array.prototype.__setitem__ = function(arg,value){
                 this.splice(start,0,$temp[i])
             }
         }else{
-            this.splice(start,0,value)
+            $raise('TypeError',"can only assign an iterable")
         }
     }else {
         $raise('TypeError','list indices must be integer, not '+str(arg.__class__))
