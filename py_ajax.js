@@ -12,6 +12,10 @@ function $XmlHttpClass(obj){
     this.get_xml = function(){return $DomObject(obj.responseXML)}
 }
 
+function Ajax(){}
+Ajax.__class__ = $type
+Ajax.__str__ = function(){return "<class 'Ajax'>"}
+
 function $AjaxClass(){
     if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
         var $xmlhttp=new XMLHttpRequest();
@@ -37,12 +41,16 @@ function $AjaxClass(){
         }
     }
 
-    this.__getattr__ = function(attr){return getattr(this,attr)}
+    this.__class__ = Ajax
+
+    this.__getattr__ = function(attr){return $getattr(this,attr)}
     
     this.__setattr__ = function(attr,value){setattr(this,attr,value)}
 
+    this.__str__ = function(){return "<object 'Ajax'>"}
+    
     this.open = function(method,url,async){
-        $xmlhttp.open(method,url,async);
+        $xmlhttp.open(method,url,async)
     }
 
     this.set_header = function(key,value){
