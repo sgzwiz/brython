@@ -310,6 +310,9 @@ function $py2js(src,module){
             // mark methods
             if(kw=='def' && parent>-1 && $funcs[parent][0]=='class'){
                 stack.list[fpos+1][0]='method_id'
+                if(stack.list[fpos+1][1].substr(0,2)=='$$'){
+                    stack.list[fpos+1][1]=stack.list[fpos+1][1].substr(2)
+                }
             }
             // add first line inside classes to set local var $instance to self
             if(kw==='class'){
@@ -873,9 +876,6 @@ function $py2js(src,module){
                 }else if($funcs[parent][0]=='class'){
                     var class_name = $funcs[parent][1]
                     // replace "function foo" by "this.foo = function"
-                    // if foo has been replace by $$foo in py_tokenizer,
-                    // restore to foo
-                    if(fname.substr(0,2)==='$$'){fname=fname.substr(2)}
                     stack.list.splice(kw_pos,2,["code",'this.'+fname+'='],
                         ['keyword','function'])
                 }
