@@ -115,7 +115,7 @@ function $DOMEvent(ev){
         if(attr=="x"){return $mouseCoords(ev).x}
         if(attr=="y"){return $mouseCoords(ev).y}
         if(attr=="data"){return new $Clipboard(ev.dataTransfer)}
-        return getattr(ev,attr)
+        return $getattr(ev,attr)
     }
     if(ev.preventDefault===undefined){ev.preventDefault = function(){ev.returnValue=false}}
     if(ev.stopPropagation===undefined){ev.stopPropagation = function(){ev.cancelBubble=true}}
@@ -312,7 +312,7 @@ DOMNode.prototype.__eq__ = function(other){
 
 DOMNode.prototype.__getattr__ = function(attr){
     if('get_'+attr in this){return this['get_'+attr]()}
-    return getattr(this,attr)
+    return $getattr(this,attr)
 }
 
 DOMNode.prototype.__getitem__ = function(key){
