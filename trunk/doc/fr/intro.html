@@ -1,0 +1,47 @@
+<html>
+<head>
+<title>Brython</title>
+<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<link rel="stylesheet" href="../../brython.css">
+<script src="../../brython.js"></script>
+</head>
+<body onload="brython()">
+
+<a name="intro">L'objectif de Brython est d'utiliser Python comme langage de script pour les navigateurs web, à la place de Javascript
+<p>Un exemple simple :
+<table>
+<tr>
+<td>
+CODE<br>
+<pre>&lt;html&gt;
+&lt;head&gt;
+&lt;script src="/brython.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body onLoad="brython()"&gt;
+&lt;script type="text/python"&gt;
+def echo():
+    alert(doc["zone"].value)
+&lt;/script&gt;
+&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td>
+<td>
+essayez :<p>
+<script type="text/python">
+def echo():
+    alert(doc["zone"].value)
+</script>
+
+<input id="zone"><button onclick="echo()">clic !</button>
+</td>
+</tr>
+</table>
+
+<p>Pour faire fonctionner les scripts Python, il suffit d'importer le script <em>brython.js</em>, et d'exécuter la fonction <code>brython()</code> quand la page est chargée (attribut <tt>onload</tt> de la balise &lt;BODY&gt;). En phase de développement, on peut passer un argument à cette fonction : 1 pour avoir les messages d'erreur dans la console du navigateur, 2 pour avoir en plus le code Javascript généré
+<p>Quand on clique sur le bouton, la fonction <code>echo()</code> définie dans le script Python est exécutée. Cette fonction récupère la valeur de l'élément INPUT par son id <tt>zone</tt>, en utilisant la syntaxe <code>doc["zone"]</code> au lieu de <code>document.getElementById("zone")</code> en Javascript : <code>doc</code> est un mot-clé de Brython, il se comporte comme un dictionnaire indexé par les id des éléments DOM. <code>doc["zone"]</code> est un objet correspondant à l'élément INPUT ; on accède à la valeur par l'attribut <tt>value</tt>
+<p>L'affichage est réalisé par une fonction intégrée de Brython, <code>alert()</code>, qui se comporte comme la fonction du même nom en Javascript
+
+</body>
+</html>

@@ -59,16 +59,17 @@ Enfin, certains mots clés et fonctions intégrées adaptés au fonctionnement dans 
 
 Une page HTML est considérée comme un arbre, dont le sommet est représenté par le mot-clé <code>doc</code> et les noeuds sont soit des objets intégrés Python (chaines de caractères, entiers...) soit des objets créés par les fonctions correspondant aux balises HTML
 <p>La syntaxe pour créer un objet (par exemple un lien hypertexte) est :
-<dl><dt><code>A(<i>[content,[attributes]]</i>)</code>
+<blockquote><dl><dt><code>A(<i>[content,[attributes]]</i>)</code>
 <dd><em>content</em> est le noeud "fils" de l'objet ; <em>attributes</em> est une suite de mots-clés correspondant aux attributs de la balise HTML. Ces attributs doivent être fournis avec la syntaxe Javascript, pas CSS : <em>backgroundColor</em> et pas <em>background-color</em>
-</dl>
+</dl></blockquote>
 Exemple :
-<p><pre>link1 = A('Brython',href='http://www.brython.info')
+<blockquote><pre>link1 = A('Brython',href='http://www.brython.info')
 link2 = A(B('Python'),href='http://www.python.org')
-</pre>
+</pre></blockquote>
 <p>Pour l'attribut <em>style</em>, la valeur doit être un dictionnaire :
-<p><pre>d = DIV('Brython',style={'height':100,'width':200})
-</pre>
+<blockquote><pre>d = DIV('Brython',style={'height':100,'width':200})</pre></blockquote>
+<p>Pour éviter les conflits avec des mots-clés de Python, des attributs comme "class" ou "id" doivent être écrits avec une majuscule :
+<blockquote><pre>d = DIV('Brython',Id="zone",Class="container")</pre></blockquote>
 
 <p>On peut aussi créer un objet sans argument, puis le compléter :
 <ul>
@@ -100,7 +101,6 @@ doc <= 'Site officiel de Python : '+link
 doc <= P()+'Je répète : le site est '+link.clone()
 </pre>
 
-
 <p>Les instances des classes HTML ont des attributs de même nom que les objets DOM correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT. Mais Brython ajoute quelques "sucres syntaxiques" pour rendre la manipulation plus conforme aux habitudes des codeurs Python
 <ul>
 <li>pour la recherche d'objets par leur identifiant, ou par leur nom de balise, on utilise la syntaxe suivante :
@@ -118,7 +118,48 @@ doc <= P()+'Je répète : le site est '+link.clone()
 </ul>
 <li>on peut itérer sur les enfants d'un objet par la syntaxe classique Python : <pre style="display:inline">for child in dom_object:</pre>
 </ul>
-<hr>
+<h3>Evénements</h3>
+Pour attacher une fonction à un événement, on utilise la syntaxe 
+<blockquote><pre>element.onclick = callback</pre></blockquote>
+La fonction <tt>callback</tt> doit prendre un seul argument, qui est une instance de la classe <tt>DOMEvent</tt>. En plus des attributs DOM (qui peuvent avoir des noms différents selon les navigateurs), cet objet possède notamment les attributs suivants :
+<p><table border=1>
+<tr><th>Type d'événement</th><th>Attributs</th></tr>
+<tr><td>clic ou déplacement de la souris</td><td><tt>x,y</tt> : position de la souris par rapport au bord supérieur droit de la fenêtre</td></tr>
+<tr><td>glisser-déposer (HTML5)</td><td><tt>data</tt> : donnée associée au déplacement</td></tr>
+</table>
+<p>Exemple :
+<table>
+<tr>
+<td>
+<pre>&lt;script type='text/python'&gt;
+def mouse_move(ev):
+    doc["trace"].value = '%s %s' %(ev.x,ev.y)
+
+doc["zone"].onmousemove = mouse_move
+&lt;/script&gt;
+
+&lt;input id="trace" value=""&gt;
+&lt;br&gt;&lt;textarea id="zone" rows=20 columns=30 style="background-color:gray"&gt;
+passer la souris ici&lt;/textarea&gt;
+</pre>
+</td>
+<td>
+<pre><script type='text/python'>
+def mouse_move(ev):
+    doc["trace"].value = '%s %s' %(ev.x,ev.y)
+
+doc["zone"].onmousemove = mouse_move
+</script>
+
+<input id="trace" value="">
+<br><textarea id="zone" rows=7 columns=30 style="background-color:gray">
+passer la souris ici</textarea>
+</pre>
+</td>
+</tr>
+</table>
+
+<p><hr>
 <a name="ajax"><h3>Ajax</h3>
 La fonction intégrée <code>ajax()</code> renvoie un objet comparable à XMLHTTPRequest en Javascript, mais son interface est légèrement différente. Il possède les méthodes suivantes
 
