@@ -4,7 +4,7 @@ function $XmlHttpClass(obj){
     this.__class__ = 'XMLHttpRequest'
     this.__getattr__ = function(attr){
         if('get_'+attr in this){return this['get_'+attr]()}
-        else{return getattr(obj,attr)}
+        else{return obj[attr]}
     }
     
     this.get_text = function(){return obj.responseText}
