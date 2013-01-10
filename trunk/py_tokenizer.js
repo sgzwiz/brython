@@ -29,7 +29,7 @@ function $tokenize(src,module){
     var br_stack = ""
     var br_pos = new Array()
     var kwdict = ["False","class","finally","is","return",
-        "None","continue","for","lambda","try","True","def","from",
+        "None","continue","for","lambda","try","raise","True","def","from",
         "nonlocal","while","del","global","with",
         "as","elif","if","yield","assert","else","import","pass",
         "break","except","raise"]
@@ -44,7 +44,8 @@ function $tokenize(src,module){
         'outerHeight','outerWidth','pageXOffset','pageYOffset',
         'parent','screen','screenLeft','screenTop',
         'screenX','screenY','self','status',
-        'top']
+        'top',
+        'super']
 
     var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
