@@ -202,8 +202,7 @@ function $Location(){
 }
 
 function JSObject(obj){
-    if(obj.__class__!==undefined){return obj}
-    else{return new $JSObject(obj)}
+    return new $JSObject(obj)
 }
 JSObject.__class__ = $type
 JSObject.__str__ = function(){return "<class 'JSObject'>"}
