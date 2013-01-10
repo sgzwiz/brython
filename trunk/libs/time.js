@@ -1,4 +1,4 @@
-time =  {
+$module =  {
 
     $norm_str: function(arg,nb){
         // left padding with 0

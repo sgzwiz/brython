@@ -1,4 +1,4 @@
-math = {
+$module = {
     __getattr__ : function(attr){
         var res = this[attr]
         if(res===undefined){$raise('AttributeError','module has no attribute '+attr)}
@@ -10,5 +10,5 @@ math = {
     sin : function(x){return float(Math.sin(x))},
     sqrt : function(x){return float(Math.sqrt(x))}
 }
-math.__class__ = $module // defined in $py_utils
-math.__str__ = function(){return "<module 'math'>"}
+$module.__class__ = $module // defined in $py_utils
+$module.__str__ = function(){return "<module 'math'>"}
