@@ -4,7 +4,9 @@ function str(arg){
     else{return arg.toString()}
 }
 str.__class__ = $type
-str.toString = function(){return "<class 'str'>"}
+str.__name__ = 'str'
+str.__str__ = function(){return "<class 'str'>"}
+str.toString = str.__str__
 
 // add Brython attributes to Javascript String
 

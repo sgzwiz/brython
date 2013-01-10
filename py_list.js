@@ -17,7 +17,9 @@ function list(){
     return res
 }
 list.__class__ = $type
-list.toString = function(){return "<class 'list'>"}
+list.__name__ = 'list'
+list.__str__ = function(){return "<class 'list'>"}
+list.toString = list.__str__
 
 function $ListClass(items){
 
