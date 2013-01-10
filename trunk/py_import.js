@@ -16,7 +16,7 @@ function $importer(){
     return [$xmlhttp,fake_qs,timer]
 }
 
-function $import_js(module){
+function $import_js(module,alias){
     // import JS modules in folder /libs
     var imp = $importer()
     var $xmlhttp = imp[0],fake_qs=imp[1],timer=imp[2],res=null
@@ -39,12 +39,14 @@ function $import_js(module){
     try{
         eval(res)
         // check that module name is in namespace
-        if(eval(module)===undefined){
-            $raise('ImportError',"name '"+module+"' not defined in module")
+        if(eval('$module')===undefined){
+            $raise('ImportError',"name '$module' is not defined in module")
         }
+        if(alias===undefined){alias=module}
+        eval(alias+'=$module')
         // add class and __str__
-        eval(module+'.__class__ = $type')
-        eval(module+'.__str__ = function(){return "<module \''+module+"'>\"}")
+        eval(alias+'.__class__ = $type')
+        eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
     }catch(err){$raise('ImportError',err.message)}
 }
 
