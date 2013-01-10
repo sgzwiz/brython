@@ -52,7 +52,10 @@ function bool(obj){ // return true or false
     else if('__len__' in obj){return obj.__len__()>0}
     return true
 }
-bool.toString = function(){return "<class 'bool'>"}
+bool.__class__ = $type
+bool.__name__ = 'bool'
+bool.__str__ = function(){return "<class 'bool'>"}
+bool.toString = bool.__str__
 
 function $class(obj,info){
     this.obj = obj
@@ -75,6 +78,7 @@ function dict(){
     return obj
 }
 dict.__class__ = $type
+dict.__name__ = 'dict'
 dict.toString = function(){return "<class 'dict'>"}
 
 function $DictClass($keys,$values){
@@ -258,6 +262,7 @@ function float(value){
     else{$raise('ValueError',"Could not convert to float(): '"+str(value)+"'")}
 }
 float.__class__ = $type
+float.__name__ = 'float'
 float.toString = function(){return "<class 'float'>"}
 
 function $FloatClass(value){
@@ -371,6 +376,7 @@ function int(value){
     }
 }
 int.__class__ = $type
+int.__name__ = 'int'
 int.toString = function(){return "<class 'int'>"}
 
 Number.prototype.__class__ = int
@@ -616,6 +622,9 @@ $ObjectClass.prototype.__setattr__ = function(attr,value){this[attr]=value}
 function object(){
     return new $ObjectClass()
 }
+object.__class__ = $type
+object.__name__ = 'object'
+object.__str__ = "<class 'object'>"
 
 function $print(){
     var $ns=$MakeArgs('print',arguments,[],{},'args','kw')
@@ -701,13 +710,14 @@ function set(){
             }
             return obj
         }catch(err){
-            $raise('TypeError',"'"+str(args[0].__class__)+"' object is not iterable")
+            $raise('TypeError',"'"+arg.__class__.__name__+"' object is not iterable")
         }
     } else {
         $raise('TypeError',"set expected at most 1 argument, got "+arguments.length)
     }
 }
 set.__class__ = $type
+set.__name__ = 'set'
 set.toString = function(){return "<class 'set'>"}
 
 function $SetClass(){
@@ -719,14 +729,14 @@ function $SetClass(){
 }
     
 $SetClass.prototype.toString = function(){
-    var res = "["
+    var res = "{"
     for(var i=0;i<this.items.length;i++){
         var x = this.items[i]
         if(isinstance(x,str)){res += "'"+x+"'"} 
         else{res += x.toString()}
         if(i<this.items.length-1){res += ','}
     }
-    return res+']'
+    return res+'}'
 }
     
 $SetClass.prototype.__add__ = function(other){
@@ -829,7 +839,10 @@ function tuple(){
     }
     return obj
 }
-tuple.toString = function(){return "<class 'tuple'>"}
+tuple.__class__ = $type
+tuple.__name__ = 'tuple'
+tuple.__str__ = function(){return "<class 'tuple'>"}
+tuple.toString = tuple.__str__
 
 function zip(){
     var rank=0,res=[]
@@ -852,7 +865,6 @@ True = true
 False = false
 
 Boolean.prototype.__class__ = bool
-
 Boolean.prototype.__eq__ = function(other){
     if(this.valueOf()){return !!other}else{return !other}
 }
