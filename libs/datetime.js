@@ -107,13 +107,13 @@ function $datetime(year,month,day,hour,minute,second,microsecond){
     return new $DateTime(year,month,day,hour,minute,second,microsecond)
 }
 
-datetime = {
+$module = {
     __getattr__ : function(attr){return this[attr]},
     date : $DateClass,
     datetime : $DateTimeClass
 }
 
-datetime.datetime.__getattr__= function(attr){
+$module.datetime.__getattr__= function(attr){
     if(attr=='now'){
         return function(){
             var obj = new Date()
@@ -125,7 +125,7 @@ datetime.datetime.__getattr__= function(attr){
     $raise('AttributeError','datetime.datetime has no attribute '+attr)
 }
 
-datetime.date.__getattr__= function(attr){
+$module.date.__getattr__= function(attr){
     if(attr=='today'){
         return function(){
             var obj = new Date()
