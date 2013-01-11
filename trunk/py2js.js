@@ -204,7 +204,7 @@ function $py2js(src,module){
         '(':[["id"],["assign_id"],["qualifier"],["bracket",$List2Dict("]",")")]], // call
         '{':[[]] // always a display
         }
-    var PyType = {'(':'tuple','[':'$list','{':'dict'}
+    var PyType = {'(':'tuple','[':'$list','{':'dict_or_set'}
     var br_list = ['[','(','{']
     for(var ibr=0;ibr<br_list.length;ibr++){
         var bracket = br_list[ibr]
@@ -229,38 +229,54 @@ function $py2js(src,module){
                 var br_pos = stack.list[br_elt][2]
                 var sequence = [['id',pyType,br_elt[2]],['bracket','(',br_pos]]
                 var end = stack.find_next_matching(br_elt)
-                if(pyType=='dict'){
+                if(pyType=='dict_or_set'){
                     // split elements
                     var args = new Stack(stack.list.slice(br_elt+1,end))
-                    if(args.list.length>0){
+                    if(args.list.length===0){ // {} = empty dict, not empty set
+                        sequence = [['id','dict'],['bracket','(']]
+                    }else{
                         sequence = [['id','dict'],['bracket','('],
                             ['id','$list'],['bracket','(']]
                         var kvs = args.split(',') // array of Stack instances
+                        var pyType=null
                         for(var ikv=0;ikv<kvs.length;ikv++){
                             var kv = kvs[ikv]
                             // each kv has attributes start and end = position in args
                             var elts = kv.split(':')
-                            if(elts.length!=2){
-                                $SyntaxError(module,"invalid syntax",br_pos)
+                            if(pyType==null){
+                                if(elts.length==1){
+                                    pyType='set'
+                                    sequence = [['id','set'],['bracket','(']]
+                                }
+                                else if(elts.length==2){pyType='dict'}
+                                else{console.log(elts);$SyntaxError(module,"invalid syntax",br_pos)}
+                                sequence[0][0][1]=pyType
                             }
                             var key = elts[0] // key.start = position in kv
-                            var value = elts[1]
                             // key and value are atoms with start and end relative to kv
                             // position of key in args is kv.start+key.start
                             var key_start = kv.start+key.start
                             var key_end = kv.start+key.end
-                            sequence.push(['id','$list'])
-                            sequence.push(['bracket','('])
-                            sequence = sequence.concat(args.list.slice(key_start,key_end+1))
-                            sequence.push(['delimiter',',',br_pos])
-                            var value_start = kv.start+value.start
-                            var value_end = kv.start+value.end
-                            sequence = sequence.concat(args.list.slice(value_start,value_end+1))
-                            sequence.push(['bracket',')'])
-                            sequence.push(['delimiter',',',br_pos])
+                            if(pyType=='dict'){
+                                var value = elts[1]
+                                sequence.push(['id','$list'])
+                                sequence.push(['bracket','('])
+                                sequence = sequence.concat(args.list.slice(key_start,key_end+1))
+                                sequence.push(['delimiter',',',br_pos])
+                                var value_start = kv.start+value.start
+                                var value_end = kv.start+value.end
+                                sequence = sequence.concat(args.list.slice(value_start,value_end+1))
+                                sequence.push(['bracket',')'])
+                                sequence.push(['delimiter',',',br_pos])
+                            }else{ // set
+                                sequence = sequence.concat(args.list.slice(key_start,key_end+1))
+                                sequence.push(['delimiter',',',br_pos])
+                            }
                         }
                         sequence.pop() // remove last comma
-                        sequence.push(['bracket',')']) // close list of (key,value) lists
+                        if(pyType=='dict'){
+                            sequence.push(['bracket',')']) // close list of (key,value) lists
+                        }
                     }
                     sequence.push(['bracket',')',stack.list[end][2]])
                 }else if(pyType=='tuple'){
@@ -462,9 +478,9 @@ function $py2js(src,module){
                 }
             }
             // end with catch
-            var err_code = '}catch(err'+$err_num+'){$raise(err'+$err_num+'.name,err'+$err_num+'.message)}'
             stack.list.splice(block[1]+4,0,['newline','\n'],['indent',block_indent],
-                ['code',err_code]) 
+                ['bracket','}'],['code','catch(err'+$err_num+')'],
+                ['code','{$raise(err'+$err_num+'.name,err'+$err_num+'.message)}']) 
        }
        pos = def_pos-1
     }
@@ -693,6 +709,18 @@ function $py2js(src,module){
         pos = try_pos+1
         $err_num++
     }
+
+    // "raise expr" becomes "$raise(expr)"
+    pos = 0
+    while(true){
+        var raise_pos = stack.find_next(pos,"keyword","raise")
+        if(raise_pos===null){break}
+        var expr = stack.atom_at(raise_pos+1)
+        stack.list.splice(expr.end+1,0,['bracket',')'])
+        stack.list.splice(raise_pos,1,['code','$raise'],['bracket','('])
+        pos = expr.end+1
+    }
+
 
     // "assert condition" becomes "if condition: pass else: raise AssertionError"
     var pos = stack.list.length-1
