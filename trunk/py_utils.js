@@ -177,7 +177,7 @@ function $IndentationError(module,msg,pos) {
 function $class_constructor(class_name,class_func){  
     var f = function(){
         var obj = new class_func()
-        obj.__class__ = class_func
+        obj.__class__ = f
         obj.__getattr__ = function(attr){
             if(obj[attr]!==undefined){return obj[attr]}
             else{$raise("AttributeError",obj+" has no attribute '"+attr+"'")}
@@ -188,6 +188,7 @@ function $class_constructor(class_name,class_func){
         if(obj.__init__ !== undefined){obj.__init__.apply(obj,arguments)}
         return obj
         }
+    f.__str__ = function(){return "<class '"+class_name+"'>"}
     f.__getattr__ = function(attr){console.log('attr '+attr);return class_func[attr]}
     return f
 }
