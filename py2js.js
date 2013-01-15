@@ -200,7 +200,8 @@ function $py2js(src,module){
     // for each opening bracket, define after which token_types[,token values] 
     // they are *not* the start of a display
     var not_a_display = { 
-        '[':[["id"],["assign_id"],['str'],['int'],['float'],["qualifier"],["bracket",$List2Dict("]",")")]], // slicing
+        '[':[["id"],["assign_id"],['str'],['int'],['float'],["qualifier"],
+            ["bracket",$List2Dict("]",")")]], // slicing
         '(':[["id"],["assign_id"],["qualifier"],["bracket",$List2Dict("]",")")]], // call
         '{':[[]] // always a display
         }
@@ -802,6 +803,8 @@ function $py2js(src,module){
             var multiline = (s.find_next(0,'newline')!=null)
             // replace by Javascript keyword
             stack.list[kw_pos][1] = kws[kw]
+            // add original Python keyword to sort class from function
+            stack.list[kw_pos].push(kw)
             // replace : by {
             stack.list[block[0]]=['bracket','{']
             var end_pos = stack.list[block[1]][2]
@@ -886,18 +889,20 @@ function $py2js(src,module){
                 seq = seq.concat(fbody)
                 // mark local ids
                 // will be used in assignments to insert "var"
-                for(var i=0;i<seq.length;i++){
-                    if(seq[i][0]=="id"){
-                        if(!(seq[i][1] in globals)){seq[i].push('local')}
+                if(kw==='def'){
+                    for(var i=0;i<seq.length;i++){
+                        if(seq[i][0]=="id"){
+                            if(!(seq[i][1] in globals)){seq[i].push('local')}
+                        }
                     }
                 }
                 stack.list = stack.list.slice(0,kw_pos+1)
                 stack.list = stack.list.concat(seq)
-                // make function visible at window level
                 var indent = stack.indent(kw_pos)
                 var f_indent = ''
                 while(indent>0){f_indent+=' ';indent--}
                 if(parent==-1){
+                    // make function visible at window level
                     var code = '\n'+f_indent+'window.'+fname+'='+fname
                     module_level_functions.push(fname)
                     tail.splice(0,0,['func_end',code])
@@ -1195,7 +1200,24 @@ function $py2js(src,module){
             pos = assign-1
         } else {
             // simple assignment
+            var assign_indent = stack.indent(assign)
+            // search lower indent
+            var lower_indent = null
+            var indent_pos = stack.find_previous(assign,'indent')
+            while(indent_pos>0){
+                var indent_pos = stack.find_previous(indent_pos-1,'indent')
+                if(stack.list[indent_pos][1]<assign_indent){
+                    // is assignment inside a class definition ?
+                    var first = stack.list[indent_pos+1]
+                    if(first.match(['keyword','function']) &&
+                        first[first.length-1]==='class'){
+                            left.list()[0][1]='this.'+left.list()[0][1]
+                        }
+                    break
+                }
+            }
             // for local variables inside functions, insert "var"
+            left.list()[0][0]="assign_id"
             if(left.list()[0][3]==="local"){left.list()[0][1]="var "+left.list()[0][1]}
             // multiple right arguments ?
             var r_elts = right.split(',')
