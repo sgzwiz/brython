@@ -113,6 +113,8 @@ Array.prototype.__getattr__ = function(attr){
             return $list_index(obj)
         case 'pop':
             return $list_pop(obj)
+        case 'remove':
+            return $list_remove(obj)
         case 'reverse':
             return function(){$list_reverse(obj)}
         case 'sort':
@@ -260,6 +262,18 @@ function $list_index(obj){
     return function(elt){
         for(var i=0;i<obj.length;i++){
             if(obj[i].__eq__(elt)){return i}
+        }
+        $raise('ValueError',str(elt)+" is not in list")
+    }
+}
+
+function $list_remove(obj){
+    return function(elt){
+        for(var i=0;i<obj.length;i++){
+            if(obj[i].__eq__(elt)){
+                obj.splice(i,1)
+                return
+            }
         }
         $raise('ValueError',str(elt)+" is not in list")
     }
