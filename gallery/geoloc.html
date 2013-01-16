@@ -11,16 +11,27 @@
 
         def navi(pos):
             xyz = pos.coords
-            display = "Your position"
-            doc <= H3(display)
+
+            data = {
+                'lat':xyz.latitude,
+                'lon':xyz.longitude,
+                'acc':xyz.accuracy,
+                'timestamp': pos.timestamp,
+                'alt':xyz.altitude,
+                'alt_acc':xyz.altitudeAccuracy,
+                'heading':xyz.heading,
+                'speed':xyz.speed
+            }
+
             ul = UL()
-            ul <= LI('latitude %s longitude %s (accuracy %f)' 
-                %(xyz.latitude,xyz.longitude,xyz.accuracy))
-            ul <= LI('timestamp %s' %pos.timestamp)
-            ul <= LI('altitude %f (accuracy %f)' 
-                %(xyz.altitude,xyz.altitudeAccuracy))
-            ul <= LI('heading %f' %xyz.heading)
-            ul <= LI('speed %f' %xyz.speed)
+            for key in data.keys():
+                try:
+                    string = key + ': ' + str(float(data[key]))
+                except ValueError:
+                    string = key + ': Could not detect'
+                ul <= LI(string)
+
+            doc <= H3("Your position")
             doc <= ul
 
         def nonavi(error):
