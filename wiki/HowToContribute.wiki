@@ -5,11 +5,13 @@
 
 The documentation page on the [http://www.brython.info Brython site] explains the compilation and execution model of Brython
 
-The core Javascript programs are *py`_`tokenizer.js, py2js.js* and *py`_`utils.js* ; they are in charge of translating Python code into Javascript. For the moment I wish to keep control on these scripts, but I'm of course open to suggestions on how to improve them. They will be modified to extend the coverage of Python syntax (list comps, classes etc.)
+The core Javascript programs are *py`_`tokenizer.js, py2js.js* and *py`_`utils.js* ; they are in charge of translating Python code into Javascript. For the moment I wish to keep control on these scripts, but I'm of course open to suggestions on how to improve them. They are updated to extend the coverage of Python syntax
 
 Other scripts are open to contributions (bug fixes, performance improvements, more methods/attributes, etc)
+
 - the other scripts included in brython.js : *py`_`string.js, py`_`list.js, py`_`classes.js* respectively implement Python strings, lists, and the other built-in types and functions ; *py`_`dom.js* and *py`_`svg.js* implement the API for DOM manipulation and SVG support
 For instance, a contribution could be completing the string formatting function in py_string.js
+
 - the Javascript modules included in the package : *time.js, datetime.js, sys.js, random.js, math.js*. They are called from Brython scripts with the usual _import time_ syntax. For the moment they cover a very limited subset of their equivalent in the standard Python distribution : contributors could develop other parts of these modules, and add other ones (*re.js* would be great)
 
-For debugging, I use the console page, with the browser console also open. Error message give an indication of what goes wrong, but you must sometimes guess ;-)
+For debugging, I use the console page, with the browser console also open. Error message give an indication of what goes wrong, but sometimes you have to guess ;-)
