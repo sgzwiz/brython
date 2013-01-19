@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Brython test</title>
+        <meta charset="iso-8859-1">
+<script src="../py_tokenizer.js"></script>
+<script src="../py_utils.js"></script>
+<script src="../py_tokens.js"></script>
+<script src="../py_classes.js"></script>
+<script src="../py_import.js"></script>
+<script src="../py_list.js"></script>
+<script src="../py_string.js"></script>
+<script src="../py_dom.js"></script>
+<script src="../py2js.js"></script>
+<script src="../py_ajax.js"></script>
+<script src="../py_local_storage.js"></script>
+        <script type="text/python">
+# input and output setup
+import sys
+
+def raw_input(display):
+    doc['display'].text = display
+    entry.value = ''
+    entry.focus()
+
+class cons_out:
+
+    def __init__(self,target):
+        self.target = doc[target]
+    def write(self,data):
+        self.target.value += str(data)
+
+sys.stdout = cons_out("console")
+sys.stderr = cons_out("console")
+
+output = ''
+doc["console"] = output
+
+entry = doc['entry']
+
+'''
+Simple dungeon game
+adapted from Python 2.x code found here
+http://livingcode.org/entries/2008-02-22_simple-text-adventure/
+'''
+character = {'inventory': [], 'location': 'west room'}
+dungeon = {
+    'west room': {
+        'short description': 'west room',
+        'long description': 'a sloping north-south passage of barren rock',
+        'contents': ['pail of water', 'dragon tooth'],
+        'exits': {'east': 'centre room'}
+    },
+    'east room': {
+        'short description': 'east room',
+        'long description': 'a room of finished stone with high arched ceiling and soaring columns',
+        'contents': [],
+        'exits': {'west': 'centre room'}
+    },
+    'centre room': {
+        'short description': 'centre room',
+        'long description': 'the very heart of the dungeon, a windowless chamber lit only by the eerie light of glowing fungi high above',
+        'contents': ['golden key', 'spiral hourglass'],
+        'exits': {'east': 'east room', 'west': 'west room'}
+    }
+}
+
+def onchange(ev):
+    global room
+    command = entry.value
+    command_parts = command.split(" ", 1)
+    verb = command_parts[0]
+    obj = command_parts[-1] # if the user only types one word, both verb and obj will be the same
+    if verb in ['east', 'west', 'north', 'south', 'up', 'down', 'in', 'out']:
+        if verb in room['exits']:
+            character['location'] = room['exits'][verb]
+            room = dungeon[character['location']]
+            print('You are in %s' % room['long description'])
+            for item in room['contents']:
+                print('There is a %s here' % item)
+        else:
+            print('You cannot go that way')
+    if verb == 'inventory':
+        print('You are carrying:')
+        for item in character['inventory']:
+            print('   %s' % item)
+    if verb == 'quit':
+        print('Goodbye')
+        return
+    if verb == 'take':
+        if obj == 'all':
+            if room['contents']:
+                for item in room['contents'][:]: # this part: [:] makes a copy of the list so removing items works
+                    print('You pick up the %s' % item)
+                    character['inventory'].append(item)
+                    room['contents'].remove(item)
+            else:
+                print('There is nothing to take!')
+        else:
+            for item in room['contents']:
+                if obj in item: # does the word in obj match any part of the text of item?
+                    print('You pick up the %s' % item)
+                    character['inventory'].append(item)
+                    room['contents'].remove(item)
+    room = dungeon[character['location']]
+    raw_input(room['short description'] + ' > ')
+
+
+room = dungeon[character['location']]
+raw_input(room['short description'] + ' > ')
+entry.onchange = onchange
+        </script>
+    </head>
+    <body onLoad="brython(1)">
+        <span id='display'></span><br><input id="entry"><br>
+        <textarea id="console" cols=70 rows=20></textarea>
+
+    </body>
+</html>
