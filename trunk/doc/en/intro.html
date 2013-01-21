@@ -1,0 +1,48 @@
+<html>
+<head>
+<title>Brython</title>
+<meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
+<link rel="stylesheet" href="../../brython.css">
+<script src="../../brython.js"></script>
+</head>
+<body onload="brython()">
+
+<a name="intro">Brython's goal is to replace Javascript with Python, as the scripting language for web browsers.
+<p>A simple example :
+<table>
+<tr>
+<td>
+CODE<br>
+<pre>&lt;html&gt;
+&lt;head&gt;
+&lt;script src="/brython.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body onLoad="brython()"&gt;
+&lt;script type="text/python"&gt;
+def echo():
+    alert(doc["zone"].value)
+&lt;/script&gt;
+&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td>
+<td>
+Try it!<p>
+<script type="text/python">
+def echo():
+    alert(doc["zone"].value)
+</script>
+
+<input id="zone"><button onclick="echo()">clic !</button>
+</td>
+</tr>
+</table>
+
+<p>In order for the Python script to be processed, it is necessary to include <em>brython.js</em> and to run the <code>brython()</code> function upon page load (using the <tt>onload</tt> attribute of the &lt;BODY&gt; tag). While in the development phase, it is possible to pass an argument to the brython() function: 1 to have the error messages displayed to the web browser console, 2 to also get the Javascript code displayed along with the error
+<p>In the above code, when we click on the button, the onclick event calls and run the <code>echo()</code> function, which was defined in the Python script. This function gets the value of the INPUT element, through its id (<tt>zone</tt>). This is accomplished by the syntax <code>doc["zone"]</code> instead of the Javascript equivalent of <code>document.getElementById("zone")</code>  : <code>doc</code> is a keyword in Brython, which behaves just like a dictionary whose keys are the ids of the elements of the DOM. Hence, in our example, <code>doc["zone"]</code> is an object that maps to the INPUT element ; the <tt>value</tt> property holds, interestingly enough, the value of the object
+<p>In Brython, the output can be accomplished in various ways, including with the <code>alert()</code> built-in function. It works in the exact same way as the function of the same name in Javascript.
+
+
+</body>
+</html>
