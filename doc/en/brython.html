@@ -7,64 +7,29 @@
 </head>
 <body onload="brython()">
 
-<a name="intro">Brython's goal is to replace Javascript with Python, as the scripting language for web browsers.
-<p>A simple example :
-<table>
-<tr>
-<td>
-CODE<br>
-<pre>&lt;html&gt;
-&lt;head&gt;
-&lt;script src="/brython.js"&gt;&lt;/script&gt;
-&lt;/head&gt;
-&lt;body onLoad="brython()"&gt;
-&lt;script type="text/python"&gt;
-def echo():
-    alert(doc["zone"].value)
-&lt;/script&gt;
-&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
-&lt;/body&gt;
-&lt;/html&gt;
-</pre>
-</td>
-<td>
-TEST<p>
-<script type="text/python">
-def echo():
-    alert(doc["zone"].value)
-</script>
 
-<input id="zone"><button onclick="echo()">clic !</button>
-</td>
-</tr>
-</table>
-
-<p>In order for the Python script to be processed, it is necessary to include <em>brython.js</em> and to run the <code>brython()</code> function upon page load (using the <tt>onload</tt> attribute of the &lt;BODY&gt; tag)
-<p>In the above code, when we click on the button, the onclick event calls and run the <code>echo()</code> function, which was defined in the Python script. This function gets the value of the INPUT element, through its id (<tt>zone</tt>). This is accomplished by the syntax <code>doc["zone"]</code> instead of the Javascript equivalent of <code>document.getElementById("zone")</code>  : <code>doc</code> is a keyword in Brython, which behaves just like a dictionary whose keys are the ids of the elements of the DOM. Hence, in our example, <code>doc["zone"]</code> is an object that maps to the INPUT element ; the <tt>value</tt> property holds, interestingly enough, the value of the object
-<p>In Brython, the output can be accomplished with the <code>alert()</code> built-in function. It works in the exact same way as the function of the same name in Javascript.
-<hr>
 <a name="syntaxe"><h3>Syntax</h3>
 Brython follows the Python syntax:
 <ul>
-<li>whitespaces are significant and define blocks</li>
-<li>lists are created with <code>[]</code> or <code>list()</code>, tuples with <code>()</code> or <code>tuple()</code>, dictionnaries with <code>{}</code> or <code>dict()</code> and sets with <code>set()</code></li>
-<li>list comprehensions: <code>[ expr for item in iterable if condition ]</code></li>
-<li>ternary operator: x = r1 if condition else r2</li>
-<li>functions can be defined with any combination of fixed arguments, default values, variable positional arguments and variable keyword arguments : <br><code>def foo(x, y=0, *args, **kw):</code></li>
-<li>unpacking of argument lists or dictionaries in function calls: x = foor(*args, **kw)</li>
+<li>whitespaces are significant and define blocks
+<li>lists are created with <code>[]</code> or <code>list()</code>, tuples with <code>()</code> or <code>tuple()</code>, dictionnaries with <code>{}</code> or <code>dict()</code> and sets with <code>set()</code>
+<li>list comprehensions: <code>[ expr for item in iterable if condition ]</code>
+<li>ternary operator: x = r1 if condition else r2
+<li>functions can be defined with any combination of fixed arguments, default values, variable positional arguments and variable keyword arguments : <br><code>def foo(x, y=0, *args, **kw):</code>
+<li>unpacking of argument lists or dictionaries in function calls: x = foor(*args, **kw)
 </ul>
 
 
 <a name="integr"><h3>Keywords and built-in functions</h3>
 
 Brython supports most keywords and functions of Python 3 :
-<ul><li>keywords : <code>assert break continue def del elif else except False finally for global if import None pass return True try while </code>
+<ul><li>keywords : <code>assert break class continue def del elif else except False finally for global if import None pass return True try while </code>
 <li>built-in functions : <code>abs() all() any() bool() dict() dir() enumerate() exec() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
 The following are not implemented : 
 <ul>
-<li>keywords <code>as class from is lambda nonlocal raise with yield</code>
+<li>keywords <code>as from is lambda nonlocal raise with yield</code>
 <li>amongst the built-in functions :
 <ul><li>some might be implemented in the future : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), eval(), format(), frozenset(), globals() ,hex(), id(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code></li>
 <li>while others are unlikely : <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code></li>
@@ -72,7 +37,7 @@ The following are not implemented :
 <li>the complex number type (<code>j</code>) is not supported</li>
 </ul>
 </ul>
-The <code>class</code> keyword is not implemented, you can not define classes other than the built-in types (lists, dictionaries, sets). However, unlike Python, you can add attributes to objects created by the <code>object()</code> built-in:
+Unlike Python, you can add attributes to objects created by the <code>object()</code> built-in:
 <p><pre>x = object()
 x.foo = 44
 del x.foo
