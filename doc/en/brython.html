@@ -2,11 +2,10 @@
 <head>
 <title>Brython</title>
 <meta http-equiv="content-type" content="text/html;charset=iso-8859-1">
-<link rel="stylesheet" href="../../brython.css">
+<link rel="stylesheet" href="../doc_brython.css">
 <script src="../../brython.js"></script>
 </head>
 <body onload="brython()">
-
 
 <a name="syntaxe"><h3>Syntax</h3>
 Brython follows the Python syntax:
@@ -19,21 +18,26 @@ Brython follows the Python syntax:
 <li>unpacking of argument lists or dictionaries in function calls: x = foor(*args, **kw)
 </ul>
 
+</ul>
 
 <a name="integr"><h3>Keywords and built-in functions</h3>
 
 Brython supports most keywords and functions of Python 3 :
 <ul><li>keywords : <code>assert break class continue def del elif else except False finally for global if import None pass return True try while </code>
-<li>built-in functions : <code>abs() all() any() bool() dict() dir() enumerate() exec() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
+<li>built-in functions : <code>abs() all() any() bool() dict() dir() enumerate() eval() exec() filter() float() getattr() hasattr() input() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
-The following are not implemented : 
+By default, <code>print()</code> will output to the web browser console and so are the error messages. <code>sys.stderr</code> and <code>sys.stdout</code> can be assigned to an object with a <code>write()</code> method, and this allows for the redirection of output to go to a window or text area, for example. sys.stdin is not implemented at this time, however there is an input() built-in function that will open a blocking input dialog (a prompt).
+<p>To open a print dialog (to a printer), call <code>win.print</code>
+
+
+<p>The following are not implemented : 
 <ul>
 <li>keywords <code>as from is lambda nonlocal raise with yield</code>
 <li>amongst the built-in functions :
-<ul><li>some might be implemented in the future : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), eval(), format(), frozenset(), globals() ,hex(), id(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code></li>
+<ul><li>some might be implemented in the future : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), format(), frozenset(), globals(), hex(), id(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code></li>
 <li>while others are unlikely : <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code></li>
-<li>some are irrelevant in the context of a web browser : <code>input(), open()</code></li>
+<li>some are irrelevant in the context of a web browser : <code> open()</code></li>
 <li>the complex number type (<code>j</code>) is not supported</li>
 </ul>
 </ul>
@@ -98,21 +102,67 @@ doc <= P() + 'I repeat: the site is ' + link.clone()
 </pre>
 
 
-<p>As a rule of thumb, instances of classes HTML attributes have the same name as the corresponding JavaScript objects. It can for example retrieve the option selected by the<tt>selectedIndex</tt> attribute of the SELECT object
-<p>Exceptionally, the content of a DOM node can be read or modified by the <tt>text</tt> or <tt>html</tt> attributes, corresponding to <i>innerText</i> (or <i>textContent</i>) and <i>innerHTML</i> respectively, in Javascript
-<p>The <code>options</code> collection associated with a SELECT object has an interface of a Python list :
+<p>As a rule of thumb, instances of classes HTML attributes have the same name as the corresponding JavaScript objects. It can for example retrieve the option selected by the<tt>selectedIndex</tt> attribute of the SELECT object. Brython adds a few things to make the manipulation a bit more Pythonic
+
+<p>
+<ul>
+<li>To search for objects by identifier or by their tag name, use the following syntax :
+<ul>
+<li><pre style="display:inline">doc[obj_id]</pre>  returns the object from its identifier, or throws a <code>KeyError</code>
+<li><pre style="display:inline">doc[A]</pre>  returns a list of all objects of type A (hyperlink) in the document
+</ul>
+<li>the content of a DOM node can be read or modified by the text or html attributes, corresponding to innerText (or textContent) and innerHTML respectively, in Javascript
+<li>The <code>options</code> collection associated with a SELECT object has an interface of a Python list :
 <ul>
 <li>access to an option by its index : <pre style="display:inline">option = elt.options[index]</pre>
 <li>insertion of an option at the <em>index</em> position : <pre style="display:inline">elt.options.insert(index,option)</pre>
 <li>insertion of an option at the end of the list : <pre style="display:inline">elt.options.append(option)</pre>
 <li>deleting an option : <pre style="display:inline">del elt.options[index]</pre>
 </ul>
-<p>To search for objects by identifier or by their tag name, use the following syntax :
-<ul>
-<li><pre style="display:inline">doc[obj_id]</pre>  returns the object from its identifier, or throws a <code>KeyError</code>
-<li><pre style="display:inline">doc[A]</pre>  returns a list of all objects of type A (hyperlink) in the document
+<li>it is possible to iterate the objet's children using the typical Python syntax : <pre style="display:inline">for child in dom_object:</pre>
 </ul>
-<hr>
+<h3>Events</h3>
+To attach a function to an event, we use the syntax 
+<blockquote><pre>element.onclick = callback</pre></blockquote>
+The <tt>callback</tt> function will only take a single argument, an instance of the <tt>DOMEvent</tt> class. Beyond the DOM attributes (the names can vary based on browsers), this object has in particular these attributes :
+<p><table border=1>
+<tr><th>Type of event</th><th>Attributes</th></tr>
+<tr><td>clic or mouse movement</td><td><tt>x, y</tt> : mouse position in relation to the top left corner of the window</td></tr>
+<tr><td>drag and drop (HTML5)</td><td><tt>data</tt> : data associated with the movement</td></tr>
+</table>
+<p>Example :
+<table>
+<tr>
+<td>
+<pre>&lt;script type='text/python'&gt;
+def mouse_move(ev):
+    doc["trace"].value = '%s %s' %(ev.x,ev.y)
+
+doc["zone"].onmousemove = mouse_move
+&lt;/script&gt;
+
+&lt;input id="trace" value=""&gt;
+&lt;br&gt;&lt;textarea id="zone" rows=20 columns=30 style="background-color:gray"&gt;
+passer la souris ici&lt;/textarea&gt;
+</pre>
+</td>
+<td>
+<pre><script type='text/python'>
+def mouse_move(ev):
+    doc["trace"].value = '%s %s' %(ev.x,ev.y)
+
+doc["zone"].onmousemove = mouse_move
+</script>
+
+<input id="trace" value="">
+<br><textarea id="zone" rows=7 columns=30 style="background-color:gray">
+move the mouse over here</textarea>
+</pre>
+</td>
+</tr>
+</table>
+
+<p><hr>
 <a name="ajax"><h3>Ajax</h3>
 The <code>ajax()</code> built-in function returns an object similar to XMLHttpRequest in Javascript, but its interface is slightly different. It has the following methods
 
