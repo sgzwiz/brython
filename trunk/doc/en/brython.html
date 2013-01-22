@@ -111,7 +111,7 @@ doc <= P() + 'I repeat: the site is ' + link.clone()
 <li><pre style="display:inline">doc[obj_id]</pre>  returns the object from its identifier, or throws a <code>KeyError</code>
 <li><pre style="display:inline">doc[A]</pre>  returns a list of all objects of type A (hyperlink) in the document
 </ul>
-<li>the content of a DOM node can be read or modified by the text or html attributes, corresponding to innerText (or textContent) and innerHTML respectively, in Javascript
+<li>the content of a DOM node can be read or modified by the <tt>text</tt> or <tt>html</tt> attributes, corresponding to <i>innerText</i> (or <i>textContent</i>) and <i>innerHTML</i> respectively, in Javascript
 <li>The <code>options</code> collection associated with a SELECT object has an interface of a Python list :
 <ul>
 <li>access to an option by its index : <pre style="display:inline">option = elt.options[index]</pre>
@@ -143,7 +143,7 @@ doc["zone"].onmousemove = mouse_move
 
 &lt;input id="trace" value=""&gt;
 &lt;br&gt;&lt;textarea id="zone" rows=20 columns=30 style="background-color:gray"&gt;
-passer la souris ici&lt;/textarea&gt;
+move the mouse over here&lt;/textarea&gt;
 </pre>
 </td>
 <td>

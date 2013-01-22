@@ -24,7 +24,7 @@ Brython est conforme à la syntaxe de Python 3
 
 Brython supporte l'essentiel des mots-clés et des fonctions de Python 3 :
 <ul><li>mots clés : <code>assert break class continue def del elif else except False finally for global if import None pass return True try while </code>
-<li>fonctions intégrées : <code>abs() all() any() bool() dict() dir() enumerate() exec() filter() float() getattr() hasattr() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
+<li>fonctions intégrées : <code>abs() all() any() bool() dict() dir() enumerate() exec() filter() float() getattr() hasattr() input() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
 Par défaut, <code>print()</code> affiche sur la console du navigateur, et les messages d'erreur sont également affichés sur cette console. <code>sys.stderr</code> et <code>sys.stdout</code> peuvent être affectés à un objet qui implémente une méthode <code>write()</code>, ce qui permet par exemple d'afficher les messages d'erreurs dans une fenêtre
@@ -36,7 +36,7 @@ Par défaut, <code>print()</code> affiche sur la console du navigateur, et les me
 <li>parmi les fonctions intégrées :
 <ul><li>certaines seront peut-être intégrées dans des versions futures : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), eval(), format(), frozenset(), globals() ,hex(), id(), locals(), ord(), pow(), repr(), sorted(), type(), vars()</code>
 <li>d'autres ont peu de chances d'être intégrées : <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code>
-<li>certaines ne sont pas pertinentes dans le contexte d'un navigateur : <code>input(), open()</code>
+<li>certaines ne sont pas pertinentes dans le contexte d'un navigateur : <code>open()</code>
 <li>le type des nombres complexes n'est pas supporté
 </ul>
 </ul>
