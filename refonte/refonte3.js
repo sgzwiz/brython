@@ -478,10 +478,7 @@ function $NodeCtx(node){
     this.tree = []
     this.type = 'node'
     this.toString = function(){return 'node '+this.tree}
-    this.to_js = function(){
-        console.log('to js')
-        return $to_js(this.tree)
-    }
+    this.to_js = function(){return $to_js(this.tree)}
 }
 
 function $NodeJSCtx(node,js){ // used for raw JS code
@@ -507,7 +504,6 @@ function $OpCtx(context,op){ // context is the left operand
     this.toString = function(){return this.tree[0]+this.op+this.tree[1]}
     this.parent = context.parent
     this.tree = [context]
-    console.log('operation, context '+context)
     // operation replaces left operand
     context.parent.tree.pop()
     context.parent.tree.push(this)
@@ -621,7 +617,7 @@ function $transition(context,token){
     }else if(context.type==='call'){ 
     
         if(token===','){return context}
-        else if(['id','int','float','str','[','(','{'].indexOf(token)>-1){
+        else if($expr_starters.indexOf(token)>-1){
             var expr = new $CallArgCtx(context)
             return $transition(expr,token,arguments[2])
         }else if(token===')'){return context.parent}
@@ -630,7 +626,7 @@ function $transition(context,token){
             if(op==='-'){return new $UnaryOrOp(context,'-')}
             else if(op==='+'){return context}
             else{throw Error('SyntaxError')}
-         }else if(token==='eol'){return $transition(context.parent,'eol')}
+        }else if(token==='eol'){return $transition(context.parent,'eol')}
         else{throw Error('SyntaxError : token '+token+' after '+context)}
 
     }else if(context.type==='call_arg'){ 
@@ -740,7 +736,6 @@ function $transition(context,token){
         }else if(token===')'){
             return $transition(context.parent,token)
         }else if(token===','){
-            console.log('with commas '+context.with_commas)
             if(context.with_commas){
                 return context
             }else if(context.parent.type==='tuple'){
@@ -807,9 +802,16 @@ function $transition(context,token){
     }else if(context.type==='id'){
     
         if(token==='['){return new $SubCtx(context)}
-        else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
+        else if(token==='('){return new $CallCtx(context)}
         else if(token==='.'){return new $AttrCtx(context)}
-        else if(token==='op'){
+        else if(token==='='){
+            console.log('= after id, parent '+context.parent.type+' grand '+context.parent.parent.type)
+            if(context.parent.type==='expr' &&
+                context.parent.parent !== undefined &&
+                context.parent.parent.type ==='call'){
+                    return new $AbstractExprCtx(new $KwArgCtx(context),false)
+            }else{return $transition(context.parent,token,arguments[2])}             
+        }else if(token==='op'){
             return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
         }else{return $transition(context.parent,token,arguments[2])}
 
