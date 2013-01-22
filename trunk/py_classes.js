@@ -364,6 +364,12 @@ function hasattr(obj,attr){
     catch(err){return False}
 }
 
+
+//not a direct alias of prompt: input has no default value
+function input(src){
+    return prompt(src)
+}
+
 function int(value){
     if(isinstance(value,int)){return value}
     else if(typeof value=="number" ||
