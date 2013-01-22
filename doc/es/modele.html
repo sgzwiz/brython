@@ -11,10 +11,12 @@ El archivo <b>brython.js</b> es generado por la compilación de varios scripts :
 <ul>
 <li><b>py_tokenizer.js</b> : corta el código fuente de Python en componentes léxico (tokens): identificadores, literales, operadores delimitadores, etc
 <li><b>py2js.js</b> : convierte los tokens al código Javascript
-<li><b>py_utils.js</b> : funciones de utilidad (componentes léxico, conversión de tipos entre Python y Javascript))
+<li><b>py_tokens.js</b> : clases para manipular los componentes léxico (tokens)
+<li><b>py_utils.js</b> : funciones de utilidad (conversión de tipos entre Python y Javascript)
 <li><b>py_string.js</b> : implementa la clase Python str desde el objeto Javascript String
 <li><b>py_list.js</b> : implementa la clase Python list desde el objeto Javascript Array
 <li><b>py_classes.js</b> : incluye todos los demás tipos y funciones integradas
+<li><b>py_import.js</b> : implementa la palabra clave <tt>import</tt>
 <li><b>py_dom.js</b> : interacción con el documento HTML (DOM)
 <li><b>py_ajax.js</b> : implementa Ajax
 <li><b>py_local_storage.js</b> : implementa local storage de HTML5
@@ -53,7 +55,7 @@ La "compilación" y ejecución de un script de Brython pasa por las siguientes f
 </ul>
 <p>
 <li>Traducción de componentes léxico en código Javascript
-<p>Se hace por medio de los scripts <tt>py2js.js</tt> y <tt>py_utils.js</tt>, en e siguiente orden:
+<p>Se hace por medio de los scripts <tt>py2js.js, py_tokens.js</tt> y <tt>py_utils.js</tt>, en e siguiente orden:
 <ol>
 <li>sustitución de la secuencia <tt>not in</tt> por el operado <tt>__not_in__</tt>
 <li>transformación de paréntesis, corchetes y llaves en tuplas, listas y diccionarios
@@ -75,7 +77,24 @@ La "compilación" y ejecución de un script de Brython pasa por las siguientes f
 <p>
 <li>La ejecución de código Javascript generado
 <p>Las clases definidas en otros módulos se utilizan para la sintaxis de Python y la interfaz con el navegador
-
+<p>Durante el ejecución del script generado, se puede llamar :
+<ul>
+<li>a las clases integradas definidas adentro de <tt>py_classes.js, py_string.js, py_list.js, py_dom.js, py_ajax.js, py_local_storage.js, py_svg.js</tt>
+<li>a las funciones internas, que no se ven en Python (su nombre siempre comienzan con $) que se encuentra en <tt>$py_utils.js</tt>. Las mas importantes son :
+<ul>
+<li><tt>$JS2py</tt> : acepta un solo argumento y devuelve :
+<ul>
+<li>el argumento sin cambio si es de un tipo reconocido por Brython (es decir, con atributo <tt>__class__</tt>)
+<li>una instancia de DOMObject (o DOMEvent) si el argumento es un objeto (o un evento) DOM
+<li>una instancia de JSObject "envolvente" el argumento si no
+</ul>
+<li><tt>$MakeArgs</tt> llamada al principio de la ejecución de cada función cuya firma incluye al menos un argumento. Se construye un espacio de nombres de los argumentos pasados ​​a la función, por medio de la funcion $JS2py llamada sobre todos los argumentos
+<li><tt>$list_comp</tt> llamada por cada comprensión de lista
+<li><tt>$raise</tt> está llamada a producir excepciones
+<li><tt>$test_expr</tt> y <tt>$test_item</tt> se utilizan en la evaluación de las condiciones combinadas por <code>and</code> o <code>or</code>
+</ul>
+<li>a las funciones definidas en el script <tt>py_import.js</tt> por la gestión de las importaciones (import)
+</ul>
 <p>Si hay un error de tiempo de ejecución, una traza se imprime en la consola de navegador. Está estrechamente modelada de la que sería generado por Python
 
 </ol>
