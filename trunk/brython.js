@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130119-104924
+// version 1.0.20130122-195420
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -307,6 +307,9 @@ else{$raise('AttributeError',
 function hasattr(obj,attr){
 try{getattr(obj,attr);return True}
 catch(err){return False}
+}
+function input(src){
+return prompt(src)
 }
 function int(value){
 if(isinstance(value,int)){return value}
