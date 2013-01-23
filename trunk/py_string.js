@@ -63,8 +63,11 @@ String.prototype.__getattr__ = function(attr){
             return $string_rindex(obj)
         case 'rstrip': 
             return $string_rstrip(obj)
-        case 'split': 
+        case 'split':
+        case 'splitfields':
             return $string_split(obj)
+        case 'splitlines':
+            return $string_split(obj,'\n')
         case 'startswith': 
             return $string_startswith(obj)
         case 'strip':
