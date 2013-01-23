@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130122-195420
+// version 1.0.20130123-223708
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -877,7 +877,7 @@ var items=this.valueOf()
 var pos=arg
 if(arg<0){pos=items.length+pos}
 if(pos>=0 && pos<items.length){return items[pos]}
-else{$raise('IndexError','list index out of range')}
+else{$raise('IndexError','list index out of range '+arg)}
 }else if(isinstance(arg,slice)){
 var step=arg.step===None ? 1 : arg.step
 if(step>0){
@@ -1127,8 +1127,11 @@ case 'rindex':
 return $string_rindex(obj)
 case 'rstrip': 
 return $string_rstrip(obj)
-case 'split': 
+case 'split':
+case 'splitfields':
 return $string_split(obj)
+case 'splitlines':
+return $string_split(obj,'\n')
 case 'startswith': 
 return $string_startswith(obj)
 case 'strip':
