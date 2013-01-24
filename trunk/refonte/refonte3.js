@@ -205,7 +205,7 @@ function $AssignCtx(context){
             }
             node.parent.children.splice(rank,1) // remove original line
             for(var i=new_nodes.length-1;i>=0;i--){
-                node.parent.children.splice(rank,0,new_nodes[i])
+                node.parent.insert(rank,new_nodes[i])
             }
         }
     }
@@ -424,6 +424,27 @@ function $DefCtx(context){
     }
 }
 
+function $DelCtx(context){
+    this.type = 'del'
+    this.parent = context
+    context.tree.push(this)
+    this.tree = []
+    this.toString = function(){return 'del '+this.tree}
+    this.to_js = function(){
+        var expr = this.tree[0]
+        if(expr.tree[0].type!=='id'){throw Error('SyntaxError, no id after del')}
+        var del_id = expr.tree[0]
+        if(del_id.tree.length===0||del_id.tree[del_id.tree.length-1].type!=='sub'){
+            throw Error('SyntaxError, no subscription for del')
+        }
+        var last_item = del_id.tree.pop()
+        var item = last_item.tree[0].to_js()
+        var res = del_id.to_js()
+        del_id.tree.push(last_item)
+        return res+'.__delitem__('+item+')'
+    }
+}
+
 function $DictCtx(context){
     // context is the first key
     this.type = 'dict'
@@ -452,8 +473,13 @@ function $DictOrSetCtx(context){
     this.tree = []
     context.tree.push(this)
     this.to_js = function(){
-        if(this.real==='dict'){return 'dict('+$to_js(this.tree)+')'}
-        else{return 'set('+$to_js(this.tree)+')'}
+        if(this.real==='dict'){
+            var res = 'dict(['
+            for(var i=0;i<this.tree.length;i+=2){
+                res+='['+this.tree[i].to_js()+','+this.tree[i+1].to_js()+'],'
+            }
+            return res.substr(0,res.length-1)+'])'
+        }else{return 'set('+$to_js(this.tree)+')'}
     }
 }
 
@@ -623,7 +649,7 @@ function $IntCtx(context,value){
     this.parent = context
     this.tree = []
     context.tree.push(this)
-    this.to_js = function(){return 'int('+this.value+')'}
+    this.to_js = function(){return 'Number('+this.value+')'}
 }
 
 function $JSCode(js){
@@ -778,6 +804,16 @@ function $SubCtx(context){ // subscription or slicing
     this.to_js = function(){return '.__'+this.func+'__('+$to_js(this.tree)+')'}
 }
 
+function $UnaryCtx(context,op){
+    this.type = 'unary'
+    this.op = op
+    this.toString = function(){return this.op+'['+this.tree+']'}
+    this.parent = context
+    this.tree = []
+    context.tree.push(this)
+    this.to_js = function(){return this.op+$to_js(this.tree)}
+}
+
 // used in loops
 var $loop_num = 0
 var $iter_num = 0 
@@ -801,7 +837,6 @@ function $get_scope(context){
     var tree_node = ctx_node.node
     var scope = null
     while(tree_node.parent.type!=='module'){
-        console.log('in get scope '+tree_node.parent+' '+tree_node.parent.context)
         var ntype = tree_node.parent.context.tree[0].type
         if(['def','class'].indexOf(ntype)>-1){
             scope = tree_node.parent
@@ -832,7 +867,7 @@ function $to_js(tree,sep){
 var $expr_starters = ['id','int','float','str','[','(','{','not']
 
 function $transition(context,token){
-    console.log('transition '+context+' token '+token)
+    //console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
@@ -849,7 +884,9 @@ function $transition(context,token){
         else if(token==='['){return new $ListOrTupleCtx(context,'list')}
         else if(token==='{'){return new $DictOrSetCtx(context)}
         else if(token==='not'){return new $NotCtx(context)}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else if(token==='op' && '+-'.search(arguments[2])){ // unary + or -
+            return new $UnaryCtx(context,arguments[2])
+        }else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='assign'){
     
@@ -1023,7 +1060,7 @@ function $transition(context,token){
                     return new $ExprCtx(new_op,'op',false)
                 }else{console.log('no change')}
             }
-            return new $ExprCtx(new $OpCtx(context,arguments[2]),'op',false)
+            return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
         }else if(token==='augm_assign'){
             console.log('augm assignment')
             return $augmented_assign(context,arguments[2])
@@ -1186,7 +1223,8 @@ function $transition(context,token){
         else if(token==='return'){
             var ret = new $ReturnCtx(context)
             return new $AbstractExprCtx(ret,true)
-        }else if(token==='eol'){return context}
+        }else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),false)}
+        else if(token==='eol'){return context}
         else{throw Error('SyntaxError : token '+token+' after '+context)}
 
     }else if(context.type==='not'){
@@ -1263,6 +1301,28 @@ function $transition(context,token){
         }else if(token===']'){return context.parent}
         else if(token===':'){new $IdCtx(context,':');return context}
         else{throw Error('SyntaxError : token '+token+' after '+context)}
+
+    }else if(context.type==='unary'){
+
+        if(['int','float'].indexOf(token)>-1){
+            context.parent.tree.pop()
+            var value = arguments[2]
+            if(context.op==='-'){value=-value}
+            return $transition(new $AbstractExprCtx(context.parent,true),token,value)
+        }else if(token==='id'){
+            // replace by -1*x, or remove
+            context.parent.tree.pop()
+            if(context.op==='-'){
+                var int_expr = new $IntCtx(context.parent,-1)
+                return $transition($OpCtx(int_expr,'-'),token,arguments[2])
+            }else{
+                return $transition(context.parent,token,arguments[2])
+            }
+        }else if(token==="op" && '+-'.search(arguments[2])>-1){
+            var op = arguments[2]
+            if(context.op===op){context.op='+'}else{context.op='-'}
+            return context
+        }else{return $transition(context.parent,token,arguments[2])}
 
     }
 }
