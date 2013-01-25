@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130123-223708
+// version 1.0.20130125-213952
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -877,7 +877,7 @@ var items=this.valueOf()
 var pos=arg
 if(arg<0){pos=items.length+pos}
 if(pos>=0 && pos<items.length){return items[pos]}
-else{$raise('IndexError','list index out of range '+arg)}
+else{$raise('IndexError','list index out of range')}
 }else if(isinstance(arg,slice)){
 var step=arg.step===None ? 1 : arg.step
 if(step>0){
@@ -2808,8 +2808,25 @@ var elts=document.getElementsByTagName("script")
 for(var $i=0;$i<elts.length;$i++){
 var elt=elts[$i]
 if(elt.type=="text/python"){
+if(elt.src!==undefined){
+if(window.XMLHttpRequest){
+var $xmlhttp=new XMLHttpRequest()
+}else{
+var $xmlhttp=new ActiveXObject("Microsoft.XMLHTTP")
+}
+$xmlhttp.onreadystatechange=function(){
+var state=this.readyState
+if(state===4){
+src=$xmlhttp.responseText
+exec(src)
+}
+}
+$xmlhttp.open('GET',elt.src,false)
+$xmlhttp.send()
+}else{
 var src=(elt.innerHTML || elt.textContent)
 exec(src)
+}
 }
 else{
 var br_scripts=['brython.js','py_tokenizer.js']
