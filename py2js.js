@@ -1373,8 +1373,27 @@ function brython(debug){
     for(var $i=0;$i<elts.length;$i++){
         var elt = elts[$i]
         if(elt.type=="text/python"){
-            var src = (elt.innerHTML || elt.textContent)
-            exec(src)
+            if(elt.src!==undefined){ 
+                // format <script type="text/python" src="python_script.py">
+                // get source code by an Ajax call
+                if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
+                    var $xmlhttp=new XMLHttpRequest();
+                }else{// code for IE6, IE5
+                    var $xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+                }
+                $xmlhttp.onreadystatechange = function(){
+                        var state = this.readyState
+                        if(state===4){
+                            src = $xmlhttp.responseText
+                            exec(src)
+                        }
+                    }
+                $xmlhttp.open('GET',elt.src,false)
+                $xmlhttp.send()
+            }else{
+                var src = (elt.innerHTML || elt.textContent)
+                exec(src)
+            }
         }
         else{ // get path of brython.js
             var br_scripts = ['brython.js','py_tokenizer.js']

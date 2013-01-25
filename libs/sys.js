@@ -9,5 +9,5 @@ $module = {
         if(attr==="stderr"){document.$stderr=value}
         },
     has_local_storage:typeof(Storage)!=="undefined",
-    version_info:[1,0,"20130123-223708"]
+    version_info:[1,0,"20130125-213952"]
 }
