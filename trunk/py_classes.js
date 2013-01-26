@@ -373,6 +373,8 @@ function input(src){
 
 function int(value){
     if(isinstance(value,int)){return value}
+    else if(value===True){return 1}
+    else if(value===False){return 0}
     else if(typeof value=="number" ||
         (typeof value=="string" && parseInt(value)!=NaN)){
         return parseInt(value)
