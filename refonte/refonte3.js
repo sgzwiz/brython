@@ -11,12 +11,13 @@ var $operators = {
     "not_in":"not_in","is_not":"is_not" // fake
     }
 var $op_weight={
-    '<':0, '<=':0, '>':0, '>=':0, '!=':0, '==':0,
     'or':1,'and':2,
-    '+':3,'-':3,
-    '/':4,'//':4,'%':4,
-    '*':5,
-    '**':6
+    '<':3, '<=':3, '>':3, '>=':3, '!=':3, '==':3,
+    '+':4,
+    '-':5,
+    '/':6,'//':6,'%':6,
+    '*':7,
+    '**':8
     }
 var $augmented_assigns = {
     "//=":"ifloordiv",">>=":"irshift","<<=":"ilshift",
@@ -169,14 +170,12 @@ function $AssignCtx(context){
             var left_items = left.tree[0].tree
         }
         if(left_items===null){return} // no transformation
-        console.log(left_items.length+' left items')
         var right = this.tree[1]
         var right_items = null
         if(right.type==='list'||right.type==='tuple'||
             (right.type==='expr' && right.tree.length>1)){
                 var right_items = right.tree
         }
-        console.log(right_items.length+' right items')
         if(right_items!==null){ // form x,y=a,b
             if(right_items.length>left_items.length){
                 throw Error('ValueError : too many values to unpack (expected '+left_items.length+')')
@@ -243,11 +242,9 @@ function $AssignCtx(context){
                     }else if(tree[tree.length-1].type==='sub'){
                         var item_tree = tree.pop()
                         var item = item_tree.tree[0]
-                        console.log('set item '+tree)
                         var res = left.to_js()+'.__setitem__('
                         tree.push(item_tree)
                         res += item.to_js()+','+right.to_js()+')'
-                        console.log('code for set item '+res)
                         return res
                     }
                 }
@@ -706,7 +703,10 @@ function $ListOrTupleCtx(context,real){
     context.tree.push(this)
     this.to_js = function(){
         if(this.real==='list'){return '['+$to_js(this.tree)+']'}
-        else if(this.real==='tuple'){return 'tuple('+$to_js(this.tree)+')'}
+        else if(this.real==='tuple'){
+            if(this.tree.length===1){return this.tree[0].to_js()}
+            else{return 'tuple('+$to_js(this.tree)+')'}
+        }
     }
 }
 
@@ -750,7 +750,7 @@ function $NotCtx(context){
 function $OpCtx(context,op){ // context is the left operand
     this.type = 'op'
     this.op = op
-    this.toString = function(){return this.tree[0]+this.op+this.tree[1]}
+    this.toString = function(){return '(op '+this.op+')'+this.tree[0]}
     this.parent = context.parent
     this.tree = [context]
     // operation replaces left operand
@@ -833,7 +833,7 @@ function $SubCtx(context){ // subscription or slicing
 function $UnaryCtx(context,op){
     this.type = 'unary'
     this.op = op
-    this.toString = function(){return this.op+'['+this.tree+']'}
+    this.toString = function(){return '(unary) '+this.op+' ['+this.tree+']'}
     this.parent = context
     this.tree = []
     context.tree.push(this)
@@ -888,7 +888,6 @@ function $get_scope(context){
     // null for the script or a def $Node
     var ctx_node = context.parent
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
-    console.log('get scope, node '+ctx_node)
     var tree_node = ctx_node.node
     var scope = null
     while(tree_node.parent.type!=='module'){
@@ -967,7 +966,7 @@ function $transition(context,token){
         }else if(token===')'){return context.parent}
         else if(token==='op'){
             var op=arguments[2]
-            if(op==='-'){return new $UnaryOrOp(context,'-')}
+            if(op==='-'){return new $UnaryCtx(context,'-')}
             else if(op==='+'){return context}
             else{throw Error('SyntaxError')}
         }else{return $transition(context.parent,token)}
@@ -1105,6 +1104,7 @@ function $transition(context,token){
         }else if(token==='for' && context.name==='list'){
             return new $ComprehensionCtx(new $ListCompCtx(context))
         }else if(token==='op'){
+            // handle operator precedence
             var op_parent=context.parent,op=arguments[2]
             while(op_parent.type==='op'){
                 if($op_weight[op_parent.op]>$op_weight[op]){
@@ -1292,21 +1292,9 @@ function $transition(context,token){
     
         if($expr_starters.indexOf(token)>-1){
             return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
-        }else if(token==='int'){
-            new $IntCtx(context,arguments[2]) // adds itself to obj tree
-            return context.parent
-        }else if(token==='float'){
-            new $FloatCtx(context,arguments[2])
-            return context.parent
-        }else if(token==='str'){
-            new $StringCtx(context,arguments[2])
-            return context.parent
-        }else if(token==='id'){
-            new $IdCtx(context,arguments[2])
-            return context.parent
-        }else if([']',')','}',':',',','eol'].indexOf(token)>-1){
-            return $transition(context.parent,token)
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+        }else if(token==='op' && '+-'.search(arguments[2])>-1){
+            return new $UnaryCtx(context,arguments[2])
+        }else{return $transition(context.parent,token)}
 
     }else if(context.type==='parent_class'){
 
@@ -1360,13 +1348,13 @@ function $transition(context,token){
             context.parent.tree.pop()
             var value = arguments[2]
             if(context.op==='-'){value=-value}
-            return $transition(new $AbstractExprCtx(context.parent,true),token,value)
+            return $transition(context.parent,token,value)
         }else if(token==='id'){
             // replace by -1*x, or remove
             context.parent.tree.pop()
             if(context.op==='-'){
                 var int_expr = new $IntCtx(context.parent,-1)
-                return $transition($OpCtx(int_expr,'-'),token,arguments[2])
+                return $transition(new $OpCtx(int_expr,'*'),token,arguments[2])
             }else{
                 return $transition(context.parent,token,arguments[2])
             }
@@ -1466,6 +1454,7 @@ function $tokenize(src,module){
             if(src.charAt(pos)=='\n'){pos++;lnum++;indent=null;continue}
             new_node.indent = indent
             new_node.line_num = lnum
+            console.log('LINE '+lnum)
             // attach new node to node with indentation immediately smaller
             if(indent>current.indent){
                 // control that parent ended with ':'
