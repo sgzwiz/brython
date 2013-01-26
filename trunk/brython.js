@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130125-213952
+// version 1.0.20130126-094636
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -188,6 +188,7 @@ res.push([i,iterator.__item__(i)])
 return res
 }
 function $eval(src){
+if(src===""){$raise('SyntaxError',"unexpected EOF while parsing")}
 try{return eval($py2js(src).to_js())}
 catch(err){
 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
@@ -313,6 +314,8 @@ return prompt(src)
 }
 function int(value){
 if(isinstance(value,int)){return value}
+else if(value===True){return 1}
+else if(value===False){return 0}
 else if(typeof value=="number" ||
 (typeof value=="string" && parseInt(value)!=NaN)){
 return parseInt(value)
@@ -907,6 +910,8 @@ if(items[i]!==undefined){res.push(items[i])}
 return res
 }
 }
+}else if(isinstance(arg,bool)){
+return this.__getitem__(int(arg))
 }else{
 $raise('TypeError','list indices must be integer, not '+str(arg.__class__))
 }
@@ -1176,6 +1181,8 @@ res +=this.charAt(i)
 }
 }
 return res
+}else if(isinstance(arg,bool)){
+return this.__getitem__(int(arg))
 }
 }
 String.prototype.__in__=function(item){return item.__contains__(this.valueOf())}
@@ -1761,7 +1768,7 @@ s=new Stack(expr)
 seq +='"'+s.to_js()+'",'
 if(cond.length>0){
 var c_start=cond[0][2]
-var c_end=stack.list[end][2]-1
+var c_end=stack.list[end][2]
 var c_src=src.slice(c_start,c_end)
 seq +='"'+c_src.replace(qesc,'\\"')+'",['
 }else{seq +='"",['}
@@ -2690,7 +2697,7 @@ br_pos=stack.find_previous(pos,'bracket','[')
 if(br_pos==null){break}
 if(br_pos==0){break}
 var previous=stack.list[br_pos-1]
-if(['id','qualifier','keyword','bracket'].indexOf(previous[0])==-1){pos=br_pos-1;continue}
+if(['id','qualifier','keyword','bracket','str'].indexOf(previous[0])==-1){pos=br_pos-1;continue}
 src_pos=stack.list[br_pos][2]
 var end=stack.find_next_matching(br_pos)
 var args=stack.list.slice(br_pos+1,end)
@@ -2808,7 +2815,7 @@ var elts=document.getElementsByTagName("script")
 for(var $i=0;$i<elts.length;$i++){
 var elt=elts[$i]
 if(elt.type=="text/python"){
-if(elt.src!==undefined){
+if(elt.src!==''){
 if(window.XMLHttpRequest){
 var $xmlhttp=new XMLHttpRequest()
 }else{
@@ -3601,7 +3608,7 @@ if(src.charAt(i)=='\n'){lnum+=1}
 }
 var line_num=pos2line[pos]
 var lines=src.split('\n')
-msg +="\nmodule '"+module+"' line "+line_num
+msg=name+': '+msg+"\nmodule '"+module+"' line "+line_num
 msg +='\n'+lines[line_num-1]
 err=new Error()
 err.name=name
