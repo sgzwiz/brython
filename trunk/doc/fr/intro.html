@@ -12,13 +12,12 @@
 <table>
 <tr>
 <td>
-CODE<br>
-<pre>&lt;html&gt;
+<pre style="border-style:solid;border-width:1;margin:10px;padding:5px;">&lt;html&gt;
 &lt;head&gt;
-&lt;script src="/brython.js"&gt;&lt;/script&gt;
+<span style="color:blue">&lt;script src="/brython.js"&gt;&lt;/script&gt;</span>
 &lt;/head&gt;
-&lt;body onLoad="brython()"&gt;
-&lt;script type="text/python"&gt;
+&lt;body <span style="color:blue">onload="brython()"</span>&gt;
+&lt;script <span style="color:blue">type="text/python"</span>&gt;
 def echo():
     alert(doc["zone"].value)
 &lt;/script&gt;
@@ -40,6 +39,25 @@ def echo():
 </table>
 
 <p>Pour faire fonctionner les scripts Python, il suffit d'importer le script <em>brython.js</em>, et d'exécuter la fonction <code>brython()</code> quand la page est chargée (attribut <tt>onload</tt> de la balise &lt;BODY&gt;). En phase de développement, on peut passer un argument à cette fonction : 1 pour avoir les messages d'erreur dans la console du navigateur, 2 pour avoir en plus le code Javascript généré
+
+<p>Si le programme Python est volumineux, une autre possibilité est de l'écrire dans un fichier séparé, et de le charger dans la page en utilisant l'attribut <tt>scr</tt> de la balise <tt>script</tt> :
+
+<p><table><tr><td>
+<pre style="border-style:solid;border-width:1;margin:10px;padding:5px;">&lt;html&gt;
+&lt;head&gt;
+<span style="color:blue">&lt;script src="/brython.js"&gt;&lt;/script&gt;</span>
+&lt;/head&gt;
+&lt;body <span style="color:blue">onload="brython()"</span>&gt;
+<span style="color:blue">&lt;script type="text/python" <b>src="test.py"</b>&gt;&lt;/script&gt;</span>
+&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+</td></tr></table>
+
+<p>Attention, dans ce deuxième cas le script Python est récupéré par un appel Ajax : il doit donc se trouver dans le même domaine que la page HTML
+
 <p>Quand on clique sur le bouton, la fonction <code>echo()</code> définie dans le script Python est exécutée. Cette fonction récupère la valeur de l'élément INPUT par son id <tt>zone</tt>, en utilisant la syntaxe <code>doc["zone"]</code> au lieu de <code>document.getElementById("zone")</code> en Javascript : <code>doc</code> est un mot-clé de Brython, il se comporte comme un dictionnaire indexé par les id des éléments DOM. <code>doc["zone"]</code> est un objet correspondant à l'élément INPUT ; on accède à la valeur par l'attribut <tt>value</tt>
 <p>L'affichage est réalisé par une fonction intégrée de Brython, <code>alert()</code>, qui se comporte comme la fonction du même nom en Javascript
 
