@@ -1,0 +1,48 @@
+<html>
+<head>
+<title>Brython</title>
+<meta http-equiv="content-type" content="text/html;charset=utf-8">
+<link rel="stylesheet" href="../doc_brython.css">
+<script src="../../brython.js"></script>
+</head>
+<body onload="brython()">
+
+<a name="intro">El objetivo de Brython es utilizar Python como lenguaje de script para los navegadores de la red, en vez de Javascript
+<p>Un ejemplo sencillo :
+<table>
+<tr>
+<td>
+CODE<br>
+<pre>&lt;html&gt;
+&lt;head&gt;
+&lt;script src="/brython.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body onLoad="brython()"&gt;
+&lt;script type="text/python"&gt;
+def echo():
+    alert(doc["zona"].value)
+&lt;/script&gt;
+&lt;input id="zona"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td>
+<td>
+TEST<p>
+<script type="text/python">
+def echo():
+    alert(doc["zona"].value)
+</script>
+
+<input id="zona"><button onclick="echo()">clic !</button>
+</td>
+</tr>
+</table>
+
+<p>Para ejecutar los scripts Python, solo se requiere el script <em>brython.js</em>, y una llamada de la función <code>brython()</code> cuando se carga la pagina (atributo <tt>onload</tt> de la etiqueta &lt;BODY&gt;)
+<p>Al hacer un clic en el botón, ejecutara la función <code>echo()</code> que definimos en el código Python. Esta función provee el valor del elemento INPUT por medio de su id (identidad) <tt>zone</tt>, con la sintaxis <code>doc["zone"]</code> en vez de <code>document.getElementById("zone")</code> en Javascript : <code>doc</code> es una palabra clave de Brython, de manera similar a un diccionario indexado por id de los elementos DOM. Así que <code>doc["zona"]</code> es un objeto que corresponde al elemento INPUT y se puede acceder al valor por el atributo <tt>value</tt>
+<p>Se visualiza el resultado por medio de una función integrada de Brython, <code>alert()</code>, que se comporta como la función del mismo nombre en Javascript
+
+
+</body>
+</html>
