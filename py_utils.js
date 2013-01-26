@@ -155,7 +155,7 @@ function $src_error(name,module,msg,pos) {
     }
     var line_num = pos2line[pos]
     var lines = src.split('\n')
-    msg += "\nmodule '"+module+"' line "+line_num
+    msg = name+': '+msg+"\nmodule '"+module+"' line "+line_num
     msg += '\n'+lines[line_num-1]
     err = new Error()
     err.name = name
