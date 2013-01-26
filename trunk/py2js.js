@@ -1240,7 +1240,7 @@ function $py2js(src,module){
         if(br_pos==null){break}
         if(br_pos==0){break}
         var previous = stack.list[br_pos-1]
-        if(['id','qualifier','keyword','bracket'].indexOf(previous[0])==-1){pos=br_pos-1;continue}
+        if(['id','qualifier','keyword','bracket','str'].indexOf(previous[0])==-1){pos=br_pos-1;continue}
         src_pos = stack.list[br_pos][2]
         var end = stack.find_next_matching(br_pos)
         
