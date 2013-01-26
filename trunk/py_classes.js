@@ -224,6 +224,7 @@ function enumerate(iterator){
 }
 
 function $eval(src){
+    if(src===""){$raise('SyntaxError',"unexpected EOF while parsing")}
     try{return eval($py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){$raise('ExecutionError',err.message)}
