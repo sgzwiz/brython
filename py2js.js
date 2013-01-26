@@ -1373,7 +1373,7 @@ function brython(debug){
     for(var $i=0;$i<elts.length;$i++){
         var elt = elts[$i]
         if(elt.type=="text/python"){
-            if(elt.src!==undefined){ 
+            if(elt.src!==''){ 
                 // format <script type="text/python" src="python_script.py">
                 // get source code by an Ajax call
                 if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
