@@ -12,17 +12,17 @@
 <table>
 <tr>
 <td>
-CODE<br>
+<pre style="border-style:solid;border-width:1;margin:10px;padding:5px;">&lt;html&gt;
 <pre>&lt;html&gt;
 &lt;head&gt;
-&lt;script src="/brython.js"&gt;&lt;/script&gt;
+<span style="color:blue">&lt;script src="/brython.js"&gt;&lt;/script&gt;</span>
 &lt;/head&gt;
-&lt;body onLoad="brython()"&gt;
-&lt;script type="text/python"&gt;
+&lt;body <span style="color:blue">onload="brython()"</span>&gt;
+&lt;script <span style="color:blue">type="text/python"</span>&gt;
 def echo():
     alert(doc["zone"].value)
 &lt;/script&gt;
-&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;click !&lt;/button&gt;
 &lt;/body&gt;
 &lt;/html&gt;
 </pre>
@@ -34,13 +34,31 @@ def echo():
     alert(doc["zone"].value)
 </script>
 
-<input id="zone"><button onclick="echo()">clic !</button>
+<input id="zone"><button onclick="echo()">click !</button>
 </td>
 </tr>
 </table>
 
 <p>In order for the Python script to be processed, it is necessary to include <em>brython.js</em> and to run the <code>brython()</code> function upon page load (using the <tt>onload</tt> attribute of the &lt;BODY&gt; tag). While in the development phase, it is possible to pass an argument to the brython() function: 1 to have the error messages displayed to the web browser console, 2 to also get the Javascript code displayed along with the error
-<p>In the above code, when we click on the button, the onclick event calls and run the <code>echo()</code> function, which was defined in the Python script. This function gets the value of the INPUT element, through its id (<tt>zone</tt>). This is accomplished by the syntax <code>doc["zone"]</code> instead of the Javascript equivalent of <code>document.getElementById("zone")</code>  : <code>doc</code> is a keyword in Brython, which behaves just like a dictionary whose keys are the ids of the elements of the DOM. Hence, in our example, <code>doc["zone"]</code> is an object that maps to the INPUT element ; the <tt>value</tt> property holds, interestingly enough, the value of the object
+<p>If the Python program is large, another option is to write it in a separate file, and to load it using the <tt>src</tt> attribute of the <tt>script</tt> tag :
+
+<p><table><tr><td>
+<pre style="border-style:solid;border-width:1;margin:10px;padding:5px;">&lt;html&gt;
+&lt;head&gt;
+<span style="color:blue">&lt;script src="/brython.js"&gt;&lt;/script&gt;</span>
+&lt;/head&gt;
+&lt;body <span style="color:blue">onload="brython()"</span>&gt;
+<span style="color:blue">&lt;script type="text/python" <b>src="test.py"</b>&gt;&lt;/script&gt;</span>
+&lt;input id="zone"&gt;&lt;button onclick="echo()"&gt;clic !&lt;/button&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+
+</td></tr></table>
+
+<p>Please note that in this case the Python script will be loaded through an Ajax call : it must be in the same domain as the HTML page
+
+<p>In the above two examples of code, when we click on the button, the onclick event calls and run the <code>echo()</code> function, which was defined in the Python script. This function gets the value of the INPUT element, through its id (<tt>zone</tt>). This is accomplished by the syntax <code>doc["zone"]</code> instead of the Javascript equivalent of <code>document.getElementById("zone")</code>  : <code>doc</code> is a keyword in Brython, which behaves just like a dictionary whose keys are the ids of the elements of the DOM. Hence, in our example, <code>doc["zone"]</code> is an object that maps to the INPUT element ; the <tt>value</tt> property holds, interestingly enough, the value of the object
 <p>In Brython, the output can be accomplished in various ways, including with the <code>alert()</code> built-in function. It works in the exact same way as the function of the same name in Javascript.
 
 
