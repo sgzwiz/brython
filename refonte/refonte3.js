@@ -7,16 +7,30 @@ var $operators = {
     "/":"truediv","%":"mod","&":"and","|":"or",
     "^":"pow","<":"lt",">":"gt",
     "<=":"le",">=":"ge","==":"eq","!=":"ne",
-    //"or":"or","and":"and","in":"in","not":"not",
+    "or":"or","and":"and", //"in":"in","not":"not",
     "not_in":"not_in","is_not":"is_not" // fake
     }
-var $op_weight={'+':1,'-':1,'*':2,'/':2,'/:':2,'%':2}
+var $op_weight={
+    '<':0, '<=':0, '>':0, '>=':0, '!=':0, '==':0,
+    'or':1,'and':2,
+    '+':3,'-':3,
+    '/':4,'//':4,'%':4,
+    '*':5,
+    '**':6
+    }
 var $augmented_assigns = {
     "//=":"ifloordiv",">>=":"irshift","<<=":"ilshift",
     "**=":"ipow","+=":"iadd","-=":"isub","*=":"imul","/=":"itruediv",
     "%=":"imod","^=":"ipow"
 }
 
+function $_SyntaxError(context,msg){
+    var ctx_node = context.parent
+    while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
+    var tree_node = ctx_node.node
+    console.log('error line '+tree_node.line_num+' : '+msg)
+    throw Error('SyntaxError line '+tree_node.line_num+' : '+msg)
+}
 var $first_op_letter = {}
 for(op in $operators){$first_op_letter[op.charAt(0)]=0}
 
@@ -149,20 +163,20 @@ function $AssignCtx(context){
         // rank is the rank of this line in node
         var left = this.tree[0]
         var left_items = null
-        console.log('left '+left.type+' '+left.tree.length)
         if(left.type==='expr' && left.tree.length>1){
             var left_items = left.tree
         }else if(left.type==='expr' && left.tree[0].type==='list_or_tuple'){
             var left_items = left.tree[0].tree
         }
         if(left_items===null){return} // no transformation
-        console.log('left item '+left.tree)
+        console.log(left_items.length+' left items')
         var right = this.tree[1]
         var right_items = null
         if(right.type==='list'||right.type==='tuple'||
             (right.type==='expr' && right.tree.length>1)){
                 var right_items = right.tree
         }
+        console.log(right_items.length+' right items')
         if(right_items!==null){ // form x,y=a,b
             if(right_items.length>left_items.length){
                 throw Error('ValueError : too many values to unpack (expected '+left_items.length+')')
@@ -185,12 +199,13 @@ function $AssignCtx(context){
                 var context = new $NodeCtx(new_node) // create ordinary node
                 left_items[i].parent = context
                 var assign = new $AssignCtx(left_items[i]) // assignment to left operand
+                console.log('assign parent is '+assign.parent)
                 assign.tree[1] = new $JSCode('$temp'+$loop_num+'['+i+']')
                 new_nodes.push(new_node)
             }
             node.parent.children.splice(rank,1) // remove original line
             for(var i=new_nodes.length-1;i>=0;i--){
-                node.parent.children.splice(rank,0,new_nodes[i])
+                node.parent.insert(rank,new_nodes[i])
             }
             $loop_num++
         }else{ // form x,y=a
@@ -231,7 +246,9 @@ function $AssignCtx(context){
                         console.log('set item '+tree)
                         var res = left.to_js()+'.__setitem__('
                         tree.push(item_tree)
-                        return res+item.to_js()+','+right.to_js()+')'
+                        res += item.to_js()+','+right.to_js()+')'
+                        console.log('code for set item '+res)
+                        return res
                     }
                 }
             }
@@ -476,9 +493,10 @@ function $DictOrSetCtx(context){
         if(this.real==='dict'){
             var res = 'dict(['
             for(var i=0;i<this.tree.length;i+=2){
-                res+='['+this.tree[i].to_js()+','+this.tree[i+1].to_js()+'],'
+                res+='['+this.tree[i].to_js()+','+this.tree[i+1].to_js()+']'
+                if(i<this.tree.length-1){res+=','}
             }
-            return res.substr(0,res.length-1)+'])'
+            return res+'])'
         }else{return 'set('+$to_js(this.tree)+')'}
     }
 }
@@ -560,7 +578,6 @@ function $ForExpr(context){
         var context = new $NodeCtx(new_node) // create ordinary node
         var target_expr = new $ExprCtx(context,'left',true)
         target_expr.tree = target.tree
-        console.log('for target '+target_expr)
         var assign = new $AssignCtx(target_expr) // assignment to left operand
         assign.tree[1] = new $JSCode('$iter'+$loop_num+'[$i'+$loop_num+']')
         // set new loop children
@@ -735,15 +752,24 @@ function $OpCtx(context,op){ // context is the left operand
     this.op = op
     this.toString = function(){return this.tree[0]+this.op+this.tree[1]}
     this.parent = context.parent
-    console.log('op parent '+context.parent.type)
     this.tree = [context]
     // operation replaces left operand
     context.parent.tree.pop()
     context.parent.tree.push(this)
     this.to_js = function(){
-        var res = this.tree[0].to_js()
-        res += '.__'+$operators[this.op]+'__('+this.tree[1].to_js()+')'
-        return res
+        if(this.op==='and'){
+            var res ='$test_expr($test_item('+this.tree[0].to_js()+')&&'
+            res += '$test_item('+this.tree[1].to_js()+'))'
+            return res
+        }else if(this.op==='or'){
+            var res ='$test_expr($test_item('+this.tree[0].to_js()+')||'
+            res += '$test_item('+this.tree[1].to_js()+'))'
+            return res
+        }else{
+            var res = this.tree[0].to_js()
+            res += '.__'+$operators[this.op]+'__('+this.tree[1].to_js()+')'
+            return res
+        }
     }
 }
 
@@ -818,6 +844,35 @@ function $UnaryCtx(context,op){
 var $loop_num = 0
 var $iter_num = 0 
 
+function $add_line_num(node,rank,module){
+    if(node.type==='module'){
+        var i=0
+        while(i<node.children.length){
+            i += $add_line_num(node.children[i],i,module)
+        }
+    }else{
+        var elt=node.context.tree[0],offset=1
+        var flag = true
+        // ignore lines added in transform()
+        if(node.line_num===undefined){flag=false}
+        // don't add line num before try,finally,else,elif
+        if(elt.type==='condition' && elt.token==='elif'){flag=false}
+        else if(elt.type==='single_kw'){flag=false}
+        if(flag){
+            js = 'document.$line_info=['+node.line_num+',"'+module+'"]'
+            var new_node = new $Node('expression')
+            new $NodeJSCtx(new_node,js)
+            node.parent.insert(rank,new_node)
+            offset = 2
+        }
+        var i=0
+        while(i<node.children.length){
+            i += $add_line_num(node.children[i],i,module)
+        }
+        return offset
+    }
+}
+
 function $augmented_assign(context,op){
     // in "foo += bar" context = foo, op = +
     var assign = new $AssignCtx(context)
@@ -825,7 +880,6 @@ function $augmented_assign(context,op){
     assign.tree.push(new_op)
     context.parent.tree.pop()
     context.parent.tree.push(assign)
-    console.log('aug assign, parent '+context.parent)
     return new_op
 }
 
@@ -834,6 +888,7 @@ function $get_scope(context){
     // null for the script or a def $Node
     var ctx_node = context.parent
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
+    console.log('get scope, node '+ctx_node)
     var tree_node = ctx_node.node
     var scope = null
     while(tree_node.parent.type!=='module'){
@@ -867,7 +922,7 @@ function $to_js(tree,sep){
 var $expr_starters = ['id','int','float','str','[','(','{','not']
 
 function $transition(context,token){
-    //console.log('transition '+context+' token '+token)
+    console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
@@ -891,7 +946,7 @@ function $transition(context,token){
     }else if(context.type==='assign'){
     
         if(token==='eol'){return $transition(context.parent,'eol')}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='attribute'){ 
 
@@ -1050,19 +1105,16 @@ function $transition(context,token){
         }else if(token==='for' && context.name==='list'){
             return new $ComprehensionCtx(new $ListCompCtx(context))
         }else if(token==='op'){
-            if(context.parent.type==='op'){
-                var op2=arguments[2],op1=context.parent.op
-                if($op_weight[op1]>$op_weight[op2]){
-                    // change operator order
-                    console.log('change op order')
-                    var _op = context.parent
-                    var new_op = new $OpCtx(_op,op2)
-                    return new $ExprCtx(new_op,'op',false)
-                }else{console.log('no change')}
+            var op_parent=context.parent,op=arguments[2]
+            while(op_parent.type==='op'){
+                if($op_weight[op_parent.op]>$op_weight[op]){
+                    context = op_parent
+                    op_parent = op_parent.parent
+                }else{break}
             }
-            return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
+            var new_op = new $OpCtx(context,op)
+            return new $AbstractExprCtx(new_op,false)
         }else if(token==='augm_assign'){
-            console.log('augm assignment')
             return $augmented_assign(context,arguments[2])
         }else if(token==='not'){return new $NotCtx(context)}
         else if(token==='='){
@@ -1141,8 +1193,8 @@ function $transition(context,token){
         else if(token==='='){
             if(context.parent.type==='expr' &&
                 context.parent.parent !== undefined &&
-                context.parent.parent.type ==='call'){
-                    return new $AbstractExprCtx(new $KwArgCtx(context),false)
+                context.parent.parent.type ==='call_arg'){
+                    return new $AbstractExprCtx(new $KwArgCtx(context.parent),false)
             }else{return $transition(context.parent,token,arguments[2])}             
         }else if(token==='op'){return $transition(context.parent,token,arguments[2])}
         else{return $transition(context.parent,token,arguments[2])}
@@ -1338,7 +1390,8 @@ function $py2js(src,module){
     var root = $tokenize(src,module)
     console.log('root ok')
     root.transform()
-    console.log('transform ok')
+    console.log('transform ok '+module+' '+document.$debug)
+    if(document.$debug>0){$add_line_num(root,null,module)}
     return root
 }
 
@@ -1354,8 +1407,9 @@ function $tokenize(src,module){
         "for","lambda","try","finally","raise","def","from",
         "nonlocal","while","del","global","with",
         "as","elif","else","if","yield","assert","import",
-        "except","raise","in","or","and","not",
+        "except","raise","in","not",
         //"False","None","True","break","pass","continue",
+        // "and',"or"
         ]
     var unsupported = ["is","from","nonlocal","with","yield"]
     // causes errors for some browsers
@@ -1522,6 +1576,7 @@ function $tokenize(src,module){
                     context = $transition(context,name)
                     tokens.push(["keyword",name,pos-name.length])
                 } else if(name in $operators) { // and, or
+                    context = $transition(context,'op',name)
                     tokens.push(["operator",name,pos-name.length])
                 } else {
                     if(forbidden.indexOf(name)>-1){name='$$'+name}
@@ -1662,7 +1717,9 @@ function brython(debug){
         if(elt.type=="text/python"){
             var src = (elt.innerHTML || elt.textContent)
             var root = $py2js(src,'__main__')
-            eval(root.to_js())
+            var js = root.to_js()
+            if(debug===2){console.log(js)}
+            eval(js)
         }
         else{ // get path of brython.js
             var br_scripts = ['brython.js','py_classes.js']
