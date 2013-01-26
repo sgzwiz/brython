@@ -113,6 +113,8 @@ String.prototype.__getitem__ = function(arg){
             }
         }            
         return res
+    } else if(isinstance(arg,bool)){
+        return this.__getitem__(int(arg))
     }
 }
 
