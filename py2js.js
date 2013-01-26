@@ -174,7 +174,7 @@ function $py2js(src,module){
         seq += '"'+s.to_js()+'",'
         if(cond.length>0){
             var c_start = cond[0][2]
-            var c_end = stack.list[end][2]-1
+            var c_end = stack.list[end][2]
             var c_src = src.slice(c_start,c_end)
             seq += '"'+c_src.replace(qesc,'\\"')+'",['
         }else{seq += '"",['}
