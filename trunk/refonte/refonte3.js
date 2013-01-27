@@ -10,6 +10,7 @@ var $operators = {
     "or":"or","and":"and", //"in":"in","not":"not",
     "not_in":"not_in","is_not":"is_not" // fake
     }
+// operators weight for precedence
 var $op_weight={
     'or':1,'and':2,
     '<':3, '<=':3, '>':3, '>=':3, '!=':3, '==':3,
@@ -333,13 +334,37 @@ function $ClassCtx(context){
     }
 }
 
+function $CompIfCtx(context){
+    this.type = 'comp_if'
+    this.parent = context
+    this.tree = []
+    context.tree.push(this)
+    this.toString = function(){return '(comp if) '+this.tree}
+}
+
 function $ComprehensionCtx(context){
     this.type = 'comprehension'
     this.parent = context
     this.tree = []
-    this.expect = 'target'
     context.tree.push(this)
-    this.toString = function(){return 'comprehension target '+this.target+' iterable '+this.tree}
+    this.toString = function(){return 'comprehension, expression '+this.expression+' '+this.tree}
+}
+
+function $CompForCtx(context){
+    this.type = 'comp_for'
+    this.parent = context
+    this.tree = []
+    this.expect = 'in'
+    context.tree.push(this)
+    this.toString = function(){return '(comp for) '+this.tree}
+}
+
+function $CompIterableCtx(context){
+    this.type = 'comp_iterable'
+    this.parent = context
+    this.tree = []
+    context.tree.push(this)
+    this.toString = function(){return '(comp iterable) '+this.tree}
 }
 
 function $ConditionCtx(context,token){
@@ -750,7 +775,7 @@ function $NotCtx(context){
 function $OpCtx(context,op){ // context is the left operand
     this.type = 'op'
     this.op = op
-    this.toString = function(){return '(op '+this.op+')'+this.tree[0]}
+    this.toString = function(){return '(op '+this.op+')'+this.tree}
     this.parent = context.parent
     this.tree = [context]
     // operation replaces left operand
@@ -828,6 +853,15 @@ function $SubCtx(context){ // subscription or slicing
     this.tree = []
     context.tree.push(this)
     this.to_js = function(){return '.__'+this.func+'__('+$to_js(this.tree)+')'}
+}
+
+function $TargetListCtx(context){
+    this.type = 'target_list'
+    this.parent = context
+    this.tree = []
+    this.expect = 'id'
+    context.tree.push(this)
+    this.toString = function(){return '(target list) '+this.tree}
 }
 
 function $UnaryCtx(context,op){
@@ -1002,22 +1036,28 @@ function $transition(context,token){
         }else if(token===':' && context.expect==='(:'){return context.parent}
         else{throw Error('SyntaxError : token '+token+' after '+context)}
 
-    }else if(context.type==='comprehension'){
-        if(token==='id' && context.expect==='target'){
-            new $IdCtx(context,arguments[2])
-            context.expect = ','
-            return context
-        }else if(token===',' && context.expect===','){context.expect='target'}
-        else if(token==='in' && context.expect===','){
-            context.target = context.tree
-            context.tree = []
-            context.has_comp = true
-            return new $ExprCtx(context,'iterable',true)
-        }else if(token==='if' && context.has_comp){
-            return new $ConditionExpr(context)
-        }else if(token===']' && context.has_comp){
-            return $transition(context.parent,token)
+    }else if(context.type==='comp_if'){
+
+        return $transition(context.parent,token,arguments[2])
+
+    }else if(context.type==='comp_for'){
+
+        if(token==='in' && context.expect==='in'){
+            context.expect = null
+            return new $AbstractExprCtx(new $CompIterableCtx(context),true)
+        }else if(context.expect===null){
+            return $transition(context.parent,token,arguments[2])
         }else{throw Error('SyntaxError : token '+token+' after '+context)}
+
+    }else if(context.type==='comp_iterable'){
+
+        return $transition(context.parent,token,arguments[2])
+
+    }else if(context.type==='comprehension'){
+        if(token===']'){return context}
+        else if(token==='if'){return new $AbstractExprCtx(new $CompIfCtx(context),false)}
+        else if(token==='for'){return new $TargetListCtx(new $CompForCtx(context))}
+        else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='condition'){
 
@@ -1129,12 +1169,6 @@ function $transition(context,token){
         else if(token===':'){return context.parent}
         else{throw Error('SyntaxError : token '+token+' after '+context)}
 
-    }else if(context.type==='for_target'){
-    
-        if(token==='id'){new $IdCtx(context,arguments[2]);return context}
-        else if(token===','){return context}
-        else{return $transition(context.parent,token)}
-
     }else if(context.type==='func_arg_id'){
     
         if(token==='=' && context.expect==='='){
@@ -1216,7 +1250,7 @@ function $transition(context,token){
         else{throw Error('SyntaxError : token '+token+' after '+context)}
 
     }else if(context.type==='list_or_tuple'){ 
-
+        console.log('list expect '+context.expect+' token '+token)
         if(context.closed){
             if(token==='['){return new $SubCtx(context)}
             else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
@@ -1235,6 +1269,11 @@ function $transition(context,token){
                 }else if(token===','){
                     context.expect = 'id'
                     return context
+                }else if(token==='for'){
+                    // comprehension
+                    var comp = new $ComprehensionCtx(context.parent)
+                    comp.expression = context.tree
+                    return new $TargetListCtx(new $CompForCtx(comp))
                 }else{throw Error('SyntaxError : token '+token+' after '+context)}   
             }else if(context.expect==='id'){
                 if(context.real==='tuple' && token===')'){ // empty tuple
@@ -1265,7 +1304,7 @@ function $transition(context,token){
             return $transition(expr,token,arguments[2])
         }else if(token==='class'){return new $ClassCtx(context)}
         else if(token==='def'){return new $DefCtx(context)}
-        else if(token==='for'){return new $ForTarget(new $ForExpr(context))}
+        else if(token==='for'){return new $TargetListCtx(new $ForExpr(context))}
         else if(['if','elif','while'].indexOf(token)>-1){
             return new $ExprCtx(new $ConditionCtx(context,token),'condition',false)
         }else if(['else','try','finally'].indexOf(token)>-1){
@@ -1340,6 +1379,18 @@ function $transition(context,token){
             return $transition(expr,token,arguments[2])
         }else if(token===']'){return context.parent}
         else if(token===':'){new $IdCtx(context,':');return context}
+        else{throw Error('SyntaxError : token '+token+' after '+context)}
+
+    }else if(context.type==='target_list'){
+    
+        if(token==='id' && context.expect==='id'){
+            context.expect = ','
+            new $IdCtx(context,arguments[2])
+            return context
+        }else if(token===',' && context.expect==','){
+            context.expect='id'
+            return context
+        }else if(context.expect===','){return $transition(context.parent,token,arguments[2])}
         else{throw Error('SyntaxError : token '+token+' after '+context)}
 
     }else if(context.type==='unary'){
@@ -1609,7 +1660,6 @@ function $tokenize(src,module){
                 // implicit line joining inside brackets
                 pos++;continue
             } else {
-                
                 if(tokens.length>0){ // ignore empty lines
                     context = $transition(context,'eol')
                     current.tokens = tokens
