@@ -537,6 +537,7 @@ function $ExprCtx(context,name,with_commas){
     this.name = name
     // allow expression with comma-separted values, or a single value ?
     this.with_commas = with_commas
+    this.expect = null // can be null or ','
     this.parent = context
     this.tree = []
     context.tree.push(this)
@@ -1137,12 +1138,11 @@ function $transition(context,token){
         else if(token==='('){return new $ListOrTupleCtx(context,'tuple')}
         else if(token==='['){return new $ListOrTupleCtx(context,'list')}
         else if(token==='{'){return new $DictOrSet(context)}
+        else if(token==='not'){return new $NotCtx(context)}
         else if(token===','){
             if(context.with_commas){
                 return context
             }else{return $transition(context.parent,token)}
-        }else if(token==='for' && context.name==='list'){
-            return new $ComprehensionCtx(new $ListCompCtx(context))
         }else if(token==='op'){
             // handle operator precedence
             var op_parent=context.parent,op=arguments[2]
@@ -1156,8 +1156,7 @@ function $transition(context,token){
             return new $AbstractExprCtx(new_op,false)
         }else if(token==='augm_assign'){
             return $augmented_assign(context,arguments[2])
-        }else if(token==='not'){return new $NotCtx(context)}
-        else if(token==='='){
+        }else if(token==='='){
             if(context.parent.type==="call_arg"){
                 return new $AbstractExprCtx(new $KwArgCtx(context),true)
             }else{return new $AbstractExprCtx(new $AssignCtx(context),true)}
@@ -1206,7 +1205,7 @@ function $transition(context,token){
         }else{throw Error('SyntaxError : token '+token+' after '+context)}
 
     }else if(context.type==='global'){
-        console.log('global expects '+context.expect)
+
         if(token==='id' && context.expect==='id'){
             new $IdCtx(context,arguments[2])
             context.expect=','
@@ -1250,7 +1249,7 @@ function $transition(context,token){
         else{throw Error('SyntaxError : token '+token+' after '+context)}
 
     }else if(context.type==='list_or_tuple'){ 
-        console.log('list expect '+context.expect+' token '+token)
+
         if(context.closed){
             if(token==='['){return new $SubCtx(context)}
             else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
@@ -1366,7 +1365,7 @@ function $transition(context,token){
 
     }else if(context.type==='str'){
     
-        if(token=='str'){return new $StringCtx(context.parent,context.value+value)}
+        if(token=='str'){context.value += arguments[2];return context}
         else if(token==='['){return new $SubCtx(context)}
         else if(token==='.'){return new $AttrCtx(context)}
         else{return $transition(context.parent,token,arguments[2])}
@@ -1666,7 +1665,7 @@ function $tokenize(src,module){
                     tokens = []
                     indent=null
                     new_node = new $Node()
-                }
+                }else{console.log('empty LINE')}
                 pos++;continue
             }
         }
