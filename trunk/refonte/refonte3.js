@@ -26,11 +26,44 @@ var $augmented_assigns = {
     "%=":"imod","^=":"ipow"
 }
 
+function $list_comp1(){
+    var $env = arguments[0]
+    for(var $arg in $env){
+        eval("var "+$arg+'=$env["'+$arg+'"]')
+    }
+    var $py = "res=[]\n"
+    var indent=0
+    for(var i=2;i<arguments.length;i++){
+        for(var j=0;j<indent;j++){$py += ' '}
+        $py += arguments[i]+':\n'
+        indent += 4
+    }
+    for(var j=0;j<indent;j++){$py += ' '}
+    $py += 'res.append('+arguments[1]+')'
+    var $js = $py2js($py).to_js()
+    alert($js)
+    eval($js)
+    return res    
+}
+
 function $_SyntaxError(context,msg){
     var ctx_node = context.parent
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
     var tree_node = ctx_node.node
-    console.log('error line '+tree_node.line_num+' : '+msg)
+    var module = tree_node.module
+
+    var src = document.$py_src[tree_node.module]
+    var line_pos = {1:0}
+    var lnum=1
+    for(var i=0;i<src.length;i++){
+        if(src.charAt(i)=='\n'){lnum+=1;line_pos[lnum]=i}
+    }
+    
+    var lines = src.split('\n')
+    var line_num = tree_node.line_num
+    var line = lines[line_num-1]
+    console.log('error line '+line_num+' : '+msg+' '+($pos-line_pos[line_num]))
+    console.log(line)
     throw Error('SyntaxError line '+tree_node.line_num+' : '+msg)
 }
 var $first_op_letter = {}
@@ -122,19 +155,6 @@ function $Node(type){
 
 function $last(src){return src[src.length-1]}
 
-function $check(node,expr,msg){
-    if(!expr){throw Error('SyntaxError line '+node.line_num+'\n'+msg)}
-}
-function $checkEqu(node,expr,value,msg){
-    if(expr!==value){throw Error('SyntaxError line '+node.line_num+'\n'+msg)}
-}
-function $checkInf(node,expr,value,msg){
-    if(expr>=value){throw Error('SyntaxError line '+node.line_num+'\n'+msg)}
-}
-function $checkSup(node,expr,value,msg){
-    if(expr<=value){throw Error('SyntaxError line '+node.line_num+'\n'+msg)}
-}
-
 var $loop_id=0
 
 function $AbstractExprCtx(context,with_commas){
@@ -199,7 +219,6 @@ function $AssignCtx(context){
                 var context = new $NodeCtx(new_node) // create ordinary node
                 left_items[i].parent = context
                 var assign = new $AssignCtx(left_items[i]) // assignment to left operand
-                console.log('assign parent is '+assign.parent)
                 assign.tree[1] = new $JSCode('$temp'+$loop_num+'['+i+']')
                 new_nodes.push(new_node)
             }
@@ -336,10 +355,12 @@ function $ClassCtx(context){
 
 function $CompIfCtx(context){
     this.type = 'comp_if'
+    context.parent.intervals.push($pos)
     this.parent = context
     this.tree = []
     context.tree.push(this)
     this.toString = function(){return '(comp if) '+this.tree}
+    this.to_js = function(){return 'comp if to js'}
 }
 
 function $ComprehensionCtx(context){
@@ -347,16 +368,27 @@ function $ComprehensionCtx(context){
     this.parent = context
     this.tree = []
     context.tree.push(this)
-    this.toString = function(){return 'comprehension, expression '+this.expression+' '+this.tree}
+    this.toString = function(){return '(comprehension) '+this.tree}
+    this.to_js = function(){
+        console.log('comprenhension to JS')
+        var intervals = []
+        for(var i=0;i<this.tree.length;i++){
+            intervals.push(this.tree[i].start)
+            console.log('intervals '+intervals)
+        }
+        return intervals
+    }
 }
 
 function $CompForCtx(context){
     this.type = 'comp_for'
+    context.parent.intervals.push($pos)
     this.parent = context
     this.tree = []
     this.expect = 'in'
     context.tree.push(this)
     this.toString = function(){return '(comp for) '+this.tree}
+    this.to_js = function(){return 'comp for to js'}
 }
 
 function $CompIterableCtx(context){
@@ -364,7 +396,8 @@ function $CompIterableCtx(context){
     this.parent = context
     this.tree = []
     context.tree.push(this)
-    this.toString = function(){return '(comp iterable) '+this.tree}
+    this.toString = function(){return '(comp iter) '+this.tree}
+    this.to_js = function(){return 'comp iter to js'}
 }
 
 function $ConditionCtx(context,token){
@@ -717,11 +750,13 @@ function $ListOrTupleCtx(context,real){
     // the real type (list or tuple) is set inside $transition
     // as attribute 'real'
     this.type = 'list_or_tuple'
+    this.start = $pos
     this.real = real
     this.expect = 'id'
     this.closed = false
     this.toString = function(){
         if(this.real==='list'){return '(list) ['+this.tree+']'}
+        else if(this.real==='list_comp'){return '(list comp) ['+this.intervals+'-'+this.tree+']'}
         else{return '(tuple) ('+this.tree+')'}
     }
     this.parent = context
@@ -729,21 +764,67 @@ function $ListOrTupleCtx(context,real){
     context.tree.push(this)
     this.to_js = function(){
         if(this.real==='list'){return '['+$to_js(this.tree)+']'}
-        else if(this.real==='tuple'){
+        else if(this.real==='list_comp'){
+            var res_env=[],local_env=[],env=[]
+            var ctx_node = this
+            while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
+            var module = ctx_node.node.module
+            var src = document.$py_src[module]
+            for(var i=0;i<this.expression.length;i++){
+                var name = this.expression[i].tree[0].value
+                if(res_env.indexOf(name)===-1){res_env.push(name)}
+            }
+            var comp = this.tree[0]
+            for(var i=0;i<comp.tree.length;i++){
+                var elt = comp.tree[i]
+                if(elt.type==='comp_for'){
+                    var target_list = elt.tree[0]
+                    for(var j=0;j<target_list.tree.length;j++){
+                        var name = target_list.tree[j].value
+                        if(local_env.indexOf(name)===-1){
+                            local_env.push(name)
+                        }
+                    }
+                    var comp_iter = elt.tree[1].tree[0]
+                    for(var j=0;j<comp_iter.tree.length;j++){
+                        var name = comp_iter.tree[j].value
+                        if(env.indexOf(name)===-1){
+                            env.push(name)
+                        }
+                    }
+                }else if(elt.type==="comp_if"){
+                    var if_expr = elt.tree[0]
+                    for(var j=0;j<if_expr.tree.length;j++){
+                        var name = if_expr.tree[j].value
+                        if(env.indexOf(name)===-1){
+                            env.push(name)
+                        }
+                    }
+                }
+            }
+            for(var i=0;i<res_env.length;i++){
+                if(local_env.indexOf(res_env[i])===-1){
+                    env.push(res_env[i])
+                }
+            }
+            var res = '{'
+            for(var i=0;i<env.length;i++){
+                res += "'"+env[i]+"':"+env[i]
+                if(i<env.length-1){res+=','}
+            }
+            res += '},'
+            var qesc = new RegExp('"',"g") // to escape double quotes in arguments
+            for(var i=1;i<this.intervals.length;i++){
+                res += '"'+src.substring(this.intervals[i-1],this.intervals[i]).replace(qesc,'\\"')+'"'
+                if(i<this.intervals.length-1){res+=','}
+            }
+            console.log('$list_comp1('+res+')')
+            return '$list_comp1('+res+')'
+        }else if(this.real==='tuple'){
             if(this.tree.length===1){return this.tree[0].to_js()}
             else{return 'tuple('+$to_js(this.tree)+')'}
         }
     }
-}
-
-function $ListCompCtx(context){ // context is a list expression
-    this.type = 'list_comp'
-    this.parent = context
-    this.tree = []
-    this.elt = context.tree
-    context.parent.tree.pop()
-    context.parent.tree.push(this)
-    this.toString = function(){return 'list_comp[elt ('+this.elt+') '+this.tree+']'}
 }
 
 function $NodeCtx(node){
@@ -863,6 +944,7 @@ function $TargetListCtx(context){
     this.expect = 'id'
     context.tree.push(this)
     this.toString = function(){return '(target list) '+this.tree}
+    this.to_js = function(){return 'target list'}
 }
 
 function $UnaryCtx(context,op){
@@ -941,11 +1023,10 @@ function $to_js(tree,sep){
     if(sep===undefined){sep=','}
     var res = ''
     for(var i=0;i<tree.length;i++){
-        try{
+        if(tree[i].to_js!==undefined){
             res += tree[i].to_js()
-        }catch(err){
-            console.log('no to_js() for '+tree[i])
-            throw err
+        }else{
+            throw Error('no to_js() for '+tree[i])
         }
         if(i<tree.length-1){res+=sep}
     }
@@ -956,7 +1037,7 @@ function $to_js(tree,sep){
 var $expr_starters = ['id','int','float','str','[','(','{','not']
 
 function $transition(context,token){
-    console.log('transition '+context+' token '+token)
+    //console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
@@ -990,7 +1071,7 @@ function $transition(context,token){
                     context.name = context.name.substr(2)
                 }
                 return context.parent
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+        }else{$_SyntaxError(context,token)}
 
     }else if(context.type==='call'){ 
     
@@ -1018,12 +1099,12 @@ function $transition(context,token){
             var op = arguments[2]
             if(op==='*'){return new $StarArgCtx(context)}
             else if(op==='**'){return new $DoubleStarArgCtx(context)}
-            else{throw Error('SyntaxError : token '+token+' after '+context)}
+            else{$_SyntaxError(context,'token '+token+' after '+context)}
         }else if(token===')' && context.expect===','){
             return $transition(context.parent,token)
         }else if(token===','&& context.expect===','){
             return new $CallArgCtx(context.parent)
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='class'){
     
@@ -1035,7 +1116,7 @@ function $transition(context,token){
         else if(token==='(' && context.expect==='(:'){
             return new $ParentClassCtx(context)
         }else if(token===':' && context.expect==='(:'){return context.parent}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='comp_if'){
 
@@ -1048,35 +1129,34 @@ function $transition(context,token){
             return new $AbstractExprCtx(new $CompIterableCtx(context),true)
         }else if(context.expect===null){
             return $transition(context.parent,token,arguments[2])
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='comp_iterable'){
 
         return $transition(context.parent,token,arguments[2])
 
     }else if(context.type==='comprehension'){
-        if(token===']'){return context}
-        else if(token==='if'){return new $AbstractExprCtx(new $CompIfCtx(context),false)}
+        if(token==='if'){return new $AbstractExprCtx(new $CompIfCtx(context),false)}
         else if(token==='for'){return new $TargetListCtx(new $CompForCtx(context))}
         else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='condition'){
 
         if(token===':'){return context.parent}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='def'){
     
         if(token==='id'){
             if(context.name){
-                throw Error('SyntaxError : token '+token+' after '+context)
+                $_SyntaxError(context,'token '+token+' after '+context)
             }else{
                 context.name = arguments[2]
                 return context
             }
         }else if(token==='('){return new $FuncArgs(context)}
         else if(token===':'){return context.parent}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='dict_or_set'){ 
 
@@ -1093,11 +1173,11 @@ function $transition(context,token){
                     if(context.real==='dict'&&context.tree.length%2===0){
                         context.closed = true
                         return context
-                    }else{throw Error('SyntaxError : token '+token+' after '+context)}
+                    }else{$_SyntaxError(context,'token '+token+' after '+context)}
                 }else if(token===','){
                     if(context.real==='dict_or_set'){context.real='set'}
                     if(context.real==='dict' && context.tree.length%2){
-                        throw Error('SyntaxError : token '+token+' after '+context)
+                        $_SyntaxError(context,'token '+token+' after '+context)
                     }
                     context.expect = 'id'
                     return context
@@ -1106,8 +1186,8 @@ function $transition(context,token){
                     if(context.real==='dict'){
                         context.expect='id'
                         return context
-                    }else{throw Error('SyntaxError : token '+token+' after '+context)}
-                }else{throw Error('SyntaxError : token '+token+' after '+context)}   
+                    }else{$_SyntaxError(context,'token '+token+' after '+context)}
+                }else{$_SyntaxError(context,'token '+token+' after '+context)}   
             }else if(context.expect==='id'){
                 if(token==='}'&&context.tree.length===0){ // empty dict
                     context.closed = true
@@ -1117,7 +1197,7 @@ function $transition(context,token){
                     context.expect = ','
                     var expr = new $AbstractExprCtx(context,false)
                     return $transition(expr,token,arguments[2])
-                }else{throw Error('SyntaxError : token '+token+' after '+context)}
+                }else{$_SyntaxError(context,'token '+token+' after '+context)}
             }else{return $transition(context.parent,token,arguments[2])}
         }
 
@@ -1127,7 +1207,7 @@ function $transition(context,token){
             context.name = arguments[2]
             context.parent.expect=','
             return context.parent
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='expr'){
     
@@ -1166,7 +1246,7 @@ function $transition(context,token){
     
         if(token==='in'){return new $ExprCtx(context,'iterable',true)}
         else if(token===':'){return context.parent}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='func_arg_id'){
     
@@ -1179,7 +1259,7 @@ function $transition(context,token){
             }else{
                 return $transition(context.parent,token)
             }
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='func_args'){
     
@@ -1191,18 +1271,18 @@ function $transition(context,token){
             else if(context.expect===','){
                 context.expect = 'id'
                 return context
-            }else{throw Error('SyntaxError : token '+token+' after '+context)}            
+            }else{$_SyntaxError(context,'token '+token+' after '+context)}            
         }else if(token===')'){
             if(context.expect===','){return context.parent}
             else if(context.tree.length==0){return context.parent} // no argument
-            else{throw Error('SyntaxError : token '+token+' after '+context)}
+            else{$_SyntaxError(context,'token '+token+' after '+context)}
         }else if(token==='op'){
             var op = arguments[2]
             context.expect = ','
             if(op=='*'){return new $StarArgCtx(context)}
             else if(op=='**'){return new $DoubleStarArgCtx(context)}
-            else{throw Error('SyntaxError : token '+op+' after '+context)}
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+            else{$_SyntaxError(context,'token '+op+' after '+context)}
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='global'){
 
@@ -1215,7 +1295,7 @@ function $transition(context,token){
             return context
         }else if(token==='eol' && context.expect===','){
             return $transition(context.parent,token)
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
         
 
     }else if(context.type==='id'){
@@ -1246,7 +1326,7 @@ function $transition(context,token){
     
         if(token===')'){return $transition(context.parent,token)}
         else if(token===','){return new $CallArgCtx(context.parent)}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='list_or_tuple'){ 
 
@@ -1258,30 +1338,37 @@ function $transition(context,token){
                 return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
             }else{return $transition(context.parent,token,arguments[2])}
         }else{
+            console.log(context.real+' '+token+' expect '+context.expect)
             if(context.expect===','){
                 if(context.real==='tuple' && token===')'){
                     context.closed = true
                     return context
-                }else if(context.real==='list' && token===']'){
+                }else if((context.real==='list'||context.real==='list_comp')
+                    && token===']'){
                     context.closed = true
+                    if(context.real==='list_comp'){context.intervals.push($pos)}
                     return context
                 }else if(token===','){
                     context.expect = 'id'
                     return context
                 }else if(token==='for'){
                     // comprehension
-                    var comp = new $ComprehensionCtx(context.parent)
-                    comp.expression = context.tree
+                    context.real = 'list_comp'
+                    context.intervals = [context.start+1]
+                    context.expression = context.tree
+                    console.log('create list comp '+context.intervals+' '+context.expression)
+                    context.tree = [] // reset tree
+                    var comp = new $ComprehensionCtx(context)
                     return new $TargetListCtx(new $CompForCtx(comp))
-                }else{throw Error('SyntaxError : token '+token+' after '+context)}   
+                }else{return $transition(context.parent,token,arguments[2])}   
             }else if(context.expect==='id'){
                 if(context.real==='tuple' && token===')'){ // empty tuple
                     context.closed = true
                     return context
-                }else if(context.real==='list' && token===']'){ // empty list
+                }else if(context.real==='list'&& token===']'){
                     context.closed = true
                     return context
-                }else if(token !==')'&&token!==','){
+                }else if(token !==')'&&token!==']'&&token!==','){
                     context.expect = ','
                     var expr = new $AbstractExprCtx(context,false)
                     return $transition(expr,token,arguments[2])
@@ -1294,7 +1381,7 @@ function $transition(context,token){
         if(token===']'){return context.parent}
         else if(token==='in'){return new $ExprCtx(context,'iterable',true)}
         else if(token==='if'){return new $ExprCtx(context,'condition',true)}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='node'){
     
@@ -1315,7 +1402,7 @@ function $transition(context,token){
             return new $AbstractExprCtx(ret,true)
         }else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),false)}
         else if(token==='eol'){return context}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='not'){
         if(token==='in'){ // operator not_in
@@ -1344,7 +1431,7 @@ function $transition(context,token){
             context.expect='id'
             return context
         }else if(token===')'){return context.parent}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='return'){
 
@@ -1353,7 +1440,7 @@ function $transition(context,token){
     }else if(context.type==='single_kw'){
 
         if(token===':'){return context.parent}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='star_arg'){
     
@@ -1361,7 +1448,7 @@ function $transition(context,token){
             context.name = arguments[2]
             context.parent.expect=','
             return context.parent
-        }else{throw Error('SyntaxError : token '+token+' after '+context)}
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='str'){
     
@@ -1378,7 +1465,7 @@ function $transition(context,token){
             return $transition(expr,token,arguments[2])
         }else if(token===']'){return context.parent}
         else if(token===':'){new $IdCtx(context,':');return context}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='target_list'){
     
@@ -1390,7 +1477,7 @@ function $transition(context,token){
             context.expect='id'
             return context
         }else if(context.expect===','){return $transition(context.parent,token,arguments[2])}
-        else{throw Error('SyntaxError : token '+token+' after '+context)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='unary'){
 
@@ -1478,15 +1565,9 @@ function $tokenize(src,module){
     var pos = 0
     indent = null
 
-    var pos2line = {}
-    var lnum=1
-    for(i=0;i<src.length;i++){
-        pos2line[i]=lnum
-        if(src.charAt(i)=='\n'){lnum+=1}
-    }
-    lnum = 1
+    var lnum = 1
     while(pos<src.length){
-        document.line_num = pos2line[pos]
+        //document.line_num = pos2line[pos]
         var flag = false
         var car = src.charAt(pos)
         // build tree structure from indentation
@@ -1504,7 +1585,7 @@ function $tokenize(src,module){
             if(src.charAt(pos)=='\n'){pos++;lnum++;indent=null;continue}
             new_node.indent = indent
             new_node.line_num = lnum
-            console.log('LINE '+lnum)
+            new_node.module = module
             // attach new node to node with indentation immediately smaller
             if(indent>current.indent){
                 // control that parent ended with ':'
@@ -1576,8 +1657,10 @@ function $tokenize(src,module){
                         }
                         tokens.push(["str",zone+car,pos])
                         if(_type==="triple_string"){
+                            $pos = pos-zone.length-1
                             context = $transition(context,'str',zone.substr(3))
                         }else{
+                            $pos = pos-zone.length-1
                             context = $transition(context,'str',zone.substr(1))
                         }
                         pos = end+1
@@ -1612,13 +1695,16 @@ function $tokenize(src,module){
                         document.line_num = pos2line[pos]
                         $SyntaxError(module,"Unsupported Python keyword '"+name+"'",pos)                    
                     }
+                    $pos = pos-name.length
                     context = $transition(context,name)
                     tokens.push(["keyword",name,pos-name.length])
                 } else if(name in $operators) { // and, or
+                    $pos = pos-name.length
                     context = $transition(context,'op',name)
                     tokens.push(["operator",name,pos-name.length])
                 } else {
                     if(forbidden.indexOf(name)>-1){name='$$'+name}
+                    $pos = pos-name.length
                     context = $transition(context,'id',name)
                     tokens.push(["id",name,pos-name.length])
                 }
@@ -1629,6 +1715,7 @@ function $tokenize(src,module){
         // point
         if(car=="."){
             tokens.push(["point",".",pos])
+            $pos = pos
             context = $transition(context,'.')
             pos++;continue
         }
@@ -1639,14 +1726,17 @@ function $tokenize(src,module){
             if(res){
                 if(res[0].search('e')>-1){
                     tokens.push(["float",res[0],pos])
+                    $pos = pos
                     context = $transition(context,'float',res[0])
                 }else{
                     tokens.push(["float",eval(res[0]),pos])
+                    $pos = pos
                     context = $transition(context,'float',eval(res[0]))
                 }
             }else{
                 res = int_pattern.exec(src.substr(pos))
                 tokens.push(["int",eval(res[0]),pos])
+                $pos = pos
                 context = $transition(context,'int',eval(res[0]))
             }
             pos += res[0].length
@@ -1660,20 +1750,21 @@ function $tokenize(src,module){
                 pos++;continue
             } else {
                 if(tokens.length>0){ // ignore empty lines
+                    $pos = pos
                     context = $transition(context,'eol')
                     current.tokens = tokens
                     tokens = []
                     indent=null
                     new_node = new $Node()
-                }else{console.log('empty LINE')}
+                }else{console.log('empty LINE '+lnum)}
                 pos++;continue
             }
         }
         if(car in br_open){
             br_stack += car
             br_pos[br_stack.length-1] = pos
+            $pos = pos
             context = $transition(context,car)
-            tokens.push(["bracket",car,pos])
             pos++;continue
         }
         if(car in br_close){
@@ -1684,24 +1775,25 @@ function $tokenize(src,module){
                 $SyntaxError(module,"Unbalanced bracket",pos)
             } else {
                 br_stack = br_stack.substr(0,br_stack.length-1)
+                $pos = pos
                 context = $transition(context,car)
-                tokens.push(["bracket",car,pos])
                 pos++;continue
             }
         }
         if(car=="="){
             if(src.charAt(pos+1)!="="){
+                $pos = pos
                 context = $transition(context,'=')
-                tokens.push(["assign","=",pos])
                 pos++;continue
             } else {
+                $pos = pos
                 context = $transition(context,'op','==')
-                tokens.push(["operator","==",pos])
                 pos+=2;continue
             }
         }
         if(car in punctuation){
             tokens.push(["delimiter",car,pos])
+            $pos = pos
             context = $transition(context,car)
             pos++;continue
         }
@@ -1715,13 +1807,12 @@ function $tokenize(src,module){
                     op_match=op_sign
                 }
             }
+            $pos = pos
             if(op_match.length>0){
                 if(op_match in $augmented_assigns){
                     context = $transition(context,'augm_assign',op_match)
-                    tokens.push(["assign",op_match,pos])
                 }else{
                     context = $transition(context,'op',op_match)
-                    tokens.push(["operator",op_match,pos])
                 }
                 pos += op_match.length
                 continue
@@ -1733,7 +1824,6 @@ function $tokenize(src,module){
         if(car!=' '){$SyntaxError(module,'unknown token ['+car+']',pos)}
         pos += 1
     }
-    new_node.tokens = tokens
 
     if(br_stack.length!=0){
         pos = br_pos.pop()
