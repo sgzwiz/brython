@@ -31,7 +31,8 @@ function $list_comp1(){
     for(var $arg in $env){
         eval("var "+$arg+'=$env["'+$arg+'"]')
     }
-    var $py = "res=[]\n"
+    var $res = 'res'+Math.random().toString(36).substr(2,8)
+    var $py = $res+"=[]\n"
     var indent=0
     for(var i=2;i<arguments.length;i++){
         for(var j=0;j<indent;j++){$py += ' '}
@@ -39,11 +40,12 @@ function $list_comp1(){
         indent += 4
     }
     for(var j=0;j<indent;j++){$py += ' '}
-    $py += 'res.append('+arguments[1]+')'
+    $py += $res+'.append('+arguments[1]+')'
+    //alert($py)
     var $js = $py2js($py).to_js()
-    alert($js)
+    //alert($js)
     eval($js)
-    return res    
+    return eval($res)    
 }
 
 function $_SyntaxError(context,msg){
@@ -1338,7 +1340,6 @@ function $transition(context,token){
                 return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
             }else{return $transition(context.parent,token,arguments[2])}
         }else{
-            console.log(context.real+' '+token+' expect '+context.expect)
             if(context.expect===','){
                 if(context.real==='tuple' && token===')'){
                     context.closed = true
@@ -1356,7 +1357,6 @@ function $transition(context,token){
                     context.real = 'list_comp'
                     context.intervals = [context.start+1]
                     context.expression = context.tree
-                    console.log('create list comp '+context.intervals+' '+context.expression)
                     context.tree = [] // reset tree
                     var comp = new $ComprehensionCtx(context)
                     return new $TargetListCtx(new $CompForCtx(comp))
