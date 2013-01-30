@@ -10,6 +10,8 @@ function $XmlHttpClass(obj){
     this.get_text = function(){return obj.responseText}
     
     this.get_xml = function(){return $DomObject(obj.responseXML)}
+    
+    this.get_headers = function(){return list(obj.getAllResponseHeaders().split('\n'))}
 }
 
 function Ajax(){}
