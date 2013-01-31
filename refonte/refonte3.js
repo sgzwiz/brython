@@ -7,7 +7,7 @@ var $operators = {
     "/":"truediv","%":"mod","&":"and","|":"or",
     "^":"pow","<":"lt",">":"gt",
     "<=":"le",">=":"ge","==":"eq","!=":"ne",
-    "or":"or","and":"and", //"in":"in","not":"not",
+    "or":"or","and":"and", "in":"in", //"not":"not",
     "not_in":"not_in","is_not":"is_not" // fake
     }
 // operators weight for precedence
@@ -252,23 +252,21 @@ function $AssignCtx(context){
             var left = this.tree[0]
             if(left.type==='expr'){left=left.tree[0]}
             var right = this.tree[1]
-            if(left.type==='id'){ // assign to attribute or item ?
-                var tree = left.tree
-                if(tree.length>0){
-                    if(tree[tree.length-1].type==='attribute' &&
-                        tree[tree.length-1].name.substr(0,2)!=='__'){
-                        var attr = tree.pop()
-                        var res = left.to_js()+'.__setattr__("'
-                        tree.push(attr)
-                        return res+attr.name+'",'+right.to_js()+')'
-                    }else if(tree[tree.length-1].type==='sub'){
-                        var item_tree = tree.pop()
-                        var item = item_tree.tree[0]
-                        var res = left.to_js()+'.__setitem__('
-                        tree.push(item_tree)
-                        res += item.to_js()+','+right.to_js()+')'
-                        return res
-                    }
+            if(left.type==='id'&&left.tree.length>0){ // assign to attribute or item ?
+                var last = left.tree[left.tree.length-1]
+                console.log('last '+last)
+                if(last.type==='attribute'){
+                    left.tree.pop() // temporarily remove attr
+                    var res = left.to_js()+'.__setattr__("'
+                    left.tree.push(last)
+                    return res+last.name+'",'+right.to_js()+')'
+                }else if(last.type==='sub'){
+                    left.tree.pop()
+                    var item = last.tree[0]
+                    var res = left.to_js()+'.__setitem__('
+                    left.tree.push(last)
+                    res += item.to_js()+','+right.to_js()+')'
+                    return res
                 }
             }
             var scope = $get_scope(this)
@@ -293,14 +291,15 @@ function $AssignCtx(context){
 function $AttrCtx(context){
     this.type = 'attribute'
     this.parent = context
+    this.tree = []
     this.func = 'getattr' // becomes setattr for an assignment 
     context.tree.push(this)
-    this.toString = function(){return '.'+this.name}
+    this.toString = function(){return '(attr) '+this.name}
     this.to_js = function(){
-        if(this.name.substr(0,2)==='__'){
-            return '.'+this.name
-        }
-        return '.__'+this.func+'__("'+this.name+'")'
+        var name = this.name
+        if(name.substr(0,2)==='$$'){name=name.substr(2)}
+        if(name.substr(0,2)!=='__'){name='__getattr__("'+name+'")'}
+        return '.'+name
     }
 }
 
@@ -551,7 +550,7 @@ function $DictOrSetCtx(context){
             var res = 'dict(['
             for(var i=0;i<this.tree.length;i+=2){
                 res+='['+this.tree[i].to_js()+','+this.tree[i+1].to_js()+']'
-                if(i<this.tree.length-1){res+=','}
+                if(i<this.tree.length-2){res+=','}
             }
             return res+'])'
         }else{return 'set('+$to_js(this.tree)+')'}
@@ -564,7 +563,7 @@ function $DoubleStarArgCtx(context){
     this.tree = []
     context.tree.push(this)
     this.toString = function(){return '**'+this.tree}
-    this.to_js = function(){return '$pdict('+this.tree[0].value+')'}
+    this.to_js = function(){return '$pdict('+this.name+')'}
 }
 
 function $ExprCtx(context,name,with_commas){
@@ -572,7 +571,7 @@ function $ExprCtx(context,name,with_commas){
     this.name = name
     // allow expression with comma-separted values, or a single value ?
     this.with_commas = with_commas
-    this.expect = null // can be null or ','
+    this.expect = ',' // can be 'expr' or ','
     this.parent = context
     this.tree = []
     context.tree.push(this)
@@ -582,6 +581,14 @@ function $ExprCtx(context,name,with_commas){
         else if(this.tree.length===1){return this.tree[0].to_js()}
         else{return 'tuple('+$to_js(this.tree)+')'}
     }
+}
+
+function $ExprNot(context){ // used for 'x not', only accepts 'in' as next token
+    this.type = 'expr_not'
+    this.toString = function(){return '(expr_not)'}
+    this.parent = context
+    this.tree = []
+    context.tree.push(this)
 }
 
 function $FloatCtx(context,value){
@@ -637,14 +644,15 @@ function $ForExpr(context){
         var target_expr = new $ExprCtx(context,'left',true)
         target_expr.tree = target.tree
         var assign = new $AssignCtx(target_expr) // assignment to left operand
-        assign.tree[1] = new $JSCode('$iter'+$loop_num+'[$i'+$loop_num+']')
+        assign.tree[1] = new $JSCode('$iter'+$loop_num+'.__item__($i'+$loop_num+')')
         // set new loop children
         node.parent.children[rank+1].children = children
         $loop_num++
     }
     this.to_js = function(){
         var iterable = this.tree.pop()
-        return 'for '+$to_js(this.tree)+' in '+iterable.to_js()}
+        return 'for '+$to_js(this.tree)+' in '+iterable.to_js()
+    }
 }
 
 function $FuncArgs(context){
@@ -1038,7 +1046,12 @@ function $to_js(tree,sep){
 // expression starters
 var $expr_starters = ['id','int','float','str','[','(','{','not']
 
+function $arbo(ctx){
+    while(ctx.parent!=undefined){ctx=ctx.parent}
+    return ctx
+}
 function $transition(context,token){
+    //console.log('arbo '+$arbo(context))
     //console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
@@ -1052,10 +1065,10 @@ function $transition(context,token){
         else if(token==='str'){return new $StringCtx(new $ExprCtx(context,'str',commas),arguments[2])}
         else if(token==='int'){return new $IntCtx(new $ExprCtx(context,'int',commas),arguments[2])}
         else if(token==='float'){return new $FloatCtx(new $ExprCtx(context,'float',commas),arguments[2])}
-        else if(token==='('){return new $ListOrTupleCtx(context,'tuple')}
-        else if(token==='['){return new $ListOrTupleCtx(context,'list')}
-        else if(token==='{'){return new $DictOrSetCtx(context)}
-        else if(token==='not'){return new $NotCtx(context)}
+        else if(token==='('){return new $ListOrTupleCtx(new $ExprCtx(context,'tuple',commas),'tuple')}
+        else if(token==='['){return new $ListOrTupleCtx(new $ExprCtx(context,'list',commas),'list')}
+        else if(token==='{'){return new $DictOrSetCtx(new $ExprCtx(context,'dict_or_set',commas))}
+        else if(token==='not'){return new $NotCtx(new $ExprCtx(context,'not',commas))}
         else if(token==='op' && '+-'.search(arguments[2])){ // unary + or -
             return new $UnaryCtx(context,arguments[2])
         }else{return $transition(context.parent,token,arguments[2])}
@@ -1067,12 +1080,9 @@ function $transition(context,token){
 
     }else if(context.type==='attribute'){ 
 
-        if(token==='id' && context.name===undefined){
-                context.name=arguments[2]
-                if(context.name.substr(0,2)==='$$'){
-                    context.name = context.name.substr(2)
-                }
-                return context.parent
+        if(token==='id'){
+            context.name=arguments[2]
+            return context.parent
         }else{$_SyntaxError(context,token)}
 
     }else if(context.type==='call'){ 
@@ -1086,8 +1096,10 @@ function $transition(context,token){
             var op=arguments[2]
             if(op==='-'){return new $UnaryCtx(context,'-')}
             else if(op==='+'){return context}
+            else if(op==='*'){return new $StarArgCtx(context)}
+            else if(op==='**'){return new $DoubleStarArgCtx(context)}
             else{throw Error('SyntaxError')}
-        }else{return $transition(context.parent,token)}
+        }else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='call_arg'){ 
 
@@ -1212,49 +1224,70 @@ function $transition(context,token){
         }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='expr'){
-    
-        if(token==='id'){return new $IdCtx(context,arguments[2])}
-        else if(token==='str'){return new $StringCtx(context,arguments[2])}
-        else if(token==='int'){return new $IntCtx(context,arguments[2])}
-        else if(token==='float'){return new $FloatCtx(context,arguments[2])}
-        else if(token==='('){return new $ListOrTupleCtx(context,'tuple')}
-        else if(token==='['){return new $ListOrTupleCtx(context,'list')}
-        else if(token==='{'){return new $DictOrSet(context)}
-        else if(token==='not'){return new $NotCtx(context)}
-        else if(token===','){
+
+        if($expr_starters.indexOf(token)>-1 && context.expect==='expr'){
+            context.expect = ','
+            return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+        }else if(token==='not'&&context.expect===','){
+            return new $ExprNot(context)
+        }else if(token==='in'&&context.expect===','){
+            return new $AbstractExprCtx(new $OpCtx(context,'in'),false)
+        }else if(token===',' && context.expect===','){
             if(context.with_commas){
+                context.expect = 'expr'
                 return context
             }else{return $transition(context.parent,token)}
         }else if(token==='op'){
             // handle operator precedence
             var op_parent=context.parent,op=arguments[2]
-            while(op_parent.type==='op'){
-                if($op_weight[op_parent.op]>$op_weight[op]){
+            while(true){
+                if(op_parent.type==='op'&&
+                    $op_weight[op_parent.op]>$op_weight[op]){
                     context = op_parent
                     op_parent = op_parent.parent
+                }else if(op_parent.type==='expr'&&
+                    op_parent.parent.type==='op'&&
+                    $op_weight[op_parent.parent.op]>$op_weight[op]){
+                    context = op_parent.parent
+                    op_parent = op_parent.parent.parent
                 }else{break}
             }
+            context.parent.tree.pop()
+            var expr = new $ExprCtx(op_parent,'operand',context.with_commas)
+            expr.expect = ','
+            context.parent = expr
             var new_op = new $OpCtx(context,op)
             return new $AbstractExprCtx(new_op,false)
-        }else if(token==='augm_assign'){
+        }else if(token==='augm_assign' && context.expect===','){
             return $augmented_assign(context,arguments[2])
-        }else if(token==='='){
+        }else if(token==='=' && context.expect===','){
             if(context.parent.type==="call_arg"){
                 return new $AbstractExprCtx(new $KwArgCtx(context),true)
-            }else{return new $AbstractExprCtx(new $AssignCtx(context),true)}
+            }else{
+                while(context.parent!==undefined){context=context.parent}
+                context = context.tree[0]
+                return new $AbstractExprCtx(new $AssignCtx(context),true)
+            }
         }else{return $transition(context.parent,token)}
 
+    }else if(context.type==='expr_not'){
+    
+        if(token==='in'){ // expr not in : operator
+            context.parent.tree.pop()
+            return new $AbstractExprCtx(new $OpCtx(context.parent,'not_in'),false)
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
+        
     }else if(context.type==='for'){
     
-        if(token==='in'){return new $ExprCtx(context,'iterable',true)}
+        if(token==='in'){return new $AbstractExprCtx(context,true)}
         else if(token===':'){return context.parent}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='func_arg_id'){
-    
+        console.log('func_arg_id expects '+context.expect)
         if(token==='=' && context.expect==='='){
             context.parent.has_default = true
-            return new $ExprCtx(context,'arg_default',false)
+            return new $AbstractExprCtx(context,false)
         }else if(token===',' || token===')'){
             if(context.parent.has_default && context.tree.length==0){
                 throw Error('SyntaxError: non-default argument follows default argument')
@@ -1392,7 +1425,7 @@ function $transition(context,token){
         else if(token==='def'){return new $DefCtx(context)}
         else if(token==='for'){return new $TargetListCtx(new $ForExpr(context))}
         else if(['if','elif','while'].indexOf(token)>-1){
-            return new $ExprCtx(new $ConditionCtx(context,token),'condition',false)
+            return new $AbstractExprCtx(new $ConditionCtx(context,token),false)
         }else if(['else','try','finally'].indexOf(token)>-1){
             return new $SingleKwCtx(context,token)
         }else if(token==='import'){return new $ImportCtx(context)}
@@ -1406,7 +1439,8 @@ function $transition(context,token){
 
     }else if(context.type==='not'){
         if(token==='in'){ // operator not_in
-            context.parent.tree.pop() // remove 'not'
+            // not is always in an expression : remove it
+            context.parent.parent.tree.pop() // remove 'not'
             return new $ExprCtx(new $OpCtx(context.parent,'not_in'),'op',false)
         }else if($expr_starters.indexOf(token)>-1){
             var expr = new $AbstractExprCtx(context,false)
