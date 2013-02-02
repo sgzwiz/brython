@@ -164,7 +164,7 @@ passer la souris ici</textarea>
 
 Il faut gérer la période transitoire où Brython va cohabiter avec Javascript ;-)
 
-<p>Un document HTML peut utiliser des scripts ou des librairies Javascript, et des scripts ou des librairies Python. Brython ne peut pas exploiter directement les objets Javascript : par exemple les attributs d'un objet sont récupérés par la fonction <tt>__getattr__</tt> de l'objet, qui n'existe pas pour les objets Javascripts
+<p>Un document HTML peut utiliser des scripts ou des librairies Javascript, et des scripts ou des librairies Python. Brython ne peut pas exploiter directement les objets Javascript : par exemple les attributs d'un objet sont récupérés par la méthode <tt>__getattr__</tt> de l'objet, qui n'existe pas pour les objets Javascript
 <p>Pour les utiliser dans un script Python, il faut les transformer explicitement par la fonction intégrée <tt>JSObject</tt>
 <p>Par exemple :
 
