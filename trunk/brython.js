@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130126-094636
+// version 1.0.20130202-121412
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -200,8 +200,6 @@ function exec(src){
 try{eval($py2js(src).to_js())}
 catch(err){
 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
-if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
-else{throw(err)}
 }
 }
 function filter(){
@@ -2064,7 +2062,9 @@ if(arg.list.length==0){continue}
 var elts=arg.split('=')
 if(elts.length==2){
 var src_pos=elts[0].list[0][2]
-var seq=[['code','$Kw("'+elts[0].list[0][1]+'",',src_pos]]
+var arg_name=elts[0].list[0][1]
+if(arg_name.substr(0,2)==='$$'){arg_name=arg_name.substr(2)}
+var seq=[['code','$Kw("'+arg_name+'",',src_pos]]
 seq=seq.concat(elts[1].list)
 seq.push(['code',')',src_pos])
 var code='$Kw("'+elts[0].list[0][1]+'",'
@@ -3595,8 +3595,8 @@ err=new Error()
 err.name=name
 err.message=msg
 err.py_error=true
-if(document.$stderr!==null){document.$stderr_buff=err.name+': '+err.message}
-throw err
+document.$stderr.write(err.name+': '+err.message+'\n')
+if(name!=='ExecutionError'){throw err}
 }
 function $src_error(name,module,msg,pos){
 var pos2line={}
@@ -3643,7 +3643,7 @@ return f
 }
 var $dq_regexp=new RegExp('"',"g")
 function $escape_dq(arg){return arg.replace($dq_regexp,'\\"')}
-document.$stderr=null
+document.$stderr={'write':function(data){void(0)}}
 document.$stderr_buff='' 
 document.$stdout={
 write: function(data){console.log(data)}
@@ -3742,6 +3742,7 @@ else{return obj[attr]}
 }
 this.get_text=function(){return obj.responseText}
 this.get_xml=function(){return $DomObject(obj.responseXML)}
+this.get_headers=function(){return list(obj.getAllResponseHeaders().split('\n'))}
 }
 function Ajax(){}
 Ajax.__class__=$type
@@ -3975,7 +3976,7 @@ JSObject.toString=JSObject.__str__
 function $JSObject(js){
 this.js=js
 this.__class__=JSObject
-this.__str__=function(){return "<object 'JSObject'>"}
+this.__str__=function(){return "<object 'JSObject' wraps "+this.js+">"}
 this.toString=this.__str__
 }
 $JSObject.prototype.__getattr__=function(attr){
@@ -4136,6 +4137,60 @@ else{setattr(this,attr,value)}
 }
 DOMNode.prototype.__setitem__=function(key,value){
 this.childNodes[key]=value
+}
+DOMNode.prototype.get_get=function(){
+if(this.getElementsByName!==undefined){
+return function(){
+var $ns=$MakeArgs('get',arguments,[],{},null,'kw')
+if('name'.__in__($ns['kw'])){
+var res=[]
+var node_list=document.getElementsByName($ns['kw'].__getitem__('name'))
+if(node_list.length===0){return[]}
+for(var i=0;i<node_list.length;i++){
+res.push($DOMNode(node_list[i]))
+}
+}
+if('id'.__in__($ns['kw'])){
+var id_res=document.getElementById($ns['kw'].__getitem__('id'))
+alert(id_res)
+if(!id_res){alert('empty');return[]}
+else{
+var elt=$DOMNode(id_res)
+if(res===undefined){res=[elt]}
+else{
+flag=false
+for(var i=0;i<res.length;i++){
+if(elt.__eq__(res[i])){flag=true;break}
+}
+if(!flag){return[]}
+}
+}
+}
+if('selector'.__in__($ns['kw'])){
+var node_list=document.querySelectorAll($ns['kw'].__getitem__('selector'))
+var sel_res=[]
+if(node_list.length===0){return[]}
+for(var i=0;i<node_list.length;i++){
+sel_res.push($DOMNode(node_list[i]))
+}
+if(res===undefined){return sel_res}
+var to_delete=[]
+for(var i=0;i<res.length;i++){
+var elt=res[i]
+flag=false
+for(var j=0;j<sel_res.length;j++){
+if(elt.__eq__(sel_res[j])){flag=true;break}
+}
+if(!flag){to_delete.push(i)}
+}
+for(var i=to_delete.length-1;i>=0;i--){
+res.splice(to_delete[i],1)
+}
+return res
+}
+return res
+}
+}
 }
 DOMNode.prototype.get_clone=function(){
 res=$DOMNode(this.cloneNode(true))
