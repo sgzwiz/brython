@@ -188,6 +188,16 @@ function $AssignCtx(context){
     this.transform = function(node,rank){
         // rank is the rank of this line in node
         var left = this.tree[0]
+        while(left.type==='assign'){ // chained assignment : x=y=z
+            console.log('left is assign : '+left)
+            var new_node = new $Node('expression')
+            var node_ctx = new $NodeCtx(new_node)
+            node_ctx.tree = [left]
+            node.parent.insert(rank+1,new_node)
+            this.tree[0] = left.tree[1]
+            left = this.tree[0]
+        }
+        console.log('assign is '+this)
         var left_items = null
         if(left.type==='expr' && left.tree.length>1){
             var left_items = left.tree
@@ -1131,8 +1141,8 @@ function $arbo(ctx){
     return ctx
 }
 function $transition(context,token){
-    //console.log('arbo '+$arbo(context))
-    //console.log('transition '+context+' token '+token)
+    console.log('arbo '+$arbo(context))
+    console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
