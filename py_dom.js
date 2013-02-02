@@ -403,6 +403,64 @@ DOMNode.prototype.__setitem__ = function(key,value){
     this.childNodes[key]=value
 }
 
+DOMNode.prototype.get_get = function(){
+    // for document : doc.get(key1=value1[,key2=value2...]) returns a list of the elements
+    // with specified keys/values
+    // key can be 'id','name' or 'selector'
+    if(this.getElementsByName!==undefined){
+        return function(){
+            var $ns=$MakeArgs('get',arguments,[],{},null,'kw')
+            if('name'.__in__($ns['kw'])){
+                var res = []
+                var node_list = document.getElementsByName($ns['kw'].__getitem__('name'))
+                if(node_list.length===0){return []}
+                for(var i=0;i<node_list.length;i++){
+                    res.push($DOMNode(node_list[i]))
+                }
+            }
+            if('id'.__in__($ns['kw'])){
+                var id_res = document.getElementById($ns['kw'].__getitem__('id'))
+                alert(id_res)
+                if(!id_res){alert('empty');return []}
+                else{
+                    var elt=$DOMNode(id_res)
+                    if(res===undefined){res=[elt]}
+                    else{
+                        flag = false
+                        for(var i=0;i<res.length;i++){
+                            if(elt.__eq__(res[i])){flag=true;break}
+                        }
+                        if(!flag){return []}
+                    }
+                }
+            }
+            if('selector'.__in__($ns['kw'])){
+                var node_list = document.querySelectorAll($ns['kw'].__getitem__('selector'))
+                var sel_res = []
+                if(node_list.length===0){return []}
+                for(var i=0;i<node_list.length;i++){
+                    sel_res.push($DOMNode(node_list[i]))
+                }
+                if(res===undefined){return sel_res}
+                var to_delete = []
+                for(var i=0;i<res.length;i++){
+                    var elt = res[i] // keep it only if it is also inside sel_res
+                    flag = false
+                    for(var j=0;j<sel_res.length;j++){
+                        if(elt.__eq__(sel_res[j])){flag=true;break}
+                    }
+                    if(!flag){to_delete.push(i)}
+                }
+                for(var i=to_delete.length-1;i>=0;i--){
+                    res.splice(to_delete[i],1)
+                }
+                return res
+            }
+            return res
+        }
+    }
+}
+
 DOMNode.prototype.get_clone = function(){
     res = $DOMNode(this.cloneNode(true))
     // copy events - may not work since there is no getEventListener()
