@@ -383,12 +383,23 @@ function $string_lstrip(obj){
     }
 }
 
+function $re_escape(str)
+{
+  var specials = "[.*+?|()$^"
+  for(var i=0;i<specials.length;i++){
+      var re = new RegExp('\\'+specials.charAt(i),'g')
+      str = str.replace(re, "\\"+specials.charAt(i))
+  }
+  return str
+}
+
 function $string_replace(obj){
     return function(old,_new,count){
         if(count!==undefined){
             if(!isinstance(count,[int,float])){$raise('TypeError',
                 "'"+str(count.__class__)+"' object cannot be interpreted as an integer")}
-            var re = new RegExp(old)
+            var re = new RegExp($re_escape(old),'g')
+            
             var res = obj.valueOf()
             while(count>0){
                 if(obj.search(re)==-1){return res}
@@ -397,7 +408,7 @@ function $string_replace(obj){
             }
             return res
         }else{
-            var re = new RegExp(old,"g")
+            var re = new RegExp($re_escape(old),"g")
             return obj.replace(re,_new)
         }
     }
