@@ -13,12 +13,13 @@ var $operators = {
 // operators weight for precedence
 var $op_weight={
     'or':1,'and':2,
-    '<':3, '<=':3, '>':3, '>=':3, '!=':3, '==':3,
-    '+':4,
-    '-':5,
-    '/':6,'//':6,'%':6,
-    '*':7,
-    '**':8
+    'in':3,'not_in':3,
+    '<':4, '<=':4, '>':4, '>=':4, '!=':4, '==':4,
+    '+':5,
+    '-':6,
+    '/':7,'//':7,'%':7,
+    '*':8,
+    '**':9
     }
 var $augmented_assigns = {
     "//=":"ifloordiv",">>=":"irshift","<<=":"ilshift",
@@ -49,6 +50,7 @@ function $list_comp1(){
 }
 
 function $_SyntaxError(context,msg){
+    console.log('syntax error '+msg+' context '+context)
     var ctx_node = context.parent
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
     var tree_node = ctx_node.node
@@ -191,6 +193,8 @@ function $AssignCtx(context){
             var left_items = left.tree
         }else if(left.type==='expr' && left.tree[0].type==='list_or_tuple'){
             var left_items = left.tree[0].tree
+        }else if(left.type==='target_list'){
+            var left_items = left.tree
         }
         if(left_items===null){return} // no transformation
         var right = this.tree[1]
@@ -254,7 +258,6 @@ function $AssignCtx(context){
             var right = this.tree[1]
             if(left.type==='id'&&left.tree.length>0){ // assign to attribute or item ?
                 var last = left.tree[left.tree.length-1]
-                console.log('last '+last)
                 if(last.type==='attribute'){
                     left.tree.pop() // temporarily remove attr
                     var res = left.to_js()+'.__setattr__("'
@@ -564,6 +567,29 @@ function $DoubleStarArgCtx(context){
     context.tree.push(this)
     this.toString = function(){return '**'+this.tree}
     this.to_js = function(){return '$pdict('+this.name+')'}
+}
+
+function $ExceptCtx(context){
+    this.type = 'except'
+    this.parent = context
+    context.tree.push(this)
+    this.tree = []
+    this.toString = function(){return '(except) '}
+    this.to_js = function(){
+        // in method "transform" of $TryCtx instances, related
+        // $ExceptCtx instances receive an attribute error_name
+        if(this.tree.length===0){return 'else'}
+        else{
+            var target=this.tree[0]
+            var res ='else if(['
+            for(var i=0;i<target.tree.length;i++){
+                res+='"'+target.tree[i].value+'"'
+                if(i<target.tree.length-1){res+=','}
+            }
+            res +='].indexOf('+this.error_name+'.name)>-1)'
+            return res
+        }
+    }
 }
 
 function $ExprCtx(context,name,with_commas){
@@ -908,7 +934,7 @@ function $ReturnCtx(context){ // subscription or slicing
     this.to_js = function(){return 'return '+$to_js(this.tree)}
 }
 
-function $SingleKwCtx(context,token){ // used for try,finally,else
+function $SingleKwCtx(context,token){ // used for finally,else
     this.type = 'single_kw'
     this.token = token
     this.parent = context
@@ -934,7 +960,7 @@ function $StringCtx(context,value){
     this.parent = context
     this.tree = []
     context.tree.push(this)
-    this.to_js = function(){return '"'+this.value+'"'+$to_js(this.tree)}
+    this.to_js = function(){return '"'+this.value+'"'+$to_js(this.tree,'')}
 }
 
 function $SubCtx(context){ // subscription or slicing
@@ -954,7 +980,61 @@ function $TargetListCtx(context){
     this.expect = 'id'
     context.tree.push(this)
     this.toString = function(){return '(target list) '+this.tree}
-    this.to_js = function(){return 'target list'}
+}
+
+function $TryCtx(context){
+    this.type = 'try'
+    this.parent = context
+    context.tree.push(this)
+    this.toString = function(){return '(try) '}
+    this.transform = function(node,rank){
+        if(node.parent.children.length===rank+1){
+            $_SyntaxError("missing clause after 'try'")
+        }else{
+            var next_ctx = node.parent.children[rank+1].context.tree[0]
+            console.log('next node '+next_ctx.type)
+            if(['except','finally'].indexOf(next_ctx.type)===-1){
+                $_SyntaxError("missing clause after 'try'")
+            }
+        }
+        // insert new 'catch' clause
+        var catch_node = new $Node('expression')
+        new $NodeJSCtx(catch_node,'catch($err'+$loop_num+')')
+        node.parent.insert(rank+1,catch_node)
+        
+        // fake line to start the 'else if' clauses
+        var new_node = new $Node('expression')
+        new $NodeJSCtx(new_node,'if(false){void(0)}')
+        catch_node.insert(0,new_node)
+        
+        // move the except and finally clauses below catch_node
+        var pos = rank+2
+        var has_default = false // is there an "except:" ?
+        while(true){
+            if(pos===node.parent.children.length){break}
+            var ctx = node.parent.children[pos].context.tree[0]
+            if(ctx.type==='except'||
+                (ctx.type==='single_kw' && ctx.token==='finally')){
+                node.parent.children[pos].context.tree[0].error_name = '$err'+$loop_num
+                catch_node.insert(catch_node.children.length,
+                    node.parent.children[pos])
+                if(ctx.type==='except' && ctx.tree.length===0){
+                    if(has_default){$_SyntaxError('more than one except: line')}
+                    has_default=true
+                }
+                node.parent.children.splice(pos,1)
+            }else{break}
+        }
+        if(!has_default){ 
+            // if no default except: clause, add a line to throw the
+            // exception if it was not caught
+            var new_node = new $Node('expression')
+            new $NodeJSCtx(new_node,'else{throw $err'+$loop_num+'}')
+            catch_node.insert(catch_node.children.length,new_node)
+        }
+        $loop_num++
+    }
+    this.to_js = function(){return 'try'}
 }
 
 function $UnaryCtx(context,op){
@@ -1081,7 +1161,9 @@ function $transition(context,token){
     }else if(context.type==='attribute'){ 
 
         if(token==='id'){
-            context.name=arguments[2]
+            var name = arguments[2]
+            if(name.substr(0,2)=='$$'){name=name.substr(2)}
+            context.name=name
             return context.parent
         }else{$_SyntaxError(context,token)}
 
@@ -1223,6 +1305,14 @@ function $transition(context,token){
             return context.parent
         }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
+    }else if(context.type==='except'){ 
+    
+        if(token==='id'){
+            return $transition(new $TargetListCtx(context),token,arguments[2])
+        }else if(token===':'){
+            return context.parent
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
+    
     }else if(context.type==='expr'){
 
         if($expr_starters.indexOf(token)>-1 && context.expect==='expr'){
@@ -1354,8 +1444,9 @@ function $transition(context,token){
 
     }else if(context.type==='int'||context.type==='float'){
     
-        if(token==='.'){return new $AttrCtx(context)}
-        else{return $transition(context.parent,token,arguments[2])}
+        if($expr_starters.indexOf(token)>-1){
+            $_SyntaxError(context,'token '+token+' after '+context)
+        }else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='kwarg'){
     
@@ -1426,9 +1517,11 @@ function $transition(context,token){
         else if(token==='for'){return new $TargetListCtx(new $ForExpr(context))}
         else if(['if','elif','while'].indexOf(token)>-1){
             return new $AbstractExprCtx(new $ConditionCtx(context,token),false)
-        }else if(['else','try','finally'].indexOf(token)>-1){
+        }else if(['else','finally'].indexOf(token)>-1){
             return new $SingleKwCtx(context,token)
-        }else if(token==='import'){return new $ImportCtx(context)}
+        }else if(token==='try'){return new $TryCtx(context)}
+        else if(token==='except'){return new $ExceptCtx(context)}
+        else if(token==='import'){return new $ImportCtx(context)}
         else if(token==='global'){return new $GlobalCtx(context)}
         else if(token==='return'){
             var ret = new $ReturnCtx(context)
@@ -1485,10 +1578,11 @@ function $transition(context,token){
         }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='str'){
-    
-        if(token=='str'){context.value += arguments[2];return context}
-        else if(token==='['){return new $SubCtx(context)}
+
+        if(token==='['){return new $SubCtx(context)}
+        else if(token==='('){return new $CallCtx(context)}
         else if(token==='.'){return new $AttrCtx(context)}
+        else if(token=='str'){context.value += arguments[2];return context}
         else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='sub'){ 
@@ -1507,12 +1601,22 @@ function $transition(context,token){
             context.expect = ','
             new $IdCtx(context,arguments[2])
             return context
+        }else if((token==='('||token==='[')&&context.expect==='id'){
+            context.expect = ','
+            return new $TargetListCtx(context)
+        }else if((token===')'||token===']')&&context.expect===','){
+            return context.parent
         }else if(token===',' && context.expect==','){
             context.expect='id'
             return context
         }else if(context.expect===','){return $transition(context.parent,token,arguments[2])}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
+    }else if(context.type==='try'){ 
+
+        if(token===':'){return context.parent}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
+    
     }else if(context.type==='unary'){
 
         if(['int','float'].indexOf(token)>-1){
@@ -1571,6 +1675,7 @@ function $tokenize(src,module){
         // "and',"or"
         ]
     var unsupported = ["is","from","nonlocal","with","yield"]
+    var $indented = ['class','def','for','condition','single_kw','try','except']
     // causes errors for some browsers
     // complete list at http://www.javascripter.net/faq/reserved.htm
     var forbidden = ['item','var',
@@ -1624,7 +1729,7 @@ function $tokenize(src,module){
             if(indent>current.indent){
                 // control that parent ended with ':'
                 if(context!==null){
-                    if(['class','def','for','condition','single_kw'].indexOf(context.tree[0].type)==-1){
+                    if($indented.indexOf(context.tree[0].type)==-1){
                         $IndentationError(module,'unexpected indent',pos)
                     }else{ // remove :
                         current.tokens.pop()
