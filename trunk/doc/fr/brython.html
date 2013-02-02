@@ -160,6 +160,25 @@ passer la souris ici</textarea>
 </table>
 
 <p><hr>
+<a name="jsobjects"><h3>Utiliser des objets Javascript</h3>
+
+Il faut gérer la période transitoire où Brython va cohabiter avec Javascript ;-)
+
+<p>Un document HTML peut utiliser des scripts ou des librairies Javascript, et des scripts ou des librairies Python. Brython ne peut pas exploiter directement les objets Javascript : par exemple les attributs d'un objet sont récupérés par la fonction <tt>__getattr__</tt> de l'objet, qui n'existe pas pour les objets Javascripts
+<p>Pour les utiliser dans un script Python, il faut les transformer explicitement par la fonction intégrée <tt>JSObject</tt>
+<p>Par exemple :
+
+<blockquote>
+<pre>
+&lt;script type="text/javascript"&gt;
+circle = {surface:function(r){return 3.14*r*r}}
+&lt;/script&gt;
+&lt;script type="text/python"&gt;
+doc['result'].value = JSObject(circle).surface(10)
+&lt;/script&gt;
+</pre>
+</blockquote>
+<p><hr>
 <a name="ajax"><h3>Ajax</h3>
 La fonction intégrée <code>ajax()</code> renvoie un objet comparable à XMLHTTPRequest en Javascript, mais son interface est légèrement différente. Il possède les méthodes suivantes
 
