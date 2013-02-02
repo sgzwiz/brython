@@ -140,8 +140,8 @@ function $raise(name,msg) {
     err.name = name
     err.message = msg
     err.py_error = true
-    if(document.$stderr!==null){document.$stderr_buff = err.name+': '+err.message}
-    throw err
+    document.$stderr.write(err.name+': '+err.message+'\n')
+    if(name!=='ExecutionError'){throw err}
 }
 
 function $src_error(name,module,msg,pos) {
@@ -198,7 +198,7 @@ function $escape_dq(arg){return arg.replace($dq_regexp,'\\"')}
 
 // default standard output and error
 // can be reset by sys.stdout or sys.stderr
-document.$stderr = null
+document.$stderr = {'write':function(data){void(0)}}
 document.$stderr_buff = '' // buffer for standard output
 
 document.$stdout = {
