@@ -237,8 +237,6 @@ function exec(src){
     try{eval($py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){$raise('ExecutionError',err.message)}
-        if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
-        else{throw(err)}
     }
 }         
 
