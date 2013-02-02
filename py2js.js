@@ -507,7 +507,9 @@ function $py2js(src,module){
                 if(elts.length==2){
                     // keyword argument
                     var src_pos = elts[0].list[0][2]
-                    var seq = [['code','$Kw("'+elts[0].list[0][1]+'",',src_pos]]
+                    var arg_name = elts[0].list[0][1]
+                    if(arg_name.substr(0,2)==='$$'){arg_name=arg_name.substr(2)}
+                    var seq = [['code','$Kw("'+arg_name+'",',src_pos]]
                     seq = seq.concat(elts[1].list)
                     seq.push(['code',')',src_pos])
                     var code = '$Kw("'+elts[0].list[0][1]+'",'
