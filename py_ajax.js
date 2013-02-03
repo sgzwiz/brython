@@ -12,6 +12,12 @@ function $XmlHttpClass(obj){
     this.get_xml = function(){return $DomObject(obj.responseXML)}
     
     this.get_headers = function(){return list(obj.getAllResponseHeaders().split('\n'))}
+    
+    this.get_get_header = function(){
+        var reqobj = obj;
+        return function(header){ return reqobj.getResponseHeader(header) }
+    }
+    
 }
 
 function Ajax(){}
@@ -58,7 +64,7 @@ function $AjaxClass(){
     this.set_header = function(key,value){
         $xmlhttp.setRequestHeader(key,value)
     }
-    
+     
     this.send = function(params){
         // params is a Python dictionary
         if(!params || params.$keys.length==0){$xmlhttp.send();return}
