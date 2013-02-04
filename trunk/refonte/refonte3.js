@@ -197,7 +197,6 @@ function $AssignCtx(context){
             this.tree[0] = left.tree[1]
             left = this.tree[0]
         }
-        console.log('assign is '+this)
         var left_items = null
         if(left.type==='expr' && left.tree.length>1){
             var left_items = left.tree
@@ -1074,6 +1073,7 @@ function $add_line_num(node,rank,module){
         if(node.line_num===undefined){flag=false}
         // don't add line num before try,finally,else,elif
         if(elt.type==='condition' && elt.token==='elif'){flag=false}
+        else if(elt.type==='except'){flag=false}
         else if(elt.type==='single_kw'){flag=false}
         if(flag){
             js = 'document.$line_info=['+node.line_num+',"'+module+'"]'
@@ -1141,8 +1141,8 @@ function $arbo(ctx){
     return ctx
 }
 function $transition(context,token){
-    console.log('arbo '+$arbo(context))
-    console.log('transition '+context+' token '+token)
+    //console.log('arbo '+$arbo(context))
+    //console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
