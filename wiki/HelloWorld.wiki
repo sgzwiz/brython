@@ -1,12 +1,12 @@
 #summary One-sentence summary of this page.
 
-= Problem =
-
+== Problem ==
+----
 Make the browser display "Hello world !"
 
 
-= Solution =
-
+== Solution ==
+--------------
 {{{
 <html>
 <head>
