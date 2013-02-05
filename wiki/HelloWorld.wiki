@@ -9,6 +9,13 @@ Make the browser display "Hello world !"
 
 {{{
 <html>
-
+<head>
+<script scr="brython.js"></script>
+</head>
+<body>
+<script type="text/python">
 doc <= "Hello world !"
+</script>
+</body>
+</html>
 }}}
