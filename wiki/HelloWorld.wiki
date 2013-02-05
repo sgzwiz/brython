@@ -8,7 +8,7 @@ Make the browser display "Hello world !"
 {{{
 <html>
 <head>
-<script scr="brython.js"></script>
+<script src="brython.js"></script>
 </head>
 <body>
 <script type="text/python">
