@@ -42,11 +42,16 @@ function $list_comp1(){
     }
     for(var j=0;j<indent;j++){$py += ' '}
     $py += $res+'.append('+arguments[1]+')'
-    //alert($py)
     var $js = $py2js($py).to_js()
-    //alert($js)
     eval($js)
     return eval($res)    
+}
+
+function $ternary(expr1,cond,expr2){
+    var res = 'var $res=expr1\n'
+    res += 'if(!cond){$res=expr2}\n'
+    eval(res)
+    return $res
 }
 
 function $_SyntaxError(context,msg){
@@ -95,13 +100,11 @@ function $Node(type){
         }else{
             indent = indent || 0
             for(var i=0;i<indent;i++){res+=' '}
-            for(var i=0;i<this.tokens.length;i++){
-                res += this.tokens[i][1]+' '
-            }
+            res += this.context
             if(this.children.length>0){res += '{'}
             res +='\n'
             for(var i=0;i<this.children.length;i++){
-                res += this.children[i].show(indent+4)
+                res += '['+i+'] '+this.children[i].show(indent+4)
             }
             if(this.children.length>0){
                 for(var i=0;i<indent;i++){res+=' '}
@@ -145,11 +148,12 @@ function $Node(type){
                 i++
             }
         }else{
-            //if(this.context.tree===undefined){return}
+            //console.log('transforming '+this.context+' (rank '+rank+')')
             var elt=this.context.tree[0]
             if(elt.transform !== undefined){elt.transform(this,rank)}
             var i=0
             while(i<this.children.length){
+                //console.log('transform child '+i+' of '+this.context+' : '+this.children[i].context)
                 this.children[i].transform(i)
                 i++
             }
@@ -423,7 +427,14 @@ function $ConditionCtx(context,token){
     this.to_js = function(){
         var tok = this.token
         if(tok==='elif'){tok='else if'}
-        var res = tok+'(bool('+$to_js(this.tree)+'))'
+        if(this.tree.length==1){
+            var res = tok+'(bool('+$to_js(this.tree)+'))'
+        }else{ // syntax "if cond : do_something" in the same line
+            var res = tok+'(bool('+this.tree[0].to_js()+'))'
+            if(this.tree[1].tree.length>0){
+                res += '{'+this.tree[1].to_js()+'}'
+            }
+        }
         return res
     }
 }
@@ -436,6 +447,13 @@ function $DefCtx(context){
     context.tree.push(this)
     this.toString = function(){return 'def '+this.name+'('+this.tree+')'}
     this.transform = function(node,rank){
+        // if function body is in the same line, add a child
+        if(this.in_line!==undefined){
+            var new_node = new $Node('expression')
+            var ctx = new $NodeCtx(new_node)
+            ctx.tree = [this.tree[this.tree.length-1]]
+            node.add(new_node)
+        }
         // if function inside a class, the first argument represents
         // the instance
         var scope = $get_scope(this)
@@ -491,7 +509,7 @@ function $DefCtx(context){
             node.add(catch_node)
         }
         // add declaration of function at window level
-        if(scope===null){
+        if(scope===null && node.module==='__main__'){
             js = 'window.'+this.name+'='+this.name
             new_node1 = new $Node('expression')
             new $NodeJSCtx(new_node1,js)
@@ -670,7 +688,7 @@ function $ForExpr(context){
         // replace original line by these 2 lines
         node.parent.children.splice(rank,1)
         for(var i=new_nodes.length-1;i>=0;i--){
-            node.parent.children.splice(rank,0,new_nodes[i])
+            node.parent.insert(rank,new_nodes[i])
         }
 
         var new_node = new $Node('expression')
@@ -683,6 +701,7 @@ function $ForExpr(context){
         // set new loop children
         node.parent.children[rank+1].children = children
         $loop_num++
+        //console.log('AFTER FOR\n'+node.show())
     }
     this.to_js = function(){
         var iterable = this.tree.pop()
@@ -878,7 +897,17 @@ function $NodeCtx(node){
     this.tree = []
     this.type = 'node'
     this.toString = function(){return 'node '+this.tree}
-    this.to_js = function(){return $to_js(this.tree)}
+    this.to_js = function(){
+        if(this.tree.length>1){
+            var new_node = new $Node('expression')
+            var ctx = new $NodeCtx(new_node)
+            ctx.tree = [this.tree[1]]
+            new_node.indent = node.indent+4
+            this.tree.pop()
+            node.add(new_node)
+        }
+        return $to_js(this.tree)
+    }
 }
 
 function $NodeJSCtx(node,js){ // used for raw JS code
@@ -969,7 +998,10 @@ function $StringCtx(context,value){
     this.parent = context
     this.tree = []
     context.tree.push(this)
-    this.to_js = function(){return '"'+this.value+'"'+$to_js(this.tree,'')}
+    this.to_js = function(){
+        return '"'+this.value.replace(/\n/g,' \\\n')+'"'+$to_js(this.tree,'')
+    }
+
 }
 
 function $SubCtx(context){ // subscription or slicing
@@ -991,21 +1023,42 @@ function $TargetListCtx(context){
     this.toString = function(){return '(target list) '+this.tree}
 }
 
+function $TernaryCtx(context){
+    this.type = 'ternary'
+    this.parent = context.parent
+    context.parent.tree.pop()
+    context.parent.tree.push(this)
+    context.parent = this
+    this.tree = [context]
+    this.toString = function(){return '(ternary) '+this.tree}
+    this.to_js = function(){
+        var qesc = new RegExp('"',"g") // to escape double quotes in arguments
+        var args = this.tree[1].to_js().replace(qesc,'\\"')+','
+        args += this.tree[0].to_js().replace(qesc,'\\"')+','
+        args += this.tree[2].to_js().replace(qesc,'\\"')
+        return '$ternary('+$to_js(this.tree)+')'
+    }
+}
+
 function $TryCtx(context){
     this.type = 'try'
     this.parent = context
     context.tree.push(this)
     this.toString = function(){return '(try) '}
     this.transform = function(node,rank){
+        console.log('transform try')
         if(node.parent.children.length===rank+1){
-            $_SyntaxError("missing clause after 'try'")
+            $_SyntaxError("missing clause after 'try' 1")
         }else{
             var next_ctx = node.parent.children[rank+1].context.tree[0]
             console.log('next node '+next_ctx.type)
             if(['except','finally'].indexOf(next_ctx.type)===-1){
-                $_SyntaxError("missing clause after 'try'")
+                $_SyntaxError("missing clause after 'try' 2")
             }
         }
+        // transform node into Javascript 'try' (necessary if
+        // "try" inside a "for" loop
+        new $NodeJSCtx(node,'try')
         // insert new 'catch' clause
         var catch_node = new $Node('expression')
         new $NodeJSCtx(catch_node,'catch($err'+$loop_num+')')
@@ -1142,7 +1195,7 @@ function $arbo(ctx){
 }
 function $transition(context,token){
     //console.log('arbo '+$arbo(context))
-    //console.log('transition '+context+' token '+token)
+    console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
@@ -1368,6 +1421,8 @@ function $transition(context,token){
                 context = context.tree[0]
                 return new $AbstractExprCtx(new $AssignCtx(context),true)
             }
+        }else if(token==='if'){ // ternary operator : expr1 if cond else expr2
+            return new $AbstractExprCtx(new $TernaryCtx(context),false)
         }else{return $transition(context.parent,token)}
 
     }else if(context.type==='expr_not'){
@@ -1537,7 +1592,12 @@ function $transition(context,token){
             var ret = new $ReturnCtx(context)
             return new $AbstractExprCtx(ret,true)
         }else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),false)}
-        else if(token==='eol'){return context}
+        else if(token===':'){ // end of if,def,for etc.
+            var tree_node = context.node
+            var new_node = new $Node('expression')
+            tree_node.add(new_node)
+            return new $NodeCtx(new_node)
+        }else if(token==='eol'){return context}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='not'){
@@ -1621,6 +1681,11 @@ function $transition(context,token){
             return context
         }else if(context.expect===','){return $transition(context.parent,token,arguments[2])}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
+
+    }else if(context.type==='ternary'){
+    
+        if(token==='else'){return new $AbstractExprCtx(context,false)}
+        else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='try'){ 
 
@@ -1739,6 +1804,7 @@ function $tokenize(src,module){
             if(indent>current.indent){
                 // control that parent ended with ':'
                 if(context!==null){
+                    console.log('indented '+context+' line '+lnum)
                     if($indented.indexOf(context.tree[0].type)==-1){
                         $IndentationError(module,'unexpected indent',pos)
                     }else{ // remove :
@@ -1805,13 +1871,8 @@ function $tokenize(src,module){
                             tokens.push(['operator','+',end])
                         }
                         tokens.push(["str",zone+car,pos])
-                        if(_type==="triple_string"){
-                            $pos = pos-zone.length-1
-                            context = $transition(context,'str',zone.substr(3))
-                        }else{
-                            $pos = pos-zone.length-1
-                            context = $transition(context,'str',zone.substr(1))
-                        }
+                        $pos = pos-zone.length-1
+                        context = $transition(context,'str',zone.substr(1))
                         pos = end+1
                         if(_type=="triple_string"){pos = end+3}
                         break
@@ -1898,9 +1959,11 @@ function $tokenize(src,module){
                 // implicit line joining inside brackets
                 pos++;continue
             } else {
+                if(context.tree.length===0){console.log('empty tree line '+lnum)}
                 if(tokens.length>0){ // ignore empty lines
                     $pos = pos
                     context = $transition(context,'eol')
+                    console.log('after eol context '+context)
                     current.tokens = tokens
                     tokens = []
                     indent=null
