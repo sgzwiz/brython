@@ -67,13 +67,17 @@ def drop(ev):
         # back where we started
         go_back(elt,ev)
 
+step = 0
+
 def go_back(elt,mouse):
     # smoothly move the DIV to its original place
+    global step
     x0,y0 = mouse.x-elt.clientWidth/2,mouse.y-elt.clientHeight/2
     x1,y1 = elt.left,elt.top # return integers (elt.style.left returns a string like "110px")
     step = 0
     dx,dy = (x1-x0)/100,(y1-y0)/100
     def move():
+        global step
         elt.style.left = x0+step*dx
         elt.style.top = y0+step*dy
         step += 1
