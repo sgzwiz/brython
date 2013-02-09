@@ -84,6 +84,11 @@ function $tokenize(src,module){
             }
             // ignore empty lines
             if(src.charAt(pos)=='\n'){pos++;lnum++;continue}
+            else if(src.charAt(pos)==='#'){ // comment
+                var offset = src.substr(pos).search(/\n/)
+                if(offset===-1){break}
+                pos+=offset+1;lnum++;continue
+            }
             // indentation must be equal to some value in indent_stack, or
             // greater if last line ended with :
             if(stack.length>1){
