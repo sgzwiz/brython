@@ -188,6 +188,7 @@ function $AssertCtx(context){
     context.tree.push(this)
     this.transform = function(node,rank){
         // transform "assert cond" into "if not cond: throw AssertionError"
+        console.log('transform '+this)
         var new_ctx = new $ConditionCtx(node.context,'if')
         var not_ctx = new $NotCtx(new_ctx)
         not_ctx.tree = this.tree
@@ -296,10 +297,13 @@ function $AssignCtx(context){
                     return res+last.name+'",'+right.to_js()+')'
                 }else if(last.type==='sub'){
                     left.tree.pop()
-                    var item = last.tree[0]
-                    var res = left.to_js()+'.__setitem__('
+                    var res = left.to_js()
                     left.tree.push(last)
-                    res += item.to_js()+','+right.to_js()+')'
+                    last.func = 'setitem' //item = last.tree[0]
+                    var last_str = last.to_js()
+                    last_str = last_str.substr(0,last_str.length-1) // remove trailing )
+                    res += last_str+','+right.to_js()+')'
+                    alert(res)
                     return res
                 }
             }
@@ -766,8 +770,6 @@ function $GlobalCtx(context){
         for(var i=0;i<this.tree.length;i++){
             scope.globals.push(this.tree[i].value)
         }
-        console.log('globals '+scope.globals)
-        //node.parent.children.splice(rank,1)
     }
     this.to_js = function(){return ''}
 }
@@ -1026,7 +1028,7 @@ function $StringCtx(context,value){
     this.tree = []
     context.tree.push(this)
     this.to_js = function(){
-        return '"'+this.value.replace(/\n/g,' \\\n')+'"'+$to_js(this.tree,'')
+        return this.value.replace(/\n/g,' \\\n')+$to_js(this.tree,'')
     }
 
 }
@@ -1034,11 +1036,25 @@ function $StringCtx(context,value){
 function $SubCtx(context){ // subscription or slicing
     this.type = 'sub'
     this.func = 'getitem' // set to 'setitem' if assignment
-    this.toString = function(){return 'sub['+this.tree+']'}
+    this.toString = function(){return '(sub) '+this.tree}
     this.parent = context
     this.tree = []
     context.tree.push(this)
-    this.to_js = function(){return '.__'+this.func+'__('+$to_js(this.tree)+')'}
+    this.to_js = function(){
+        console.log('subs '+this.tree.length)
+        var res = '.__'+this.func+'__('
+        if(this.tree.length===1){
+            return res+this.tree[0].to_js()+')'
+        }else{
+            res += 'slice('
+            for(var i=0;i<this.tree.length;i++){
+                if(this.tree[i].type==='abstract_expr'){res+='null'}
+                else{res+=this.tree[i].to_js()}
+                if(i<this.tree.length-1){res+=','}
+            }
+            return res+'))'
+        }
+    }
 }
 
 function $TargetListCtx(context){
@@ -1429,14 +1445,38 @@ function $transition(context,token){
         }else if(token==='op'){
             // handle operator precedence
             var op_parent=context.parent,op=arguments[2]
+            var op1 = context.parent,repl=null
+            while(true){
+                if(op1.type==='expr'){op1=op1.parent}
+                else if(op1.type==='op'&&$op_weight[op1.op]>$op_weight[op]){repl=op1;op1=op1.parent}
+                else{break}
+            }
+            if(repl===null){
+                context.parent.tree.pop()
+                var expr = new $ExprCtx(op_parent,'operand',context.with_commas)
+                expr.expect = ','
+                context.parent = expr
+                var new_op = new $OpCtx(context,op)
+                return new $AbstractExprCtx(new_op,false)
+            }
+            // new operator is attached to replaced operator parent
+            if(op1.parent.type==='expr'){
+                var new_op = new $OpCtx(op1,op)
+                return new $AbstractExprCtx(new_op,false)
+            }
+            console.log('operator replacement, parent type '+repl.parent.type)
             while(true){
                 if(op_parent.type==='op'&&
                     $op_weight[op_parent.op]>$op_weight[op]){
                     context = op_parent
                     op_parent = op_parent.parent
+                    //context = op_parent.parent
+                    //op_parent = op_parent.parent.parent
+                    console.log('case 1, context type '+context.type+' parent type '+op_parent.type)
                 }else if(op_parent.type==='expr'&&
                     op_parent.parent.type==='op'&&
                     $op_weight[op_parent.parent.op]>$op_weight[op]){
+                    console.log('case 2')
                     context = op_parent.parent
                     op_parent = op_parent.parent.parent
                 }else{break}
@@ -1526,7 +1566,7 @@ function $transition(context,token){
 
     }else if(context.type==='id'){
     
-        if(token==='['){return new $SubCtx(context)}
+        if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
         else if(token==='('){return new $CallCtx(context)}
         else if(token==='.'){return new $AttrCtx(context)}
         else if(token==='='){
@@ -1692,10 +1732,10 @@ function $transition(context,token){
 
     }else if(context.type==='str'){
 
-        if(token==='['){return new $SubCtx(context)}
+        if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
         else if(token==='('){return new $CallCtx(context)}
         else if(token==='.'){return new $AttrCtx(context)}
-        else if(token=='str'){context.value += arguments[2];return context}
+        else if(token=='str'){context.value += '+'+arguments[2];return context}
         else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='sub'){ 
@@ -1705,8 +1745,9 @@ function $transition(context,token){
             var expr = new $AbstractExprCtx(context,false)
             return $transition(expr,token,arguments[2])
         }else if(token===']'){return context.parent}
-        else if(token===':'){new $IdCtx(context,':');return context}
-        else{$_SyntaxError(context,'token '+token+' after '+context)}
+        else if(token===':'){
+            return new $AbstractExprCtx(context,false)
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='target_list'){
     
@@ -1811,6 +1852,7 @@ function $tokenize(src,module){
     var int_pattern = new RegExp("^\\d+")
     var float_pattern = new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
     var id_pattern = new RegExp("[\\$_a-zA-Z]\\w*")
+    var qesc = new RegExp('"',"g") // to escape double quotes in arguments
 
     var context = null
     var tokens = []
@@ -1841,9 +1883,13 @@ function $tokenize(src,module){
             }
             // ignore empty lines
             if(src.charAt(pos)=='\n'){pos++;lnum++;indent=null;continue}
+            else if(src.charAt(pos)==='#'){ // comment
+                var offset = src.substr(pos).search(/\n/)
+                if(offset===-1){break}
+                pos+=offset+1;lnum++;indent=null;continue
+            }
             new_node.indent = indent
             new_node.line_num = lnum
-            console.log('node line '+lnum)
             new_node.module = module
             // attach new node to node with indentation immediately smaller
             if(indent>current.indent){
@@ -1916,7 +1962,8 @@ function $tokenize(src,module){
                         }
                         tokens.push(["str",zone+car,pos])
                         $pos = pos-zone.length-1
-                        context = $transition(context,'str',zone.substr(1))
+                        var string = zone.substr(1).replace(qesc,'\\"')
+                        context = $transition(context,'str',zone+car)
                         pos = end+1
                         if(_type=="triple_string"){pos = end+3}
                         break
@@ -2003,7 +2050,7 @@ function $tokenize(src,module){
                 // implicit line joining inside brackets
                 pos++;continue
             } else {
-                if(context.tree.length===0){console.log('empty tree line '+(lnum-1))}
+                if(context.tree.length===0){}//console.log('empty tree line '+(lnum-1))}
                 if(tokens.length>0){ // ignore empty lines
                     $pos = pos
                     context = $transition(context,'eol')
