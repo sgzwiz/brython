@@ -180,6 +180,24 @@ function $AbstractExprCtx(context,with_commas){
     }
 }
 
+function $AssertCtx(context){
+    this.type = 'assert'
+    this.toString = function(){return '(assert) '+this.tree}
+    this.parent = context
+    this.tree = []
+    context.tree.push(this)
+    this.transform = function(node,rank){
+        // transform "assert cond" into "if not cond: throw AssertionError"
+        var new_ctx = new $ConditionCtx(node.context,'if')
+        var not_ctx = new $NotCtx(new_ctx)
+        not_ctx.tree = this.tree
+        node.context = new_ctx
+        var new_node = new $Node('expression')
+        new $NodeJSCtx(new_node,'throw Error("AssertionError")')
+        node.add(new_node)
+    }
+}
+
 function $AssignCtx(context){
     // context is the left operand of assignment
     this.type = 'assign'
@@ -963,6 +981,15 @@ function $ParentClassCtx(context){ // subscription or slicing
     context.tree.push(this)
 }
 
+function $PassCtx(context){
+    this.type = 'pass'
+    this.toString = function(){return '(pass)'}
+    this.parent = context
+    this.tree = []
+    context.tree.push(this)
+    this.to_js = function(){return 'void(0)'}
+}
+
 function $ReturnCtx(context){ // subscription or slicing
     this.type = 'return'
     this.toString = function(){return 'return '+this.tree}
@@ -1113,11 +1140,11 @@ function $UnaryCtx(context,op){
 var $loop_num = 0
 var $iter_num = 0 
 
-function $add_line_num(node,rank,module){
+function $add_line_num(node,rank){
     if(node.type==='module'){
         var i=0
         while(i<node.children.length){
-            i += $add_line_num(node.children[i],i,module)
+            i += $add_line_num(node.children[i],i)
         }
     }else{
         var elt=node.context.tree[0],offset=1
@@ -1129,7 +1156,7 @@ function $add_line_num(node,rank,module){
         else if(elt.type==='except'){flag=false}
         else if(elt.type==='single_kw'){flag=false}
         if(flag){
-            js = 'document.$line_info=['+node.line_num+',"'+module+'"]'
+            js = 'document.$line_info=['+node.line_num+',"'+node.module+'"]'
             var new_node = new $Node('expression')
             new $NodeJSCtx(new_node,js)
             node.parent.insert(rank,new_node)
@@ -1137,7 +1164,7 @@ function $add_line_num(node,rank,module){
         }
         var i=0
         while(i<node.children.length){
-            i += $add_line_num(node.children[i],i,module)
+            i += $add_line_num(node.children[i],i)
         }
         return offset
     }
@@ -1216,6 +1243,15 @@ function $transition(context,token){
             return new $UnaryCtx(context,arguments[2])
         }else{return $transition(context.parent,token,arguments[2])}
 
+    }else if(context.type==='assert'){
+    
+        if($expr_starters.indexOf(token)>-1&&context.init===undefined){
+            context.init = true
+            return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+        }else if(token==='eol'&&context.init===true){
+            return $transition(context.parent,token)
+        }else{$_SyntaxError(context,token)}
+        
     }else if(context.type==='assign'){
     
         if(token==='eol'){return $transition(context.parent,'eol')}
@@ -1586,8 +1622,10 @@ function $transition(context,token){
             return new $SingleKwCtx(context,token)
         }else if(token==='try'){return new $TryCtx(context)}
         else if(token==='except'){return new $ExceptCtx(context)}
+        else if(token==='assert'){return new $AssertCtx(context)}
         else if(token==='import'){return new $ImportCtx(context)}
         else if(token==='global'){return new $GlobalCtx(context)}
+        else if(token==='pass'){return new $PassCtx(context)}
         else if(token==='return'){
             var ret = new $ReturnCtx(context)
             return new $AbstractExprCtx(ret,true)
@@ -1628,6 +1666,11 @@ function $transition(context,token){
             context.expect='id'
             return context
         }else if(token===')'){return context.parent}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
+
+    }else if(context.type==='pass'){ 
+
+        if(token==='eol'){return context.parent}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='return'){
@@ -1723,6 +1766,7 @@ function $py2js(src,module){
         src = src.substr(1)
     }
     if(src.charAt(src.length-1)!="\n"){src+='\n'}
+    if(module===undefined){module='__main__'}
 
     document.$py_src[module]=src 
     var root = $tokenize(src,module)
@@ -1745,8 +1789,8 @@ function $tokenize(src,module){
         "for","lambda","try","finally","raise","def","from",
         "nonlocal","while","del","global","with",
         "as","elif","else","if","yield","assert","import",
-        "except","raise","in","not",
-        //"False","None","True","break","pass","continue",
+        "except","raise","in","not","pass",
+        //"False","None","True","break","continue",
         // "and',"or"
         ]
     var unsupported = ["is","from","nonlocal","with","yield"]
@@ -1799,12 +1843,12 @@ function $tokenize(src,module){
             if(src.charAt(pos)=='\n'){pos++;lnum++;indent=null;continue}
             new_node.indent = indent
             new_node.line_num = lnum
+            console.log('node line '+lnum)
             new_node.module = module
             // attach new node to node with indentation immediately smaller
             if(indent>current.indent){
                 // control that parent ended with ':'
                 if(context!==null){
-                    console.log('indented '+context+' line '+lnum)
                     if($indented.indexOf(context.tree[0].type)==-1){
                         $IndentationError(module,'unexpected indent',pos)
                     }else{ // remove :
@@ -1959,16 +2003,16 @@ function $tokenize(src,module){
                 // implicit line joining inside brackets
                 pos++;continue
             } else {
-                if(context.tree.length===0){console.log('empty tree line '+lnum)}
+                if(context.tree.length===0){console.log('empty tree line '+(lnum-1))}
                 if(tokens.length>0){ // ignore empty lines
                     $pos = pos
                     context = $transition(context,'eol')
-                    console.log('after eol context '+context)
                     current.tokens = tokens
                     tokens = []
                     indent=null
                     new_node = new $Node()
-                }else{console.log('empty LINE '+lnum)}
+                }else{console.log('empty LINE '+lnum)
+                    new_node.line_num = lnum}
                 pos++;continue
             }
         }
