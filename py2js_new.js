@@ -60,6 +60,7 @@ function $_SyntaxError(context,msg){
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
     var tree_node = ctx_node.node
     var module = tree_node.module
+    $SyntaxError(module,msg,$pos)
 
     var src = document.$py_src[tree_node.module]
     var line_pos = {1:0}
@@ -73,7 +74,13 @@ function $_SyntaxError(context,msg){
     var line = lines[line_num-1]
     console.log('error line '+line_num+' : '+msg+' '+($pos-line_pos[line_num]))
     console.log(line)
-    throw Error('SyntaxError line '+tree_node.line_num+' : '+msg)
+    var err = new Error()
+    err.name = 'SyntaxError'
+    err.py_error = true
+    err.message = msg
+    throw err
+    
+    //throw Error('SyntaxError line '+tree_node.line_num+' : '+msg)
 }
 var $first_op_letter = {}
 for(op in $operators){$first_op_letter[op.charAt(0)]=0}
@@ -188,7 +195,6 @@ function $AssertCtx(context){
     context.tree.push(this)
     this.transform = function(node,rank){
         // transform "assert cond" into "if not cond: throw AssertionError"
-        console.log('transform '+this)
         var new_ctx = new $ConditionCtx(node.context,'if')
         var not_ctx = new $NotCtx(new_ctx)
         not_ctx.tree = this.tree
@@ -446,13 +452,11 @@ function $ConditionCtx(context,token){
     context.tree.push(this)
     this.toString = function(){return this.token+' '+this.tree}
     this.to_js = function(){
-        console.log('condition '+this.token+' '+this.tree.length)
         var tok = this.token
         if(tok==='elif'){tok='else if'}
         if(this.tree.length==1){
             var res = tok+'(bool('+$to_js(this.tree)+'))'
         }else{ // syntax "if cond : do_something" in the same line
-            alert('inline condition '+this.tree[1])
             var res = tok+'(bool('+this.tree[0].to_js()+'))'
             if(this.tree[1].tree.length>0){
                 res += '{'+this.tree[1].to_js()+'}'
@@ -601,12 +605,12 @@ function $DictOrSetCtx(context){
     this.to_js = function(){
         if(this.real==='dict'){
             var res = 'dict(['
-            for(var i=0;i<this.tree.length;i+=2){
-                res+='['+this.tree[i].to_js()+','+this.tree[i+1].to_js()+']'
-                if(i<this.tree.length-2){res+=','}
+            for(var i=0;i<this.items.length;i+=2){
+                res+='['+this.items[i].to_js()+','+this.items[i+1].to_js()+']'
+                if(i<this.items.length-2){res+=','}
             }
-            return res+'])'
-        }else{return 'set('+$to_js(this.tree)+')'}
+            return res+'])'+$to_js(this.tree)
+        }else{return 'set(['+$to_js(this.items)+'])'+$to_js(this.tree)}
     }
 }
 
@@ -1042,7 +1046,6 @@ function $SubCtx(context){ // subscription or slicing
     this.tree = []
     context.tree.push(this)
     this.to_js = function(){
-        console.log('subs '+this.tree.length)
         var res = '.__'+this.func+'__('
         if(this.tree.length===1){
             return res+this.tree[0].to_js()+')'
@@ -1090,12 +1093,10 @@ function $TryCtx(context){
     context.tree.push(this)
     this.toString = function(){return '(try) '}
     this.transform = function(node,rank){
-        console.log('transform try')
         if(node.parent.children.length===rank+1){
             $_SyntaxError("missing clause after 'try' 1")
         }else{
             var next_ctx = node.parent.children[rank+1].context.tree[0]
-            console.log('next node '+next_ctx.type)
             if(['except','finally'].indexOf(next_ctx.type)===-1){
                 $_SyntaxError("missing clause after 'try' 2")
             }
@@ -1239,7 +1240,7 @@ function $arbo(ctx){
 }
 function $transition(context,token){
     //console.log('arbo '+$arbo(context))
-    console.log('transition '+context+' token '+token)
+    //console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
@@ -1258,7 +1259,8 @@ function $transition(context,token){
         else if(token==='not'){return new $NotCtx(new $ExprCtx(context,'not',commas))}
         else if(token==='op' && '+-'.search(arguments[2])){ // unary + or -
             return new $UnaryCtx(context,arguments[2])
-        }else{return $transition(context.parent,token,arguments[2])}
+        }else if(token==='='){$_SyntaxError(context,token)}
+        else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='assert'){
     
@@ -1386,7 +1388,10 @@ function $transition(context,token){
         }else{
             if(context.expect===','){
                 if(token==='}'){
-                    if(context.real==='dict'&&context.tree.length%2===0){
+                    if((context.real==='set')||
+                        (context.real==='dict'&&context.tree.length%2===0)){
+                        context.items = context.tree
+                        context.tree = []
                         context.closed = true
                         return context
                     }else{$_SyntaxError(context,'token '+token+' after '+context)}
@@ -1406,6 +1411,7 @@ function $transition(context,token){
                 }else{$_SyntaxError(context,'token '+token+' after '+context)}   
             }else if(context.expect==='id'){
                 if(token==='}'&&context.tree.length===0){ // empty dict
+                    context.items = []
                     context.closed = true
                     context.real = 'dict'
                     return context
@@ -1456,7 +1462,6 @@ function $transition(context,token){
                 else if(op1.type==='op'&&$op_weight[op1.op]>$op_weight[op]){repl=op1;op1=op1.parent}
                 else{break}
             }
-            console.log('found repl for op '+op)
             if(repl===null){
                 context.parent.tree.pop()
                 var expr = new $ExprCtx(op_parent,'operand',context.with_commas)
@@ -1465,7 +1470,6 @@ function $transition(context,token){
                 var new_op = new $OpCtx(context,op)
                 return new $AbstractExprCtx(new_op,false)
             }
-            console.log('operator replacement, parent type '+repl.parent.type)
             repl.parent.tree.pop()
             var expr = new $ExprCtx(repl.parent,'operand',false)
             expr.tree = [op1]
@@ -1473,29 +1477,7 @@ function $transition(context,token){
             var new_op = new $OpCtx(repl,op) // replace old operation
             //var res = new $AbstractExprCtx(new_op,false)
             return new $AbstractExprCtx(new_op,false)
-            while(true){
-                if(op_parent.type==='op'&&
-                    $op_weight[op_parent.op]>$op_weight[op]){
-                    context = op_parent
-                    op_parent = op_parent.parent
-                    //context = op_parent.parent
-                    //op_parent = op_parent.parent.parent
-                    console.log('case 1, context type '+context.type+' parent type '+op_parent.type)
-                }else if(op_parent.type==='expr'&&
-                    op_parent.parent.type==='op'&&
-                    $op_weight[op_parent.parent.op]>$op_weight[op]){
-                    console.log('case 2')
-                    context = op_parent.parent
-                    op_parent = op_parent.parent.parent
-                }else{break}
-            }
-            context.parent.tree.pop()
-            var expr = new $ExprCtx(op_parent,'operand',context.with_commas)
-            if(context.with_commas===undefined){console.log('tiens, tiens')}
-            expr.expect = ','
-            context.parent = expr
-            var new_op = new $OpCtx(context,op)
-            return new $AbstractExprCtx(new_op,false)
+
         }else if(token==='augm_assign' && context.expect===','){
             return $augmented_assign(context,arguments[2])
         }else if(token==='=' && context.expect===','){
@@ -1524,7 +1506,6 @@ function $transition(context,token){
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='func_arg_id'){
-        console.log('func_arg_id expects '+context.expect)
         if(token==='=' && context.expect==='='){
             context.parent.has_default = true
             return new $AbstractExprCtx(context,false)
@@ -1825,9 +1806,7 @@ function $py2js(src,module){
 
     document.$py_src[module]=src 
     var root = $tokenize(src,module)
-    console.log('root ok')
     root.transform()
-    console.log('transform ok '+module+' '+document.$debug)
     if(document.$debug>0){$add_line_num(root,null,module)}
     return root
 }
@@ -2167,7 +2146,7 @@ function brython(debug){
             eval(js)
         }
         else{ // get path of brython.js
-            var br_scripts = ['brython.js','py_classes.js']
+            var br_scripts = ['brython.js','py_string.js']
             for(var j=0;j<br_scripts.length;j++){
                 var bs = br_scripts[j]
                 if(elt.src.substr(elt.src.length-bs.length)==bs){
