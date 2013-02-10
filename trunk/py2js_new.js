@@ -303,7 +303,6 @@ function $AssignCtx(context){
                     var last_str = last.to_js()
                     last_str = last_str.substr(0,last_str.length-1) // remove trailing )
                     res += last_str+','+right.to_js()+')'
-                    alert(res)
                     return res
                 }
             }
@@ -447,11 +446,13 @@ function $ConditionCtx(context,token){
     context.tree.push(this)
     this.toString = function(){return this.token+' '+this.tree}
     this.to_js = function(){
+        console.log('condition '+this.token+' '+this.tree.length)
         var tok = this.token
         if(tok==='elif'){tok='else if'}
         if(this.tree.length==1){
             var res = tok+'(bool('+$to_js(this.tree)+'))'
         }else{ // syntax "if cond : do_something" in the same line
+            alert('inline condition '+this.tree[1])
             var res = tok+'(bool('+this.tree[0].to_js()+'))'
             if(this.tree[1].tree.length>0){
                 res += '{'+this.tree[1].to_js()+'}'
@@ -1238,7 +1239,7 @@ function $arbo(ctx){
 }
 function $transition(context,token){
     //console.log('arbo '+$arbo(context))
-    //console.log('transition '+context+' token '+token)
+    console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
@@ -1353,7 +1354,11 @@ function $transition(context,token){
 
     }else if(context.type==='condition'){
 
-        if(token===':'){return context.parent}
+        if(token===':'){
+            var new_node = new $Node('expression')
+            context.parent.node.add(new_node)
+            return new $NodeCtx(new_node)
+        }
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='def'){
@@ -1451,6 +1456,7 @@ function $transition(context,token){
                 else if(op1.type==='op'&&$op_weight[op1.op]>$op_weight[op]){repl=op1;op1=op1.parent}
                 else{break}
             }
+            console.log('found repl for op '+op)
             if(repl===null){
                 context.parent.tree.pop()
                 var expr = new $ExprCtx(op_parent,'operand',context.with_commas)
@@ -1459,12 +1465,14 @@ function $transition(context,token){
                 var new_op = new $OpCtx(context,op)
                 return new $AbstractExprCtx(new_op,false)
             }
-            // new operator is attached to replaced operator parent
-            if(op1.parent.type==='expr'){
-                var new_op = new $OpCtx(op1,op)
-                return new $AbstractExprCtx(new_op,false)
-            }
             console.log('operator replacement, parent type '+repl.parent.type)
+            repl.parent.tree.pop()
+            var expr = new $ExprCtx(repl.parent,'operand',false)
+            expr.tree = [op1]
+            repl.parent = expr
+            var new_op = new $OpCtx(repl,op) // replace old operation
+            //var res = new $AbstractExprCtx(new_op,false)
+            return new $AbstractExprCtx(new_op,false)
             while(true){
                 if(op_parent.type==='op'&&
                     $op_weight[op_parent.op]>$op_weight[op]){
@@ -1483,6 +1491,7 @@ function $transition(context,token){
             }
             context.parent.tree.pop()
             var expr = new $ExprCtx(op_parent,'operand',context.with_commas)
+            if(context.with_commas===undefined){console.log('tiens, tiens')}
             expr.expect = ','
             context.parent = expr
             var new_op = new $OpCtx(context,op)
@@ -1675,8 +1684,13 @@ function $transition(context,token){
             var new_node = new $Node('expression')
             tree_node.add(new_node)
             return new $NodeCtx(new_node)
-        }else if(token==='eol'){return context}
-        else{$_SyntaxError(context,'token '+token+' after '+context)}
+        }else if(token==='eol'){
+            if(context.tree.length===0){ // might be the case after a :
+                context.node.parent.children.pop()
+                return context.node.parent.context
+            }
+            return context
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='not'){
         if(token==='in'){ // operator not_in
