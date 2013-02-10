@@ -140,7 +140,7 @@ function $raise(name,msg) {
     err.name = name
     err.message = msg
     err.py_error = true
-    document.$stderr.write(err.name+': '+err.message+'\n')
+    document.$stderr_buff = err.name+': '+err.message+'\n'
     if(name!=='ExecutionError'){throw err}
 }
 
@@ -149,14 +149,18 @@ function $src_error(name,module,msg,pos) {
     var pos2line = {}
     var lnum=1
     var src = document.$py_src[module]
+    var line_pos = {1:0}
     for(i=0;i<src.length;i++){
         pos2line[i]=lnum
-        if(src.charAt(i)=='\n'){lnum+=1}
+        if(src.charAt(i)=='\n'){lnum+=1;line_pos[lnum]=i}
     }
     var line_num = pos2line[pos]
     var lines = src.split('\n')
-    msg = name+': '+msg+"\nmodule '"+module+"' line "+line_num
-    msg += '\n'+lines[line_num-1]
+    msg = msg+"\nmodule '"+module+"' line "+line_num
+    msg += '\n'+lines[line_num-1]+'\n'
+    var lpos = pos-line_pos[line_num]
+    for(var i=0;i<lpos-1;i++){msg+=' '}
+    msg += '^'
     err = new Error()
     err.name = name
     err.message = msg
