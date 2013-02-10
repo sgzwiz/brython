@@ -877,7 +877,7 @@ function $ListOrTupleCtx(context,real){
                     var comp_iter = elt.tree[1].tree[0]
                     for(var j=0;j<comp_iter.tree.length;j++){
                         var name = comp_iter.tree[j].value
-                        if(env.indexOf(name)===-1){
+                        if(env.indexOf(name)===-1 && local_env.indexOf(name)==-1){
                             env.push(name)
                         }
                     }
@@ -885,7 +885,7 @@ function $ListOrTupleCtx(context,real){
                     var if_expr = elt.tree[0]
                     for(var j=0;j<if_expr.tree.length;j++){
                         var name = if_expr.tree[j].value
-                        if(env.indexOf(name)===-1){
+                        if(env.indexOf(name)===-1 && local_env.indexOf(name)==-1){
                             env.push(name)
                         }
                     }
@@ -896,6 +896,7 @@ function $ListOrTupleCtx(context,real){
                     env.push(res_env[i])
                 }
             }
+
             var res = '{'
             for(var i=0;i<env.length;i++){
                 res += "'"+env[i]+"':"+env[i]
@@ -907,7 +908,6 @@ function $ListOrTupleCtx(context,real){
                 res += '"'+src.substring(this.intervals[i-1],this.intervals[i]).replace(qesc,'\\"')+'"'
                 if(i<this.intervals.length-1){res+=','}
             }
-            console.log('$list_comp1('+res+')')
             return '$list_comp1('+res+')'
         }else if(this.real==='tuple'){
             if(this.tree.length===1){return this.tree[0].to_js()}
@@ -1488,7 +1488,8 @@ function $transition(context,token){
                 context = context.tree[0]
                 return new $AbstractExprCtx(new $AssignCtx(context),true)
             }
-        }else if(token==='if'){ // ternary operator : expr1 if cond else expr2
+        }else if(token==='if' && context.parent.type!=='comp_iterable'){ 
+            // ternary operator : expr1 if cond else expr2
             return new $AbstractExprCtx(new $TernaryCtx(context),false)
         }else{return $transition(context.parent,token)}
 
