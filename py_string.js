@@ -455,9 +455,21 @@ function $string_rstrip(x){
 
 function $string_split(obj){
     return function(){
-        var $ns=$MakeArgs("str.split",arguments,['sep'],
-            {'maxsplit':-1},null,null)
-        var sep=$ns['sep'],maxsplit=$ns['maxsplit']
+        var $ns=$MakeArgs("str.split",arguments,[],{},'args','kw')
+        var sep=null,maxsplit=-1
+        if($ns['args'].length>=1){sep=$ns['args'][0]}
+        if($ns['args'].length==2){maxsplit=$ns['args'][1]}
+        if(sep===null){var re=/\s/}
+        else{
+            var escaped = list('*.[]()')
+            var esc_sep = ''
+            for(var i=0;i<sep.length;i++){
+                if(escaped.indexOf(sep.charAt(i))>-1){esc_sep += '\\'}
+                esc_sep += sep.charAt(i)
+            }
+            var re = new RegExp(esc_sep)
+        }
+        return obj.split(re,maxsplit)
         var res = [],pos=0,spos=0
         if(isinstance(sep,str)){
             while(true){
