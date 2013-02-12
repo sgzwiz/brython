@@ -228,6 +228,10 @@ $JSObject.prototype.__getattr__ = function(attr){
                 else if(res===undefined){return None}
                 else{return $JS2Py(res)}
             }
+        }else if(obj===window && attr==='location'){
+            // special lookup because of Firefox bug 
+            // https://bugzilla.mozilla.org/show_bug.cgi?id=814622
+            return $Location()
         }else{
             return $JS2Py(this.js[attr])
         }
@@ -244,6 +248,13 @@ $JSObject.prototype.__setattr__ = function(attr,value){
     }
 }
 
+function $Location(){ // used because of Firefox bug #814622
+    var obj = new object()
+    for(var x in window.location){obj[x]=window.location[x]}
+    obj.__class__ = new $class(this,'Location')
+    obj.toString = function(){return window.location.toString()}
+    return obj
+}
 
 win =  new $JSObject(window)
 
