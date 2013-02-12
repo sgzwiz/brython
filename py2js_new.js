@@ -790,7 +790,7 @@ function $IdCtx(context,value,minus){
     context.tree.push(this)
     this.to_js = function(){
         var val = this.value
-        if(['print','alert'].indexOf(this.value)>-1){val = '$'+val}
+        if(['print','alert','eval'].indexOf(this.value)>-1){val = '$'+val}
         return val+$to_js(this.tree,'')
     }
 }
@@ -2147,7 +2147,7 @@ function brython(debug){
             eval(js)
         }
         else{ // get path of brython.js
-            var br_scripts = ['brython.js','py_string.js']
+            var br_scripts = ['brython.js','py_list.js']
             for(var j=0;j<br_scripts.length;j++){
                 var bs = br_scripts[j]
                 if(elt.src.substr(elt.src.length-bs.length)==bs){
