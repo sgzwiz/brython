@@ -1,7 +1,7 @@
 // built-in functions
 function abs(obj){
     if(isinstance(obj,int)){return int(Math.abs(obj))}
-    else if(isinstance(obj,float)){return int(Math.abs(obj.value))}
+    else if(isinstance(obj,float)){return float(Math.abs(obj.value))}
     else{$raise('TypeError',"Bad operand type for abs(): '"+str(obj.__class__)+"'")}
 }
 
@@ -237,6 +237,7 @@ function exec(src){
     try{eval($py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+        else{throw err}
     }
 }         
 
