@@ -5,7 +5,7 @@ import datetime
 
 now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
-sources = ['py_classes','py_list','py_string','py_import_new',
+sources = ['py_classes_new','py_list','py_string_new','py_import_new',
     'py2js_new','py_utils',
     'py_ajax','py_dom','py_svg','py_local_storage']
 
@@ -24,6 +24,8 @@ res += '// version compiled from commented, indented source files at http://code
 src_size = 0
 for fname in sources:
     src = open(fname+'.js').read()
+    if fname=='py2js_new':
+        src = src.replace('context','C')
     src_size += len(src)
     pos = 0
     while pos<len(src):
