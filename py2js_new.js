@@ -88,7 +88,6 @@ for(op in $operators){$first_op_letter[op.charAt(0)]=0}
 function $Node(type){
     this.type = type
     this.children=[]
-    this.tokens = []
     this.add = function(child){
         this.children.push(child)
         child.parent = this
@@ -157,7 +156,10 @@ function $Node(type){
         }else{
             //console.log('transforming '+this.context+' (rank '+rank+')')
             var elt=this.context.tree[0]
-            if(elt.transform !== undefined){elt.transform(this,rank)}
+            if(elt.transform !== undefined){
+                //console.log('transforming '+this.context+' (rank '+rank+')')
+                elt.transform(this,rank)
+            }
             var i=0
             while(i<this.children.length){
                 //console.log('transform child '+i+' of '+this.context+' : '+this.children[i].context)
@@ -305,8 +307,9 @@ function $AssignCtx(context){
                     left.tree.pop()
                     var res = left.to_js()
                     left.tree.push(last)
-                    last.func = 'setitem' //item = last.tree[0]
+                    last.func = 'setitem' // just for to_js()
                     var last_str = last.to_js()
+                    last.func = 'getitem' // restore default function
                     last_str = last_str.substr(0,last_str.length-1) // remove trailing )
                     res += last_str+','+right.to_js()+')'
                     return res
@@ -474,6 +477,8 @@ function $DefCtx(context){
     context.tree.push(this)
     this.toString = function(){return 'def '+this.name+'('+this.tree+')'}
     this.transform = function(node,rank){
+        // already transformed ?
+        if(this.transformed!==undefined){return}
         // if function body is in the same line, add a child
         if(this.in_line!==undefined){
             var new_node = new $Node('expression')
@@ -501,14 +506,22 @@ function $DefCtx(context){
         var defaults = ''
         var other_args = null
         var other_kw = null
+        var env = []
         for(var i=0;i<this.tree[0].tree.length;i++){
             var arg = this.tree[0].tree[i]
             if(arg.type==='func_arg_id'){
                 if(arg.tree.length===0){required+='"'+arg.name+'",'}
-                else{defaults+='"'+arg.name+'":'+$to_js(arg.tree)+','}
+                else{
+                    defaults+='"'+arg.name+'":'+$to_js(arg.tree)+','
+                    if(arg.tree[0].type==='expr' 
+                        && arg.tree[0].tree[0].type==='id'){
+                        env.push(arg.tree[0].tree[0].value)
+                    }                        
+                }
             }else if(arg.type==='star_arg'){other_args='"'+arg.name+'"'}
             else if(arg.type==='double_star_arg'){other_kw='"'+arg.name+'"'}
         }
+        this.env = env
         if(required.length>0){required=required.substr(0,required.length-1)}
         if(defaults.length>0){defaults=defaults.substr(0,defaults.length-1)}
         // add 2 lines of code to node children
@@ -516,40 +529,59 @@ function $DefCtx(context){
         js += '{'+defaults+'},'+other_args+','+other_kw+')'
         var new_node1 = new $Node('expression')
         new $NodeJSCtx(new_node1,js)
-        var js = 'for($var in $ns){eval("var "+$var+"=$ns[$var]")}'
+        var js = 'for($var in $ns){console.log($var+":"+$ns[$var]);eval("var "+$var+"=$ns[$var]")}'
         var new_node2 = new $Node('expression')
         new $NodeJSCtx(new_node2,js)
         node.children.splice(0,0,new_node1,new_node2)
-        // if debug mode, enclose function body in a try/catch
-        if(document.$debug>0){
-            var try_node = new $Node('expression')
-            new $NodeJSCtx(try_node,'try')
-            for(var i=0;i<node.children.length;i++){
-                try_node.add(node.children[i])
-            }
-            var catch_node = new $Node('expression')
-            var js = 'catch(err'+$loop_num+')'
-            js += '{$raise(err'+$loop_num+'.name,err'+$loop_num+'.message)}'
-            new $NodeJSCtx(catch_node,js)
-            node.children = []
-            node.add(try_node)
-            node.add(catch_node)
+
+        // wrap function body in a try/catch
+        var try_node = new $Node('expression')
+        new $NodeJSCtx(try_node,'try')
+
+        var def_func_node = new $Node('expression')
+        new $NodeJSCtx(def_func_node,'return function()')
+        try_node.add(def_func_node)
+        for(var i=0;i<node.children.length;i++){
+            def_func_node.add(node.children[i])
         }
+        var ret_node = new $Node('expression')
+        var catch_node = new $Node('expression')
+        var js = 'catch(err'+$loop_num+')'
+        js += '{$raise(err'+$loop_num+'.name,err'+$loop_num+'.message)}'
+        new $NodeJSCtx(catch_node,js)
+        node.children = []
+        node.add(try_node)
+        node.add(catch_node)
+
+        var txt = ')('
+        for(var i=0;i<this.env.length;i++){
+            txt += this.env[i]
+            if(i<this.env.length-1){res += ','}
+        }
+        new $NodeJSCtx(ret_node,txt+')')
+        node.parent.insert(rank+1,ret_node)
+
         // add declaration of function at window level
         if(scope===null && node.module==='__main__'){
             js = 'window.'+this.name+'='+this.name
             new_node1 = new $Node('expression')
             new $NodeJSCtx(new_node1,js)
-            node.parent.children.splice(rank+1,0,new_node1)
+            node.parent.children.splice(rank+2,0,new_node1)
         }
+        this.transformed = true
     }
     this.to_js = function(indent){
         var scope = $get_scope(this)
         if(scope===null || scope.ntype!=='class'){
-            res = 'function '+this.name+'()'
+            res = this.name+'= (function ('
         }else{
-            res = 'this.'+this.name+'= function()'
+            res = 'this.'+this.name+'= (function('
         }
+        for(var i=0;i<this.env.length;i++){
+            res+=this.env[i]
+            if(i<this.env.length-1){res+=','}
+        }
+        res += ')'
         return res
     }
 }
@@ -1412,6 +1444,7 @@ function $transition(context,token){
             }else if(context.expect==='id'){
                 if(token==='}'&&context.tree.length===0){ // empty dict
                     context.items = []
+                    context.tree = []
                     context.closed = true
                     context.real = 'dict'
                     return context
@@ -1849,7 +1882,6 @@ function $tokenize(src,module){
     var qesc = new RegExp('"',"g") // to escape double quotes in arguments
 
     var context = null
-    var tokens = []
     var root = new $Node('module')
     root.indent = -1
     var new_node = new $Node('expression')
@@ -1891,8 +1923,6 @@ function $tokenize(src,module){
                 if(context!==null){
                     if($indented.indexOf(context.tree[0].type)==-1){
                         $IndentationError(module,'unexpected indent',pos)
-                    }else{ // remove :
-                        current.tokens.pop()
                     }
                 }
                 // add a child to current node
@@ -1950,11 +1980,6 @@ function $tokenize(src,module){
                     } else {
                         found = true
                         // end of string
-                        if(tokens.length>0 && $last(tokens)[0]=="str"){
-                            // implicit string concatenation : insert a + sign
-                            tokens.push(['operator','+',end])
-                        }
-                        tokens.push(["str",zone+car,pos])
                         $pos = pos-zone.length-1
                         var string = zone.substr(1).replace(qesc,'\\"')
                         context = $transition(context,'str',zone+car)
@@ -1992,16 +2017,13 @@ function $tokenize(src,module){
                     }
                     $pos = pos-name.length
                     context = $transition(context,name)
-                    tokens.push(["keyword",name,pos-name.length])
                 } else if(name in $operators) { // and, or
                     $pos = pos-name.length
                     context = $transition(context,'op',name)
-                    tokens.push(["operator",name,pos-name.length])
                 } else {
                     if(forbidden.indexOf(name)>-1){name='$$'+name}
                     $pos = pos-name.length
                     context = $transition(context,'id',name)
-                    tokens.push(["id",name,pos-name.length])
                 }
                 name=""
                 continue
@@ -2009,7 +2031,6 @@ function $tokenize(src,module){
         }
         // point
         if(car=="."){
-            tokens.push(["point",".",pos])
             $pos = pos
             context = $transition(context,'.')
             pos++;continue
@@ -2020,17 +2041,14 @@ function $tokenize(src,module){
             var res = float_pattern.exec(src.substr(pos))
             if(res){
                 if(res[0].search('e')>-1){
-                    tokens.push(["float",res[0],pos])
                     $pos = pos
                     context = $transition(context,'float',res[0])
                 }else{
-                    tokens.push(["float",eval(res[0]),pos])
                     $pos = pos
                     context = $transition(context,'float',eval(res[0]))
                 }
             }else{
                 res = int_pattern.exec(src.substr(pos))
-                tokens.push(["int",eval(res[0]),pos])
                 $pos = pos
                 context = $transition(context,'int',eval(res[0]))
             }
@@ -2044,12 +2062,9 @@ function $tokenize(src,module){
                 // implicit line joining inside brackets
                 pos++;continue
             } else {
-                if(context.tree.length===0){}//console.log('empty tree line '+(lnum-1))}
-                if(tokens.length>0){ // ignore empty lines
+                if(current.context.tree.length>0){ //}//console.log('empty tree line '+(lnum-1))}
                     $pos = pos
                     context = $transition(context,'eol')
-                    current.tokens = tokens
-                    tokens = []
                     indent=null
                     new_node = new $Node()
                 }else{console.log('empty LINE '+lnum)
@@ -2089,7 +2104,6 @@ function $tokenize(src,module){
             }
         }
         if(car in punctuation){
-            tokens.push(["delimiter",car,pos])
             $pos = pos
             context = $transition(context,car)
             pos++;continue
