@@ -1,9 +1,9 @@
 // brython.js www.brython.info
-// version 1.0.20130202-121412
+// version 1.0.20130214-215612
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
-else if(isinstance(obj,float)){return int(Math.abs(obj.value))}
+else if(isinstance(obj,float)){return float(Math.abs(obj.value))}
 else{$raise('TypeError',"Bad operand type for abs(): '"+str(obj.__class__)+"'")}
 }
 function $alert(src){alert(str(src))}
@@ -200,6 +200,7 @@ function exec(src){
 try{eval($py2js(src).to_js())}
 catch(err){
 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+else{throw err}
 }
 }
 function filter(){
@@ -1410,12 +1411,21 @@ var sp=new RegExp("^"+pattern)
 return obj.replace(sp,"")
 }
 }
+function $re_escape(str)
+{
+var specials="[.*+?|()$^"
+for(var i=0;i<specials.length;i++){
+var re=new RegExp('\\'+specials.charAt(i),'g')
+str=str.replace(re, "\\"+specials.charAt(i))
+}
+return str
+}
 function $string_replace(obj){
 return function(old,_new,count){
 if(count!==undefined){
 if(!isinstance(count,[int,float])){$raise('TypeError',
 "'"+str(count.__class__)+"' object cannot be interpreted as an integer")}
-var re=new RegExp(old)
+var re=new RegExp($re_escape(old),'g')
 var res=obj.valueOf()
 while(count>0){
 if(obj.search(re)==-1){return res}
@@ -1424,7 +1434,7 @@ count--
 }
 return res
 }else{
-var re=new RegExp(old,"g")
+var re=new RegExp($re_escape(old),"g")
 return obj.replace(re,_new)
 }
 }
@@ -1463,21 +1473,21 @@ return str(this.value.replace(sp,""))
 }
 function $string_split(obj){
 return function(){
-var $ns=$MakeArgs("str.split",arguments,['sep'],
-{'maxsplit':-1},null,null)
-var sep=$ns['sep'],maxsplit=$ns['maxsplit']
-var res=[],pos=0,spos=0
-if(isinstance(sep,str)){
-while(true){
-spos=obj.substr(pos).search(sep)
-if(spos==-1){break}
-res.push(obj.substr(pos,spos))
-pos +=spos+sep.length
-if(maxsplit !=-1 && res.length==maxsplit){break}
+var $ns=$MakeArgs("str.split",arguments,[],{},'args','kw')
+var sep=null,maxsplit=-1
+if($ns['args'].length>=1){sep=$ns['args'][0]}
+if($ns['args'].length==2){maxsplit=$ns['args'][1]}
+if(sep===null){var re=/\s/}
+else{
+var escaped=list('*.[]()|$^')
+var esc_sep=''
+for(var i=0;i<sep.length;i++){
+if(escaped.indexOf(sep.charAt(i))>-1){esc_sep +='\\'}
+esc_sep +=sep.charAt(i)
 }
-res.push(obj.substr(pos))
-return res
+var re=new RegExp(esc_sep)
 }
+return obj.split(re,maxsplit)
 }
 }
 function $string_startswith(obj){
@@ -2924,6 +2934,11 @@ while(indent%8>0){indent++}
 }else{break}
 }
 if(src.charAt(pos)=='\n'){pos++;lnum++;continue}
+else if(src.charAt(pos)==='#'){
+var offset=src.substr(pos).search(/\n/)
+if(offset===-1){break}
+pos+=offset+1;lnum++;continue
+}
 if(stack.length>1){
 if(indent>$last(indent_stack)){
 if(stack[stack.length-2][0]!="delimiter" &&
@@ -3595,21 +3610,25 @@ err=new Error()
 err.name=name
 err.message=msg
 err.py_error=true
-document.$stderr.write(err.name+': '+err.message+'\n')
+document.$stderr_buff=err.name+': '+err.message+'\n'
 if(name!=='ExecutionError'){throw err}
 }
 function $src_error(name,module,msg,pos){
 var pos2line={}
 var lnum=1
 var src=document.$py_src[module]
+var line_pos={1:0}
 for(i=0;i<src.length;i++){
 pos2line[i]=lnum
-if(src.charAt(i)=='\n'){lnum+=1}
+if(src.charAt(i)=='\n'){lnum+=1;line_pos[lnum]=i}
 }
 var line_num=pos2line[pos]
 var lines=src.split('\n')
-msg=name+': '+msg+"\nmodule '"+module+"' line "+line_num
-msg +='\n'+lines[line_num-1]
+msg=msg+"\nmodule '"+module+"' line "+line_num
+msg +='\n'+lines[line_num-1]+'\n'
+var lpos=pos-line_pos[line_num]
+for(var i=0;i<lpos-1;i++){msg+=' '}
+msg +='^'
 err=new Error()
 err.name=name
 err.message=msg
@@ -3743,6 +3762,10 @@ else{return obj[attr]}
 this.get_text=function(){return obj.responseText}
 this.get_xml=function(){return $DomObject(obj.responseXML)}
 this.get_headers=function(){return list(obj.getAllResponseHeaders().split('\n'))}
+this.get_get_header=function(){
+var reqobj=obj
+return function(header){return reqobj.getResponseHeader(header)}
+}
 }
 function Ajax(){}
 Ajax.__class__=$type
@@ -3976,7 +3999,7 @@ JSObject.toString=JSObject.__str__
 function $JSObject(js){
 this.js=js
 this.__class__=JSObject
-this.__str__=function(){return "<object 'JSObject' wraps "+this.js+">"}
+this.__str__=function(){return "<object 'JSObject'>"}
 this.toString=this.__str__
 }
 $JSObject.prototype.__getattr__=function(attr){
@@ -3992,6 +4015,8 @@ if(typeof res=='object'){return new $JSObject(res)}
 else if(res===undefined){return None}
 else{return $JS2Py(res)}
 }
+}else if(obj===window && attr==='location'){
+return $Location()
 }else{
 return $JS2Py(this.js[attr])
 }
@@ -4005,6 +4030,13 @@ this.js[attr]=value.js
 }else{
 this.js[attr]=value
 }
+}
+function $Location(){
+var obj=new object()
+for(var x in window.location){obj[x]=window.location[x]}
+obj.__class__=new $class(this,'Location')
+obj.toString=function(){return window.location.toString()}
+return obj
 }
 win=new $JSObject(window)
 $events=$List2Dict('onabort','onactivate','onafterprint','onafterupdate',
