@@ -61,24 +61,22 @@ function $import_py(module){
             if($xmlhttp.status==200 || $xmlhttp.status==0){res=$xmlhttp.responseText}
             else{
                 // don't throw an exception here, it will not be caught (issue #30)
-                res = Error('NotFoundError',"No module named '"+module+"'")
+                res = Error('ImportError',"No module named '"+module+"'")
             }
         }
     }
     $xmlhttp.open('GET',module+'.py'+fake_qs,false)
     $xmlhttp.send()
-    if(res.constructor===Error){throw res} // module not found
+    if(res.constructor===Error){res.name='ImportError';throw res} // module not found
     var root = $py2js(res,module)
     // insert module name as a JS object
     var mod_node = new $Node('expression')
     new $NodeJSCtx(mod_node,module+'= new object()')
     root.insert(0,mod_node)
-    //stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
     // search for module-level names
     // functions and variables
     for(var i=1;i<root.children.length;i++){
         var node = root.children[i]
-        console.log('child '+i+' '+node.context)
         var ctx = node.context.tree[0]
         if(ctx.type==='def'){
             node.context.tree=[]
