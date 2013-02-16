@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.0.20130214-215612
+// version 1.1.20130216-115059
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -200,7 +200,7 @@ function exec(src){
 try{eval($py2js(src).to_js())}
 catch(err){
 if(err.py_error===undefined){$raise('ExecutionError',err.message)}
-else{throw err}
+throw err
 }
 }
 function filter(){
@@ -733,11 +733,14 @@ tuple.__name__='tuple'
 tuple.__str__=function(){return "<class 'tuple'>"}
 tuple.toString=tuple.__str__
 function zip(){
+var $ns=$MakeArgs('zip',arguments,[],{},'args','kw')
+var args=$ns['args']
+var kw=$ns['kw']
 var rank=0,res=[]
 while(true){
 var line=[],flag=true
-for(var i=0;i<arguments.length;i++){
-var x=arguments[i].__item__(rank)
+for(var i=0;i<args.length;i++){
+var x=args[i].__item__(rank)
 if(x===undefined){flag=false;break}
 line.push(x)
 }
@@ -1284,6 +1287,9 @@ String.prototype.__setattr__=function(attr,value){setattr(this,attr,value)}
 String.prototype.__setitem__=function(attr,value){
 $raise('TypeError',"'str' object does not support item assignment")
 }
+String.prototype.__str__=function(){
+return this.toString()
+}
 var $comp_func=function(other){
 if(typeof other !=="string"){$raise('TypeError',
 "unorderable types: 'str' > "+other.__class__+"()")}
@@ -1565,40 +1571,55 @@ if($xmlhttp.readyState==4){
 window.clearTimeout(timer)
 if($xmlhttp.status==200 || $xmlhttp.status==0){res=$xmlhttp.responseText}
 else{
-res=Error('NotFoundError',"No module named '"+module+"'")
+res=Error('ImportError',"No module named '"+module+"'")
 }
 }
 }
 $xmlhttp.open('GET',module+'.py'+fake_qs,false)
 $xmlhttp.send()
-if(res.constructor===Error){throw res}
-var stack=$py2js(res,module)
-stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
-var $pos=0 
-while(true){
-var $mlname_pos=stack.find_next_at_same_level($pos,"keyword","function")
-if($mlname_pos===null){break}
-var $func_name=stack.list[$mlname_pos+1][1]
-stack.list.splice($mlname_pos,2,['code',module+'.'+$func_name+"=function"])
-var br_pos=stack.find_next($mlname_pos,'bracket','{')
-var br_end=stack.find_next_matching(br_pos)
-var $fend=stack.find_next(br_end,"func_end")
-var $fend_code=stack.list[$fend][1]
-$fend_code=module+'.'+$fend_code.substr(1)
-$pv_pos=$fend_code.search(';')
-$fend_code=";"+$fend_code.substr(0,$pv_pos)
-stack.list[$fend][1]=$fend_code
-$pos=$mlname_pos+1
+if(res.constructor===Error){
+res=null
+$xmlhttp.open('GET',module+'/__init__.py'+fake_qs,false)
+$xmlhttp.send()
 }
-var $pos=0 
-while(true){
-var $mlname_pos=stack.find_next_at_same_level($pos,"assign_id")
-if($mlname_pos===null){break}
-stack.list[$mlname_pos][1]=module+'.'+stack.list[$mlname_pos][1]
-$pos=$mlname_pos+1
+if(res.constructor===Error){res.name='ImportError';throw res}
+var root=$py2js(res,module)
+var body=root.children
+root.children=[]
+var mod_node=new $Node('expression')
+new $NodeJSCtx(mod_node,module+'= (function()')
+root.insert(0,mod_node)
+mod_node.children=body
+var names=[]
+for(var i=1;i<mod_node.children.length;i++){
+var node=mod_node.children[i]
+var ctx=node.context.tree[0]
+if(ctx.type==='def'||ctx.type==='class'){
+if(names.indexOf(ctx.name)===-1){names.push(ctx.name)}
+}else if(ctx.type==='assign'){
+var left=ctx.tree[0]
+if(left.type==='expr'&&left.tree[0].type==='id'&&left.tree[0].tree.length===0){
+var id_name=left.tree[0].value
+if(names.indexOf(id_name)===-1){names.push(id_name)}
 }
+}
+}
+var ret_code='return {'
+for(var i=0;i<names.length;i++){
+ret_code +=names[i]+':'+names[i]+','
+}
+ret_code +='__getattr__:function(attr){return this[attr]},'
+ret_code +='__setattr__:function(attr,value){this[attr]=value}'
+ret_code +='}'
+var ret_node=new $Node('expression')
+new $NodeJSCtx(ret_node,ret_code)
+mod_node.add(ret_node)
+var ex_node=new $Node('expression')
+new $NodeJSCtx(ex_node,')()')
+root.add(ex_node)
 try{
-eval(stack.to_js())
+var js=root.to_js()
+eval(js)
 eval(module+'.__class__ = $type')
 eval(module+'.__str__ = function(){return "<module \''+module+"'>\"}")
 }catch(err){
@@ -1622,1244 +1643,7 @@ continue
 }
 function $import_from(module,names){
 }
-function $multiple_assign(indent,targets,right_expr,assign_pos){
-var i=0,target=null
-for(var i=0;i<targets.list;i++){
-var left=targets[i]
-if(left.list[0][3]==="local"){left.list[0][1]="var "+left.list[0][1]}
-}
-var rlist=right_expr.list
-if(rlist[0][0]=="bracket"){rlist=rlist.slice(1,rlist.length-1)}
-var rs=new Stack(rlist)
-var rs_items=rs.split(',')
-var seq=[]
-if(rs_items.length>1){
-if(rs_items.length>targets.length){
-$raise("ValueError","Too many values to unpack (expected "+targets.length+")")
-}else if(rs_items.length<targets.length){
-$raise("ValueError","Need more than "+rs_items.length+" values to unpack")
-}else{
-var seq=[['code','var $temp=[]'],['newline','\n']]
-for(i=0;i<targets.length;i++){
-seq.push(['indent',indent],['code','$temp.push'],['bracket','('])
-seq=seq.concat(rs_items[i].list)
-seq.push(['bracket',')'],['newline','\n',assign_pos])
-}
-for(i=0;i<targets.length;i++){
-seq.push(['indent',indent])
-seq=seq.concat(targets[i].list)
-seq.push(['assign','=',assign_pos],
-['code','$temp['+i+']'],['newline','\n',assign_pos])
-}
-}
-}else{
-seq.push(['code',"var $var",assign_pos],['assign','='])
-seq=seq.concat(right_expr.list)
-seq.push(['newline','\n',assign_pos])
-for(var i=0;i<targets.length;i++){
-target=targets[i]
-seq.push(['indent',indent])
-seq=seq.concat(target.list)
-seq.push(['assign','='],['code','$var.__item__('+i+')'],
-['newline','\n'])
-}
-}
-return seq
-}
-var $OpeningBrackets=$List2Dict('(','[','{')
-var $ClosingBrackets=$List2Dict(')',']','}')
-function $py2js(src,module){
-var i=0,pos=0
-src=src.replace(/\r\n/gm,'\n')
-while(src.length>0 &&(src.charAt(0)=="\n" || src.charAt(0)=="\r")){
-src=src.substr(1)
-}
-if(src.charAt(src.length-1)!="\n"){src+='\n'}
-if(module===undefined){module="__main__"}
-document.$py_src[module]=src
-var pos2line={}
-var lnum=1
-for(i=0;i<src.length;i++){
-pos2line[i]=lnum
-if(src.charAt(i)=='\n'){lnum+=1}
-}
-var dobj=new Date()
-var t0=dobj.getTime()
-var times={}
-tokens=$tokenize(src,module)
-stack=new Stack(tokens)
-var $err_num=0
-if(document.$debug){
-var pos=0
-var s_nl=0
-while(true){
-var nl=stack.find_next(pos,'newline')
-if(nl==null){break}
-var indent_pos=stack.find_previous(nl,'indent')
-if(!stack.list[indent_pos+1].match(['keyword','else'])&&
-!stack.list[indent_pos+1].match(['keyword','elif'])&&
-!stack.list[indent_pos+1].match(['keyword','except'])){
-stack.list.splice(s_nl,0,['indent',stack.list[indent_pos][1]],
-['code','document.$line_info=['+stack.list[nl][1]+',"'+module+'"]',stack.list[nl][2]],
-['newline','\n'])
-s_nl=nl+4
-pos=nl+5
-}else{
-s_nl=nl+1
-pos=nl+2
-}
-}
-}
-var dobj=new Date()
-times['add line nums']=dobj.getTime()-t0
-var repl=[['not','in'],['is','not']]
-for(i=0;i<repl.length;i++){
-var seq=repl[i]
-var pos=stack.list.length-1
-while(pos>0){
-var op_pos=stack.find_previous(pos,"operator",seq[1])
-if(op_pos==null){break}
-if(op_pos>1 && stack.list[op_pos-1].match(["operator",seq[0]])){
-stack.list.splice(op_pos-1,2,['operator',seq[0]+'_'+seq[1],stack.list[op_pos][2]])
-}
-pos=op_pos-2
-}
-}
-pos=0
-while(true){
-var br_pos=stack.find_next(pos,'bracket','[')
-if(br_pos===null){break}
-var end=stack.find_next_matching(br_pos)
-if(end-br_pos<5){pos=br_pos+1;continue}
-var for_pos=stack.find_next_at_same_level(br_pos+1,'keyword','for')
-if(for_pos===null){pos=br_pos+1;continue}
-var expr=stack.list.slice(br_pos+1,for_pos)
-var s_expr=new Stack(expr)
-var res_env=s_expr.ids_in()
-var in_pos=stack.find_next_at_same_level(for_pos+1,'operator','in')
-if(in_pos===null){$SyntaxError(module,"missing 'in' in list comprehension",br_pos)}
-var qesc=new RegExp('"',"g")
-var loops=[]
-var env=[]
-var lvar=new Stack(stack.list.slice(for_pos+1,in_pos))
-var local_env=lvar.ids_in()
-while(true){
-for_pos=stack.find_next_at_same_level(in_pos+1,'keyword','for')
-if(for_pos===null){break}
-var s=new Stack(stack.list.slice(in_pos+1,for_pos))
-env=env.concat(s.ids_in())
-loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
-in_pos=stack.find_next_at_same_level(for_pos+1,'operator','in')
-if(in_pos===null){$SyntaxError(module,"missing 'in' in list comprehension",br_pos)}
-lvar=new Stack(stack.list.slice(for_pos+1,in_pos))
-local_env=local_env.concat(lvar.ids_in())
-}
-var if_pos=stack.find_next_at_same_level(in_pos,'keyword','if')
-if(if_pos===null){
-var s=new Stack(stack.list.slice(in_pos+1,end))
-env=env.concat(s.ids_in())
-loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
-var cond=[]
-}else{
-var s=new Stack(stack.list.slice(in_pos+1,if_pos))
-env=env.concat(s.ids_in())
-loops.push([lvar.to_js(),s.to_js().replace(qesc,'\\"')])
-var cond=stack.list.slice(if_pos+1,end)
-}
-seq='$list_comp(['
-for(var i=0;i<loops.length;i++){
-seq +='["'+loops[i][0]+'","'+loops[i][1]+'"]'
-if(i<loops.length-1){seq +=','}
-}
-seq +='],'
-s=new Stack(expr)
-seq +='"'+s.to_js()+'",'
-if(cond.length>0){
-var c_start=cond[0][2]
-var c_end=stack.list[end][2]
-var c_src=src.slice(c_start,c_end)
-seq +='"'+c_src.replace(qesc,'\\"')+'",['
-}else{seq +='"",['}
-for(var k=0;k<res_env.length;k++){
-if(env.indexOf(res_env[k])==-1 &&
-local_env.indexOf(res_env[k])==-1){env.push(res_env[k])}
-}
-for(var i=0;i<env.length;i++){
-seq+="'"+env[i]+"',"+env[i]
-if(i<env.length-1){seq+=','}
-}
-seq +='])'
-var tail=stack.list.slice(end+1,stack.list.length)
-stack.list=stack.list.slice(0,br_pos).concat([['code',seq]]).concat(tail)
-pos=br_pos+1
-}
-var not_a_display={
-'[':[["id"],["assign_id"],['str'],['int'],['float'],["qualifier"],
-["bracket",$List2Dict("]",")")]], 
-'(':[["id"],["assign_id"],["qualifier"],["bracket",$List2Dict("]",")")]], 
-'{':[[]]
-}
-var PyType={'(':'tuple','[':'$list','{':'dict_or_set'}
-var br_list=['[','(','{']
-for(var ibr=0;ibr<br_list.length;ibr++){
-var bracket=br_list[ibr]
-pos=stack.list.length-1
-while(true){
-var br_elt=stack.find_previous(pos,"bracket",bracket)
-if(br_elt==null){break}
-if(br_elt>0){
-var previous=stack.list[br_elt-1]
-var is_display=true
-for(var inad=0;inad<not_a_display[bracket].length;inad++){
-var args=not_a_display[bracket][inad]
-if(args[0]==previous[0]){
-if(args.length!=2 ||(previous[1]in args[1])){
-is_display=false
-}
-}
-}
-if(!is_display){pos=br_elt-1;continue}
-var pyType=PyType[bracket]
-var br_pos=stack.list[br_elt][2]
-var sequence=[['id',pyType,br_elt[2]],['bracket','(',br_pos]]
-var end=stack.find_next_matching(br_elt)
-if(pyType=='dict_or_set'){
-var args=new Stack(stack.list.slice(br_elt+1,end))
-if(args.list.length===0){
-sequence=[['id','dict'],['bracket','(']]
-}else{
-sequence=[['id','dict'],['bracket','('],
-['id','$list'],['bracket','(']]
-var kvs=args.split(',')
-var pyType=null
-for(var ikv=0;ikv<kvs.length;ikv++){
-var kv=kvs[ikv]
-var elts=kv.split(':')
-if(pyType==null){
-if(elts.length==1){
-pyType='set'
-sequence=[['id','set'],['bracket','(']]
-}
-else if(elts.length==2){pyType='dict'}
-else{console.log(elts);$SyntaxError(module,"invalid syntax",br_pos)}
-sequence[0][0][1]=pyType
-}
-var key=elts[0]
-var key_start=kv.start+key.start
-var key_end=kv.start+key.end
-if(pyType=='dict'){
-var value=elts[1]
-sequence.push(['id','$list'])
-sequence.push(['bracket','('])
-sequence=sequence.concat(args.list.slice(key_start,key_end+1))
-sequence.push(['delimiter',',',br_pos])
-var value_start=kv.start+value.start
-var value_end=kv.start+value.end
-sequence=sequence.concat(args.list.slice(value_start,value_end+1))
-sequence.push(['bracket',')'])
-sequence.push(['delimiter',',',br_pos])
-}else{
-sequence=sequence.concat(args.list.slice(key_start,key_end+1))
-sequence.push(['delimiter',',',br_pos])
-}
-}
-sequence.pop()
-if(pyType=='dict'){
-sequence.push(['bracket',')'])
-}
-}
-sequence.push(['bracket',')',stack.list[end][2]])
-}else if(pyType=='tuple'){
-var args=new Stack(stack.list.slice(br_elt+1,end))
-var kvs=args.split(',')
-if(kvs.length==1){sequence[0][1]='$tuple'}
-if(kvs[kvs.length-1].list.length==0){
-if(kvs.length==2){sequence[0][1]='$tuple'}
-stack.list[end-1]=['code','']
-}
-sequence=sequence.concat(stack.list.slice(br_elt+1,end))
-sequence.push(['bracket',')',stack.list[end][2]])
-}else{
-var args=new Stack(stack.list.slice(br_elt+1,end))
-if(end > br_elt+1){
-sequence=sequence.concat(stack.list.slice(br_elt+1,end))
-sequence.push(['bracket',')',stack.list[end][2]])
-}else{sequence.push(['bracket',')',stack.list[end][2]])}
-}
-tail=stack.list.slice(end+1,stack.list.length)
-stack.list=stack.list.slice(0,br_elt)
-stack.list=stack.list.concat(sequence)
-stack.list=stack.list.concat(tail)
-}
-pos=br_elt - 1
-}
-}
-var dobj=new Date()
-times['displays']=dobj.getTime()-t0
-var fkw=['class','def'],$funcs=[]
-for(i=0;i<fkw.length;i++){
-pos=0
-var kw=fkw[i]
-while(true){
-var fpos=stack.find_next(pos,'keyword',kw)
-if(fpos===null){break}
-var block=stack.find_block(fpos)
-var func_name=stack.list[fpos+1]
-var parent=-1
-var offset=0
-for(var j=$funcs.length-1;j>=0;j--){
-if(fpos>$funcs[j][2]&& fpos<$funcs[j][3]){parent=j;break}
-}
-$funcs.push([kw,func_name[1],block[0],block[1],parent])
-if(kw=='def' && parent>-1 && $funcs[parent][0]=='class'){
-stack.list[fpos+1][0]='method_id'
-if(stack.list[fpos+1][1].substr(0,2)=='$$'){
-stack.list[fpos+1][1]=stack.list[fpos+1][1].substr(2)
-}
-}
-if(kw==='class'){
-var block_indent=stack.list[block[0]+2][1]
-stack.list.splice(block[0]+2,0,['indent',block_indent],
-['code','var $instance=this'],['newline','\n'])
-offset +=3
-}
-if(kw==='class' && !stack.list[fpos+2].match(['bracket','('])){
-stack.list.splice(fpos+2,0,['bracket','('],['bracket',')'])
-offset +=2
-}
-pos=fpos+offset+1
-}
-}
-pos=stack.list.length-1
-while(true){
-var def_pos=stack.find_previous(pos,"keyword","def")
-if(def_pos==null){break}
-var func_token=stack.list[def_pos+1]
-var arg_start=stack.list[def_pos+2]
-var indent_pos=stack.find_next(def_pos,'indent')
-var indent=stack.list[indent_pos][1]
-var f_indent='\n'
-while(indent>0){f_indent+=' ';indent--}
-document.line_num=pos2line[func_token[2]]
-if(func_token[0]!=='id' && func_token[0]!=='method_id'){
-$SyntaxError(module,"wrong type after def",def_pos)
-}
-if(arg_start[0]!='bracket' || arg_start[1]!='('){
-$SyntaxError(module,"missing ( after function name",def_pos)
-}
-var end_def=stack.find_next_at_same_level(def_pos,"delimiter",":")
-if(end_def==null){
-$SyntaxError(module,"Unable to find definition end "+end_def,def_pos)
-}
-var has_args=false
-if(arg_start[0]=='bracket' && arg_start[1]=='(' && 
-!(stack.list[def_pos+3].match(["bracket",")"]))){
-has_args=true
-arg_end=stack.find_next_matching(def_pos+2)
-for(var i=def_pos+2;i<arg_end;i++){
-if(stack.list[i][0]=='id'){stack.list[i][0]='arg_id'}
-}
-var s=new Stack(stack.list.slice(def_pos+3,arg_end))
-var args=s.split(',')
-var required=[]
-var defaults=[]
-var has_defaults=false
-var other_args=null
-var other_kw=null
-var instance=null 
-for(var i=args.length-1;i>=0;i--){
-arg=args[i]
-var op=null
-if(arg.list[0][0]=="operator" && arg.list[1][0]=="arg_id"){
-if(arg.list[0][1]=="*"){op='*';other_args=arg.list[1][1]}
-else if(arg.list[0][1]=='**'){op='**';other_kw=arg.list[1][1]}
-if(op!=null){
-if(i==0){
-stack.list.splice(def_pos+2+arg.start+1,arg.end-arg.start+1)
-}else{
-stack.list.splice(def_pos+2+arg.start,arg.end-arg.start+2)
-}
-}
-}
-if(op==null){
-var elts=arg.split("=")
-if(elts.length>1){
-defaults.push([elts[0].list[0][1],elts[1].to_js()])
-has_defaults=true
-}else{
-if(i==0 && func_token[0]==='method_id'){
-var instance=arg
-}else{
-required.push(arg.list[0][1])
-}
-}
-if(i==0){
-stack.list.splice(def_pos+3+arg.start,arg.end-arg.start+1)
-}else{
-stack.list.splice(def_pos+2+arg.start,arg.end-arg.start+2)
-}
-}
-}
-var arg_code='"'+func_token[1]+'",arguments,'
-if(required.length==0){arg_code+='[],'}
-else{
-arg_code +='['
-required.reverse()
-for(ireq=0;ireq<required.length;ireq++){
-arg_code+="'"+required[ireq]+"',"
-}
-arg_code=arg_code.substr(0,arg_code.length-1)+"],"
-}
-var def_code='{'
-if(has_defaults){
-for($idef=0;$idef<defaults.length;$idef++){
-def_code +='"'+defaults[$idef][0]+'":'+defaults[$idef][1]+','
-}
-def_code=def_code.substr(0,def_code.length-1)
-}
-def_code +='}'
-arg_code +=def_code+','
-if(other_args==null){arg_code+="null,"}
-else{arg_code +='"'+other_args+'",'}
-if(other_kw==null){arg_code+="null"}
-else{arg_code +='"'+other_kw+'"'}
-}
-var block=stack.find_block(def_pos)
-var block_indent=stack.list[block[0]+2][1]
-stack.list.splice(block[0]+2,0,['indent',block_indent],
-['code','document.$func_info=["'+module+'","'+func_token[1]+'"]'],
-['newline','\n'])
-if(has_args){stack.list.splice(block[0]+5,0,
-['indent',block_indent],['code',"$ns=$MakeArgs("+arg_code+")"],['newline','\n'],
-['indent',block_indent],['code','for($var in $ns){eval("var "+$var+"=$ns[$var]")}'],
-['newline','\n'])
-}
-if(func_token[0]==='method_id'){
-stack.list.splice(block[0]+11,0,['indent',block_indent],
-['code','var '+instance.list[0][1]+'=$instance'],['newline','\n'])
-}
-if(document.$debug){
-var block=stack.find_block(def_pos)
-stack.list.splice(block[0]+5,0,['indent',block_indent],
-['code','try'], 
-['bracket','{'],['newline','\n'])
-for(var i=block[0]+8;i<block[1]+4;i++){
-if(stack.list[i][0]==='indent'){
-stack.list[i][1]=stack.list[i][1]+4
-}
-}
-stack.list.splice(block[1]+4,0,['newline','\n'],['indent',block_indent],
-['bracket','}'],['code','catch(err'+$err_num+')'],
-['code','{$raise(err'+$err_num+'.name,err'+$err_num+'.message)}'])
-}
-pos=def_pos-1
-}
-var dobj=new Date()
-times['function defs']=dobj.getTime()-t0
-pos=stack.list.length-1
-while(true){
-var br_pos=stack.find_previous(pos,"bracket","(")
-if(br_pos==null){break}
-if((stack.list[br_pos-1][0]=='id' || stack.list[br_pos-1][0]=="qualifier")
-&& br_pos>1 && 
-!(stack.list[br_pos-2].match(["keyword",'def']))){
-var end_call=stack.find_next_matching(br_pos)
-var s=new Stack(stack.list.slice(br_pos+1,end_call))
-var args=s.split(',')
-for(i=args.length-1;i>=0;i--){
-var arg=args[i]
-if(arg.list.length==0){continue}
-var elts=arg.split('=')
-if(elts.length==2){
-var src_pos=elts[0].list[0][2]
-var arg_name=elts[0].list[0][1]
-if(arg_name.substr(0,2)==='$$'){arg_name=arg_name.substr(2)}
-var seq=[['code','$Kw("'+arg_name+'",',src_pos]]
-seq=seq.concat(elts[1].list)
-seq.push(['code',')',src_pos])
-var code='$Kw("'+elts[0].list[0][1]+'",'
-code +=elts[1].to_js()+')'
-stack.list.splice(br_pos+1+arg.start,arg.end-arg.start+1)
-tail=stack.list.slice(br_pos+1+arg.start,stack.list.length)
-stack.list=stack.list.slice(0,br_pos+1+arg.start).concat(seq).concat(tail)
-}else if(arg.list[0][0]=="operator" &&
-["*","**"].indexOf(arg.list[0][1])>-1){
-if(arg.list[0][1]=='*'){var uf="$ptuple"}else{var uf="$pdict"}
-stack.list.splice(br_pos+2+arg.end,0,['bracket',')'])
-stack.list.splice(br_pos+1+arg.start,1,
-["code",uf],['bracket','('])
-}
-}
-}
-pos=br_pos-1
-}
-var dobj=new Date()
-times['function calls']=dobj.getTime()-t0
-pos=0
-var sign2mult={'+':1,'-':-1}
-while(true){
-var sign=stack.find_next(pos,"operator","+","-")
-if(sign==null){break}
-var op=stack.list[sign]
-var mult=sign2mult[op[1]]
-while(sign<stack.list.length-1){
-var next=stack.list[sign+1]
-if(next[0]=="operator" && next[1]in sign2mult){
-mult *=sign2mult[next[1]]
-stack.list.splice(sign+1,1)
-}else{break }
-}
-if(mult !=sign2mult[op[1]]){
-if(op[1]=='+'){stack.list[sign][1]='-'}
-else{stack.list[sign][1]='+'}
-}
-pos=sign+1
-}
-pos=0
-while(true){
-var sign=stack.find_next(pos,"operator","+","-")
-if(sign==null){break}
-var op=stack.list[sign]
-if(sign>0 && 
-(stack.list[sign-1][0]in $List2Dict("delimiter","newline","indent","assign","operator")||
-(stack.list[sign-1].match(["keyword","return"]))||
-(stack.list[sign-1][0]=="bracket" &&("({[".indexOf(stack.list[sign-1][1])>-1)))){
-if(sign<stack.list.length-1){
-var next=stack.list[sign+1]
-if(next[0]=="int" || next[0]=="float"){
-var value=next[1]
-if(op[1]=='-'){
-stack.list[sign+1][1]=-1*stack.list[sign+1][1]
-}
-stack.list.splice(sign,1)
-}else if(next[0]=="id"){
-var mult=1
-if(op[1]=="-"){mult=-1}
-stack.list.splice(sign,1,["int",mult,op[2]],
-['operator','*',op[2]])
-}
-}
-}
-pos=sign+1
-}
-pos=0
-while(pos<stack.list.length){
-var from_pos=stack.find_next(pos,"keyword","from")
-if(from_pos==null){break}
-if(stack.list[from_pos-1][0]!=='indent'){
-$SyntaxError("invalid syntax",from_pos)
-}
-if(from_pos<=stack.length-3 || 
-stack.list[from_pos+1][0]!=='id'){
-$SyntaxError("invalid syntax",from_pos)
-}
-var module=stack.list[from_pos+1][1]
-if(!stack.list[from_pos+2].match(['keyword','import'])){
-$SyntaxError("missing 'import' after 'from'",from_pos)
-}
-var names=[]
-if(stack.list[from_pos+3].match(['operator','*'])){
-var names=['*'],end=from_pos+3
-}else{
-var _names=stack.atom_at(from_pos+3,true)
-if(_names.type==="tuple"){
-for(var i=0;i<_names.items.length;i++){
-names.push(_names.items[i].list()[0][1])
-}
-}else{
-names=[_names.list()[0][1]]
-}
-var end=_names.end
-}
-alert('module '+module+' names '+names+' end '+end)
-stack.list.splice(from_pos,end-from_pos+1,
-['id','$import_from'],['bracket','('],['str','"'+module+'"'],
-['delimiter',','],['code',names+''],['bracket',')'])
-stack.dump()
-pos=from_pos+1
-}
-pos=0
-while(pos<stack.list.length){
-var imp_pos=stack.find_next(pos,"keyword","import")
-if(imp_pos==null){break}
-var imported=stack.atom_at(imp_pos+1,true)
-if(imported.type !='id' && imported.type !='tuple'){
-$SyntaxError(module,"invalid syntax",imp_pos)
-}
-for(var i=0;i<imported.list().length;i++){
-if(stack.list[imported.start+i][0]=="id"){
-stack.list[imported.start+i][0]='str'
-stack.list[imported.start+i][1]='"'+stack.list[imported.start+i][1]+'"'
-}
-}
-var src_pos=stack.list[imp_pos][2]
-stack.list.splice(imported.end+1,0,['bracket',')'])
-stack.list.splice(imp_pos,1,
-['code','$import',src_pos],['bracket','(',src_pos])
-pos=imp_pos+1
-}
-var dobj=new Date()
-times['misc']=dobj.getTime()-t0
-var pos=0
-while(true){
-var try_pos=stack.find_next(pos,"keyword","try")
-if(try_pos===null){break}
-var try_indent=0
-if(try_pos==0){try_indent=0}
-else if(stack.list[try_pos-1][0]=='indent'){try_indent=stack.list[try_pos-1][1]}
-var block=stack.find_block(try_pos)
-var nxt=block[1]
-var exc_pos=try_pos
-var clauses=[]
-while(true){
-exc_pos=stack.next_at_same_indent(exc_pos)
-if(exc_pos===null){break}
-if(stack.list[exc_pos][0]!=="keyword" &&
-["except","finally","else"].indexOf(stack.list[exc_pos][1])==-1){
-break
-}
-clauses.push(exc_pos)
-}
-if(clauses.length==0){$SyntaxError(module,'invalid syntax',exc_pos)}
-var last_block=stack.find_block(clauses[clauses.length-1])
-for(var i=clauses[0]-1;i<last_block[1];i++){
-if(stack.list[i][0]=="indent"){
-stack.list[i][1]=stack.list[i][1]+4
-}
-}
-for(var i=clauses.length-1;i>=0;i--){
-var clause=stack.list[clauses[i]]
-if(clause[1]=='except'){
-stack.list[clauses[i]][1]='else'
-if(!stack.list[clauses[i]+1].match(['delimiter',':'])){
-var excs=stack.atom_at(clauses[i]+1,true)
-if(excs.type=="id"){
-var exc=stack.list[clauses[i]+1]
-stack.list[clauses[i]+1]=['code','if($err'+$err_num+'.name=="'+exc[1]+'")']
-}else if(excs.type=="function_call"){
-var exc_str=[],exc_list=excs.list()
-for(var j=2;j<exc_list.length;j++){
-if(exc_list[j][0]=="id"){exc_str.push('"'+exc_list[j][1]+'"')}
-}
-stack.list.splice(clauses[i]+1,exc_list.length,
-['code','if(['+exc_str.join(',')+'].indexOf($err'+$err_num+'.name)>-1)'])
-}else{$SyntaxError(module,'invalid syntax',clause[3])}
-}
-}
-}
-stack.list.splice(nxt+1,0,['indent',try_indent],['keyword','catch'],
-['id','$err'+$err_num],['delimiter',':'],['newline','\n'])
-stack.list.splice(nxt+6,0,['indent',try_indent+4],['code','if(false){void(0)}'],
-['newline','\n'])
-pos=try_pos+1
-$err_num++
-}
-pos=0
-while(true){
-var raise_pos=stack.find_next(pos,"keyword","raise")
-if(raise_pos===null){break}
-var expr=stack.atom_at(raise_pos+1)
-stack.list.splice(expr.end+1,0,['bracket',')'])
-stack.list.splice(raise_pos,1,['code','$raise'],['bracket','('])
-pos=expr.end+1
-}
-var pos=stack.list.length-1
-while(true){
-var assert_pos=stack.find_previous(pos,"keyword","assert")
-if(assert_pos===null){break}
-var assert_indent=stack.indent(assert_pos)
-var end=stack.line_end(assert_pos)
-var cond_block=stack.list.slice(assert_pos+1,end)
-stack.list[assert_pos][1]="if"
-stack.list.splice(end,0,['delimiter',':'],['newline','\n'],
-['indent',assert_indent+4],['keyword','pass'],['newline','\n'],
-['indent',assert_indent],['keyword','else'],['delimiter',':'],['newline','\n'],
-['indent',assert_indent+4],['code','$raise("AssertionError")'])
-pos=assert_pos-1
-}
-pos=0
-while(true){
-var ar_pos=stack.find_next(pos,'id','assert_raises')
-if(ar_pos===null){break}
-stack.list[ar_pos+2][0]='str'
-stack.list[ar_pos+2][1]='"'+stack.list[ar_pos+2][1]+'"'
-pos=ar_pos+1
-}
-var pos=stack.list.length-1
-while(true){
-var if_pos=stack.find_previous(pos,'keyword','if')
-if(if_pos===null){break}
-var line_end=stack.line_end(if_pos)
-var else_pos=stack.find_next(if_pos+1,'keyword','else')
-if(else_pos===null || else_pos>line_end){pos=if_pos-1;continue}
-var r1=stack.atom_before(if_pos,true)
-var cond=stack.list.slice(if_pos+1,else_pos)
-var r2=stack.atom_at(else_pos+1)
-var tail=stack.list.slice(r2.end+1,stack.list.length)
-var seq=cond
-seq.push(['delimiter','?'])
-seq=seq.concat(r1.list())
-seq.push(['delimiter',':'])
-seq=seq.concat(r2.list())
-stack.list=stack.list.slice(0,if_pos-r1.end+r1.start-1).concat(seq).concat(tail)
-pos=if_pos-1
-}
-var kws={'if':'if','else':'else','elif':'else if',
-'class':'function','def':'function','for':'for','while':'while',
-'try':'try','catch':'catch','finally':'finally'}
-var has_parenth=$List2Dict('if','elif','while','for','catch')
-var $funcs=[]
-var module_level_functions=[]
-var loop_id=0
-for(kw in kws){
-pos=0
-while(pos<stack.list.length){
-var kw_pos=stack.find_next(pos,"keyword",kw)
-if(kw_pos==null){break}
-var kw_indent=stack.indent(kw_pos)
-var src_pos=stack.list[kw_pos][2]
-var block=stack.find_block(kw_pos)
-if(block===null){
-if(kw==='if' || kw==='else'){
-pos=kw_pos+1
-continue
-}
-$SyntaxError(module,'no condition',stack.list[kw_pos][2])
-}
-s=new Stack(stack.list.slice(block[0],block[1]+1))
-if(block==null){$SyntaxError(module,'missing block after '+kw,kw_pos)}
-var multiline=(s.find_next(0,'newline')!=null)
-stack.list[kw_pos][1]=kws[kw]
-stack.list[kw_pos].push(kw)
-stack.list[block[0]]=['bracket','{']
-var end_pos=stack.list[block[1]][2]
-tail=stack.list.slice(block[1],stack.list.length)
-if(kw in has_parenth){
-if(kw=="for"){
-loop_id++
-var block_indent=stack.indent(block[0]+2)
-var arg_list=stack.atom_at(kw_pos+1,true)
-var _in=stack.atom_at(arg_list.end+1)
-var _in_list=stack.list.slice(_in.start,_in.end+1)
-if(_in_list.length !=1 || 
-_in_list[0][0]!="operator" || _in_list[0][1]!="in"){
-$SyntaxError(module,"missing 'in' after 'for'",src_pos)
-}
-var iterable=stack.atom_at(_in.end+1,true)
-seq=[['indent',kw_indent],
-['code','var $iter'+loop_id],['assign','=']]
-seq=seq.concat(iterable.list())
-seq.push(['newline','\n'],['indent',kw_indent],['code','for'])
-var $loop='(var $i'+loop_id+'=0;$i'+loop_id+'<'
-$loop +='$iter'+loop_id+'.__len__();$i'+loop_id+'++){'
-seq=seq.concat([['code',$loop],['newline','\n'],
-['indent',block_indent]])
-seq=seq.concat(arg_list.list())
-seq.push(['assign','='],['id','$iter'+loop_id])
-seq.push(['point','.'],['qualifier','__item__'],
-['bracket','('],['id','$i'+loop_id],['bracket',')'])
-seq=seq.concat(stack.list.slice(block[0]+1,block[1]))
-stack.list=stack.list.slice(0,kw_pos-1)
-stack.list=stack.list.concat(seq)
-$err_num++
-}else if(kw=='if' || kw=='elif' || kw=='while'){
-var seq=[['bracket','(',src_pos],['id','bool'],['bracket','(']]
-seq=seq.concat(stack.list.slice(kw_pos+1,block[0]))
-seq.push(['bracket',')',src_pos])
-seq.push(['bracket',')',src_pos])
-seq.push(stack.list[block[0]])
-seq=seq.concat(stack.list.slice(block[0]+1,block[1]))
-stack.list=stack.list.slice(0,kw_pos+1)
-stack.list=stack.list.concat(seq)
-}else{
-var seq=[['bracket','(',src_pos]]
-seq=seq.concat(stack.list.slice(kw_pos+1,block[0]))
-seq.push(['bracket',')',src_pos])
-seq.push(stack.list[block[0]])
-seq=seq.concat(stack.list.slice(block[0]+1,block[1]))
-stack.list=stack.list.slice(0,kw_pos+1)
-stack.list=stack.list.concat(seq)
-}
-}else if(kws[kw]=="function"){
-var func_name=stack.list[kw_pos+1]
-var i=0,parent=-1
-for(i=$funcs.length-1;i>=0;i--){
-if(kw_pos>$funcs[i][2]&& kw_pos<$funcs[i][3]){parent=i;break}
-}
-$funcs.push([kw,func_name[1],block[0],block[1],parent])
-stack.list[kw_pos+1][0]="function_id"
-var fname=stack.list[kw_pos+1][1]
-if(kw=="class"){stack.list[kw_pos+1][1]='$'+fname}
-seq=stack.list.slice(kw_pos+1,block[0]+1)
-var fbody=stack.list.slice(block[0]+1,block[1])
-var globals={}
-var fstack=new Stack(fbody)
-var global_pos=fstack.find_next(0,'keyword','global')
-if(global_pos!==null){
-var globs=fstack.atom_at(global_pos+1,true)
-if(globs.type=="id" || globs.type=="tuple" ||
-globs.type=="function_call"){
-var glob_list=globs.list()
-for(var i=0;i<glob_list.length;i++){
-if(glob_list[i][0]=='id'){globals[glob_list[i][1]]=0}
-}
-}
-fbody.splice(global_pos,glob_list.length+1)
-}
-seq=seq.concat(fbody)
-if(kw==='def'){
-for(var i=0;i<seq.length;i++){
-if(seq[i][0]=="id"){
-if(!(seq[i][1]in globals)){seq[i].push('local')}
-}
-}
-}
-stack.list=stack.list.slice(0,kw_pos+1)
-stack.list=stack.list.concat(seq)
-var indent=stack.indent(kw_pos)
-var f_indent=''
-while(indent>0){f_indent+=' ';indent--}
-if(parent==-1){
-var code='\n'+f_indent+'window.'+fname+'='+fname
-module_level_functions.push(fname)
-tail.splice(0,0,['func_end',code])
-}else if($funcs[parent][0]=='class'){
-var class_name=$funcs[parent][1]
-stack.list.splice(kw_pos,2,["code",'this.'+fname+'='],
-['keyword','function'])
-}
-if(kw=='class'){
-var code='\n'+f_indent+fname+"=$class_constructor('"
-code +=fname+"',$"+fname+")"
-tail.splice(0,0,['func_end',code])
-}
-}else{
-stack.list=stack.list.slice(0,block[1])
-}
-stack.list.push(['newline','\n',end_pos])
-if(block[2]>0){
-stack.list.push(['indent',block[2],end_pos])
-}
-stack.list.push(['bracket','}',end_pos])
-stack.list=stack.list.concat(tail)
-pos=kw_pos+1
-}
-}
-var dobj=new Date()
-times['if def class for']=dobj.getTime()-t0
-pos=stack.list.length-1
-while(true){
-var op=stack.find_previous(pos,"operator","not")
-if(op==null){break}
-ro=stack.atom_at(op+1)
-seq=[['bracket','(']]
-seq=seq.concat(ro.list())
-seq.push(['bracket',')'])
-stack.list[op]=["id","$not",stack.list[op][2]]
-var tail=stack.list.slice(ro.end+1,stack.list.length)
-stack.list=stack.list.slice(0,op+1).concat(seq).concat(tail)
-pos=op-1
-}
-pos=stack.list.length-1
-while(true){
-var assign=stack.find_previous(pos,"assign")
-if(assign===null){break}
-if(stack.list[assign][1]in $augmented_assigns){
-var left=stack.atom_before(assign)
-if(left.type=="id"){left.list()[0][3]="global"}
-var op=stack.list[assign][1]
-var simple_op=op.substr(0,op.length-1)
-stack.list[assign][1]="=" 
-stack.list.splice(assign+1,0,['operator',simple_op])
-for(var i=left.list().length-1;i>=0;i--){
-stack.list.splice(assign+1,0,left.list()[i])
-}
-}
-pos=assign-1
-}
-var ops_order=["**","*","/","//","%","-","+",
-"<","<=",">",">=","!=","==",
-"+=","-=","*=","/=","//=","%=","**=",
-"not_in","in","is_not"]
-var ops=[], op=null
-var lo1=$List2Dict(["id","bracket"])
-var lo2=$List2Dict(["id","bracket","delimiter","operator"])
-for(var i=0;i<ops_order.length;i++){
-op=ops_order[i]
-if(op=="+" || op=="-"){
-ops.push([op,lo2])
-}else{
-ops.push([op,lo1])
-}
-}
-var $lo_ok=$List2Dict('id','str','int','float','tuple')
-for(var i=0;i<ops.length;i++){
-operator=ops[i]
-var op_sign=operator[0]
-var auth_lo_types=operator[1]
-var py_op='__'+$operators[op_sign]+'__'
-pos=0
-while(true){
-var op=stack.find_next(pos,"operator",op_sign)
-if(op==null){break}
-var lo=stack.atom_before(op,false)
-if(!lo.type in $lo_ok){
-$SyntaxError(module,"Bad left operand type "+lo.type+" for "+op_sign,
-stack.list[op][2])
-}
-var par_before_lo=false
-if(lo.type!="tuple"){
-var before_lo=stack.list[lo.start-1]
-if(before_lo!=null){
-if(before_lo[0]=="operator"){
-par_before_lo=true
-}
-}
-}
-if(op==stack.list.length-1){
-$SyntaxError(module,"Bad right operand ",stack.list[op][2])
-}
-var ro=stack.atom_at(op+1,false)
-if(op_sign in $List2Dict("+=","-=","*=","/=","//=","%=","**=")){
-ro.end=stack.find_next(op,'newline')-1
-}
-var ro_startswith_par=false
-if(ro!=null && ro.type=="tuple"){ro_startswith_par=true}
-var sequence=new Array()
-if(par_before_lo){sequence.push(["bracket","(",op[2]])}
-sequence=sequence.concat(stack.list.slice(lo.start,lo.end+1))
-sequence.push(["point",".",op[2]])
-sequence.push(["qualifier",py_op,op[2]])
-if(!ro_startswith_par){sequence.push(["bracket","(",op[2]])}
-sequence=sequence.concat(stack.list.slice(ro.start,ro.end+1))
-if(!ro_startswith_par){sequence.push(["bracket",")",op[2]])}
-if(par_before_lo){sequence.push(["bracket",")",op[2]])}
-tail=stack.list.slice(ro.end+1,stack.list.length)
-stack.list.splice(lo.start,ro.end-lo.start+1)
-stack.list=stack.list.slice(0,lo.start).concat(sequence).concat(tail)
-pos=op+1
-}
-}
-var ops={"and":"&&","or":"||"}
-for(var op in ops){
-var pos=0
-while(true){
-var op_pos=stack.find_next(pos,'operator',op)
-if(op_pos===null){break}
-stack.list[op_pos][1]=ops[op]
-var left=stack.atom_before(op_pos,false)
-var right=stack.atom_at(op_pos+1,false)
-var head=stack.list.slice(0,left.start)
-var tail=stack.list.slice(right.end+1,stack.list.length)
-var nb=0
-if(left.list()[0].match(['bracket','('])){
-left=[['id','$test_item']].concat(left.list())
-nb++
-}else if(!left.list()[0].match(['id','$test_item'])){
-left=[['id','$test_item'],['bracket','(']].concat(left.list()).concat([['bracket',')']])
-nb +=3
-}else{
-left=left.list()
-}
-if(right.list()[0].match(['bracket','('])){
-right=[['id','$test_item']].concat(right.list())
-nb++
-}else{
-right=[['id','$test_item'],['bracket','(']].concat(right.list()).concat([['bracket',')']])
-nb+=3
-}
-stack.list=head
-stack.list=stack.list.concat(left).concat([['operator',ops[op]]]).concat(right)
-stack.list=stack.list.concat(tail)
-pos+=nb
-}
-}
-var pos=0
-while(true){
-var test_pos=stack.find_next(pos,'id','$test_item')
-if(test_pos===null){break}
-var test_end=stack.find_next_matching(test_pos+1)
-while(test_end<stack.list.length-1 && stack.list[test_end+1][0]=='operator'
-&&(stack.list[test_end+1][1]=='&&' || stack.list[test_end+1][1]=='||')){
-test_end=stack.find_next_matching(test_end+3)
-}
-stack.list.splice(test_end,0,['bracket',')'])
-stack.list.splice(test_pos,0,['id','$test_expr'],['bracket','('])
-pos=test_end
-}
-var dobj=new Date()
-times['operators']=dobj.getTime()-t0
-var js2py={'pass':'void(0)'}
-for(key in js2py){
-pos=0
-while(true){
-var func_pos=stack.find_next(pos,'keyword',key)
-if(func_pos==null){break}
-stack.list[func_pos][1]=js2py[key]
-pos=func_pos+1
-}
-}
-var js2py={'alert':'$alert','prompt':'$prompt','confirm':'$confirm',
-'print':'$print','eval':'$eval'}
-for(key in js2py){
-pos=0
-while(true){
-var func_pos=stack.find_next(pos,'id',key)
-if(func_pos==null){break}
-if(!stack.list[func_pos+1].match(['bracket','('])){
-$SyntaxError(module,'missing ( after function '+key,func_pos)
-}
-stack.list[func_pos][0]='code' 
-stack.list[func_pos][1]=js2py[key]
-pos=func_pos+1
-}
-}
-var pos=stack.list.length-1
-while(true){
-var assign=stack.find_previous(pos,"assign","=")
-if(assign===null){break}
-var line_start=stack.line_start(assign)
-var line_end=stack.line_end(assign)
-var line_stack=new Stack(stack.list.slice(line_start,line_end))
-var line_pos=line_stack.list.length-1
-var assigns=[]
-var nb_assigns=0
-while(true){
-var assign_pos=line_stack.find_previous(line_pos,'assign','=')
-if(assign_pos===null){break}
-nb_assigns++
-var left=line_stack.atom_before(assign_pos,true)
-var right=line_stack.atom_at(assign_pos+1,true)
-assigns.push(stack.list[line_start])
-assigns=assigns.concat(left.list())
-assigns.push(["assign","="])
-assigns=assigns.concat(right.list())
-assigns.push(['newline','\n'])
-line_pos=assign_pos-1
-}
-if(nb_assigns>1){
-var assign_stack=new Stack(assigns)
-var tail=stack.list.slice(line_end,stack.list.length)
-stack.list=stack.list.slice(0,line_start).concat(assigns).concat(tail)
-}
-pos=line_start
-}
-pos=stack.list.length-1
-while(true){
-var assign=stack.find_previous(pos,"assign","=")
-if(assign==null){break}
-var left=stack.atom_before(assign,true)
-var line_end=stack.line_end(assign)
-var right=new Stack(stack.list.slice(assign+1,line_end))
-if(left.type=="tuple" || 
-(left.type=="function_call" && left.list()[0][1]=="tuple")){
-var list=left.list()
-if(list[0].match(["id","tuple"])){
-list=list.slice(2,list.length-1)
-}
-var t_stack=new Stack(list)
-var targets=t_stack.split(',')
-document.line_num=pos2line[stack.list[assign][2]]
-var indent=stack.indent(assign)
-var seq=$multiple_assign(indent,targets,right,stack.list[assign][2])
-var tail=stack.list.slice(line_end+1,stack.list.length)
-stack.list=stack.list.slice(0,left.start).concat(seq).concat(tail)
-pos=left.start+seq.length-1
-}else if(left.type=='str' || left.type=='int' || left.type=='float'){
-pos=left.list()[0][2]
-$SyntaxError(module,"can't assign to literal",pos)
-}else if(left.type=='id' && $tags.indexOf(left.list()[0][1])>-1){
-$SyntaxError(module,"can't assign to reserved word "+left.list()[0][1],
-left.list()[0][2])
-}else if(left.type=='qualified_id' || left.type=='slicing' || left.type=="function_call"){
-pos=assign-1
-}else{
-var assign_indent=stack.indent(assign)
-var lower_indent=null
-var indent_pos=stack.find_previous(assign,'indent')
-while(indent_pos>0){
-var indent_pos=stack.find_previous(indent_pos-1,'indent')
-if(stack.list[indent_pos][1]<assign_indent){
-var first=stack.list[indent_pos+1]
-if(first.match(['keyword','function'])&&
-first[first.length-1]==='class'){
-left.list()[0][1]='this.'+left.list()[0][1]
-}
-break
-}
-}
-left.list()[0][0]="assign_id"
-if(left.list()[0][3]==="local"){left.list()[0][1]="var "+left.list()[0][1]}
-var r_elts=right.split(',')
-if(r_elts.length>1){
-stack.list.splice(line_end,0,['bracket',']'])
-stack.list.splice(assign+1,0,['bracket','['])
-assign--
-}
-pos=assign-1
-}
-}
-var dobj=new Date()
-times['assignments']=dobj.getTime()-t0
-pos=stack.list.length-1
-while(true){
-br_pos=stack.find_previous(pos,'bracket','[')
-if(br_pos==null){break}
-if(br_pos==0){break}
-var previous=stack.list[br_pos-1]
-if(['id','qualifier','keyword','bracket','str'].indexOf(previous[0])==-1){pos=br_pos-1;continue}
-src_pos=stack.list[br_pos][2]
-var end=stack.find_next_matching(br_pos)
-var args=stack.list.slice(br_pos+1,end)
-if(args.length==0){$SyntaxError(module,'invalid syntax',br_pos)}
-var args1=new Stack(args)
-var items=args1.split(":")
-var new_args=[]
-if(items.length==1){
-new_args=items[0].list
-}else{
-new_args=[['id','slice',src_pos]]
-new_args.push(['bracket','(',src_pos])
-for(var i=0;i<items.length;i++){
-var item=items[i]
-if(item.list.length==0){
-new_args.push(['keyword','null',src_pos])
-}else{
-new_args=new_args.concat(item.list)
-}
-if(i<items.length-1){
-new_args.push(["delimiter",",",src_pos])
-}
-}
-new_args.push(['bracket',')',stack.list[end][2]])
-}
-if(end<stack.list.length-1 && stack.list[end+1][0]=="assign"){
-var sequence=[['point','.',src_pos],['qualifier','__setitem__',src_pos],
-['bracket','(',src_pos]]
-left=stack.atom_before(end+1)
-right=stack.atom_at(end+2)
-sequence=sequence.concat(new_args)
-sequence.push(['delimiter',',',stack.list[end+1][2]])
-sequence=sequence.concat(right.list())
-sequence.push(['bracket',')',stack.list[end][2]])
-tail=stack.list.slice(right.end+1,stack.list.length)
-stack.list=stack.list.slice(0,br_pos)
-stack.list=stack.list.concat(sequence).concat(tail)
-}else{
-var func='__getitem__'
-var x=stack.atom_before(br_pos)
-if(x.start>0){
-var before=stack.list[x.start-1]
-if(before[0]=='keyword' && before[1]=='del'){
-var func='__delitem__'
-}
-}
-var sequence=[['point','.',src_pos],['qualifier',func,src_pos],
-['bracket','(',src_pos]]
-sequence=sequence.concat(new_args)
-sequence.push(['bracket',')',stack.list[end][2]])
-tail=stack.list.slice(end+1,stack.list.length)
-stack.list=stack.list.slice(0,br_pos)
-stack.list=stack.list.concat(sequence).concat(tail)
-if(func=='__delitem__'){
-stack.list.splice(x.start-1,1)
-}
-}
-pos=br_pos-1
-}
-var dobj=new Date()
-times['slicings']=dobj.getTime()-t0
-pos=stack.list.length-1
-while(true){
-q_pos=stack.find_previous(pos,'qualifier')
-if(q_pos==null){break}
-src_pos=stack.list[q_pos][2]
-if(q_pos<stack.list.length-1 && stack.list[q_pos+1][0]=="assign"){
-var ro=stack.atom_at(q_pos+2)
-var q_name=stack.list[q_pos][1]
-if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
-tail=stack.list.slice(ro.end+1,stack.list.length)
-var seq=[['id','__setattr__'],['bracket','('],
-['code',"'"+q_name+"'"],['delimiter',',']]
-seq=seq.concat(ro.list()).concat([['bracket',')']])
-stack.list=stack.list.slice(0,q_pos).concat(seq).concat(tail)
-}else{
-var func='__getattr__'
-var x=stack.atom_before(q_pos)
-if(x.start>0){
-var before=stack.list[x.start-1]
-if(before[0]=='keyword' && before[1]=='del'){
-var func='__delattr__'
-}
-}
-var q_name=stack.list[q_pos][1]
-if(q_name.substr(0,2)=='__'){pos=q_pos-1;continue}
-stack.list.splice(q_pos,1,['id',func],['bracket','('],
-['code',"'"+q_name+"'"],['bracket',')'])
-if(func=='__delattr__'){
-stack.list.splice(x.start-1,1)
-}
-}
-pos=q_pos-1
-}
-var pos=0
-while(true){
-var $list_pos=stack.find_next(pos,'id','$list')
-if($list_pos===null){break}
-stack.list.splice($list_pos,1)
-var end=stack.find_next_matching($list_pos)
-stack.list[$list_pos][1]='['
-stack.list[end][1]=']'
-pos=$list_pos
-}
-var dobj=new Date()
-times['total']=dobj.getTime()-t0
-if(document.$debug==2){console.log(stack.to_js())}
-return stack
-}
-function brython(debug){
-document.$debug=debug
-document.$py_src={}
-document.$brython_path=null
-var elts=document.getElementsByTagName("script")
-for(var $i=0;$i<elts.length;$i++){
-var elt=elts[$i]
-if(elt.type=="text/python"){
-if(elt.src!==''){
-if(window.XMLHttpRequest){
-var $xmlhttp=new XMLHttpRequest()
-}else{
-var $xmlhttp=new ActiveXObject("Microsoft.XMLHTTP")
-}
-$xmlhttp.onreadystatechange=function(){
-var state=this.readyState
-if(state===4){
-src=$xmlhttp.responseText
-exec(src)
-}
-}
-$xmlhttp.open('GET',elt.src,false)
-$xmlhttp.send()
-}else{
-var src=(elt.innerHTML || elt.textContent)
-exec(src)
-}
-}
-else{
-var br_scripts=['brython.js','py_tokenizer.js']
-for(var j=0;j<br_scripts.length;j++){
-var bs=br_scripts[j]
-if(elt.src.substr(elt.src.length-bs.length)==bs){
-if(elt.src.length===bs.length ||
-elt.src.charAt(elt.src.length-bs.length-1)=='/'){
-document.$brython_path=elt.src.substr(0,elt.src.length-bs.length)
-break
-}
-}
-}
-}
-}
-}var $operators={
+var $operators={
 "//=":"ifloordiv",">>=":"irshift","<<=":"ilshift",
 "**=":"ipow","**":"pow","//":"floordiv","<<":"lshift",">>":"rshift",
 "+=":"iadd","-=":"isub","*=":"imul","/=":"itruediv",
@@ -2868,16 +1652,1616 @@ break
 "/":"truediv","%":"mod","&":"and","|":"or",
 "^":"pow","<":"lt",">":"gt",
 "<=":"le",">=":"ge","==":"eq","!=":"ne",
-"or":"or","and":"and","in":"in","not":"not",
+"or":"or","and":"and", "in":"in", 
 "not_in":"not_in","is_not":"is_not" 
+}
+var $op_weight={
+'or':1,'and':2,
+'in':3,'not_in':3,
+'<':4, '<=':4, '>':4, '>=':4, '!=':4, '==':4,
+'+':5,
+'-':6,
+'/':7,'//':7,'%':7,
+'*':8,
+'**':9
 }
 var $augmented_assigns={
 "//=":"ifloordiv",">>=":"irshift","<<=":"ilshift",
 "**=":"ipow","+=":"iadd","-=":"isub","*=":"imul","/=":"itruediv",
 "%=":"imod","^=":"ipow"
 }
+function $list_comp1(){
+var $env=arguments[0]
+for(var $arg in $env){
+eval("var "+$arg+'=$env["'+$arg+'"]')
+}
+var $res='res'+Math.random().toString(36).substr(2,8)
+var $py=$res+"=[]\n"
+var indent=0
+for(var i=2;i<arguments.length;i++){
+for(var j=0;j<indent;j++){$py +=' '}
+$py +=arguments[i]+':\n'
+indent +=4
+}
+for(var j=0;j<indent;j++){$py +=' '}
+$py +=$res+'.append('+arguments[1]+')'
+var $js=$py2js($py).to_js()
+eval($js)
+return eval($res)
+}
+function $ternary(expr1,cond,expr2){
+var res='var $res=expr1\n'
+res +='if(!cond){$res=expr2}\n'
+eval(res)
+return $res
+}
+function $_SyntaxError(context,msg){
+console.log('syntax error '+msg+' context '+context)
+var ctx_node=context.parent
+while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
+var tree_node=ctx_node.node
+var module=tree_node.module
+$SyntaxError(module,msg,$pos)
+var src=document.$py_src[tree_node.module]
+var line_pos={1:0}
+var lnum=1
+for(var i=0;i<src.length;i++){
+if(src.charAt(i)=='\n'){lnum+=1;line_pos[lnum]=i}
+}
+var lines=src.split('\n')
+var line_num=tree_node.line_num
+var line=lines[line_num-1]
+console.log('error line '+line_num+' : '+msg+' '+($pos-line_pos[line_num]))
+console.log(line)
+var err=new Error()
+err.name='SyntaxError'
+err.py_error=true
+err.message=msg
+throw err
+}
 var $first_op_letter={}
 for(op in $operators){$first_op_letter[op.charAt(0)]=0}
+function $Node(type){
+this.type=type
+this.children=[]
+this.add=function(child){
+this.children.push(child)
+child.parent=this
+}
+this.insert=function(pos,child){
+this.children.splice(pos,0,child)
+child.parent=this
+}
+this.toString=function(){return "<object 'Node'>"}
+this.show=function(indent){
+var res=''
+if(this.type==='module'){
+for(var i=0;i<this.children.length;i++){
+res +=this.children[i].show(indent)
+}
+}else{
+indent=indent || 0
+for(var i=0;i<indent;i++){res+=' '}
+res +=this.context
+if(this.children.length>0){res +='{'}
+res +='\n'
+for(var i=0;i<this.children.length;i++){
+res +='['+i+'] '+this.children[i].show(indent+4)
+}
+if(this.children.length>0){
+for(var i=0;i<indent;i++){res+=' '}
+res+='}\n'
+}
+}
+return res
+}
+this.to_js=function(indent){
+var res=''
+if(this.type==='module'){
+for(var i=0;i<this.children.length;i++){
+res +=this.children[i].to_js(indent)
+}
+}else{
+indent=indent || 0
+var ctx_js=this.context.to_js(indent)
+if(ctx_js){
+for(var i=0;i<indent;i++){res+=' '}
+res +=ctx_js
+if(this.children.length>0){res +='{'}
+res +='\n'
+for(var i=0;i<this.children.length;i++){
+res +=this.children[i].to_js(indent+4)
+}
+if(this.children.length>0){
+for(var i=0;i<indent;i++){res+=' '}
+res+='}\n'
+}
+}
+}
+return res
+}
+this.transform=function(rank){
+var res=''
+if(this.type==='module'){
+var i=0
+while(i<this.children.length){
+var node=this.children[i]
+this.children[i].transform(i)
+i++
+}
+}else{
+var elt=this.context.tree[0]
+if(elt.transform !==undefined){
+elt.transform(this,rank)
+}
+var i=0
+while(i<this.children.length){
+this.children[i].transform(i)
+i++
+}
+}
+}
+}
+function $last(src){return src[src.length-1]}
+var $loop_id=0
+function $AbstractExprCtx(context,with_commas){
+this.type='abstract_expr'
+this.with_commas=with_commas
+this.name=name
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return '(abstract_expr '+with_commas+') '+this.tree}
+this.to_js=function(){
+if(this.type==='list'){return '['+$to_js(this.tree)+']'}
+else{return $to_js(this.tree)}
+}
+}
+function $AssertCtx(context){
+this.type='assert'
+this.toString=function(){return '(assert) '+this.tree}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.transform=function(node,rank){
+var new_ctx=new $ConditionCtx(node.context,'if')
+var not_ctx=new $NotCtx(new_ctx)
+not_ctx.tree=this.tree
+node.context=new_ctx
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,'$raise("AssertionError")')
+node.add(new_node)
+}
+}
+function $AssignCtx(context){
+this.type='assign'
+context.parent.tree.pop()
+context.parent.tree.push(this)
+this.parent=context.parent
+this.tree=[context]
+this.toString=function(){return '(assign) '+this.tree[0]+'='+this.tree[1]}
+this.transform=function(node,rank){
+var left=this.tree[0]
+while(left.type==='assign'){
+var new_node=new $Node('expression')
+var node_ctx=new $NodeCtx(new_node)
+node_ctx.tree=[left]
+node.parent.insert(rank+1,new_node)
+this.tree[0]=left.tree[1]
+left=this.tree[0]
+}
+var left_items=null
+if(left.type==='expr' && left.tree.length>1){
+var left_items=left.tree
+}else if(left.type==='expr' && left.tree[0].type==='list_or_tuple'){
+var left_items=left.tree[0].tree
+}else if(left.type==='target_list'){
+var left_items=left.tree
+}
+if(left_items===null){return}
+var right=this.tree[1]
+var right_items=null
+if(right.type==='list'||right.type==='tuple'||
+(right.type==='expr' && right.tree.length>1)){
+var right_items=right.tree
+}
+if(right_items!==null){
+if(right_items.length>left_items.length){
+throw Error('ValueError : too many values to unpack (expected '+left_items.length+')')
+}else if(right_items.length<left_items.length){
+throw Error('ValueError : need more than '+right_items.length+' to unpack')
+}
+var new_nodes=[]
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,'var $temp'+$loop_num+'=[]')
+new_nodes.push(new_node)
+for(var i=0;i<right_items.length;i++){
+var js='$temp'+$loop_num+'.push('+right_items[i].to_js()+')'
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,js)
+new_nodes.push(new_node)
+}
+for(var i=0;i<left_items.length;i++){
+var new_node=new $Node('expression')
+var context=new $NodeCtx(new_node)
+left_items[i].parent=context
+var assign=new $AssignCtx(left_items[i])
+assign.tree[1]=new $JSCode('$temp'+$loop_num+'['+i+']')
+new_nodes.push(new_node)
+}
+node.parent.children.splice(rank,1)
+for(var i=new_nodes.length-1;i>=0;i--){
+node.parent.insert(rank,new_nodes[i])
+}
+$loop_num++
+}else{
+var new_nodes=[]
+for(var i=0;i<left_items.length;i++){
+var new_node=new $Node('expression')
+var context=new $NodeCtx(new_node)
+left_items[i].parent=context
+var assign=new $AssignCtx(left_items[i])
+assign.tree[1]=new $JSCode(right.to_js()+'.__item__('+i+')')
+new_nodes.push(new_node)
+}
+node.parent.children.splice(rank,1)
+for(var i=new_nodes.length-1;i>=0;i--){
+node.parent.insert(rank,new_nodes[i])
+}
+}
+}
+this.to_js=function(){
+if(this.parent.type==='call'){
+return '$Kw('+this.tree[0].to_js()+','+this.tree[1].to_js()+')'
+}else{
+var left=this.tree[0]
+if(left.type==='expr'){left=left.tree[0]}
+var right=this.tree[1]
+if(left.type==='id'&&left.tree.length>0){
+var last=left.tree[left.tree.length-1]
+if(last.type==='attribute'){
+left.tree.pop()
+var res=left.to_js()+'.__setattr__("'
+left.tree.push(last)
+return res+last.name+'",'+right.to_js()+')'
+}else if(last.type==='sub'){
+left.tree.pop()
+var res=left.to_js()
+left.tree.push(last)
+last.func='setitem' 
+var last_str=last.to_js()
+last.func='getitem' 
+last_str=last_str.substr(0,last_str.length-1)
+res +=last_str+','+right.to_js()+')'
+return res
+}
+}
+var scope=$get_scope(this)
+if(scope===null){
+return left.to_js()+'='+right.to_js()
+}else if(scope.ntype==='def'){
+if(scope.globals && scope.globals.indexOf(left.value)>-1){
+return left.to_js()+'='+right.to_js()
+}else{
+return 'var '+left.to_js()+'='+right.to_js()
+}
+}else if(scope.ntype==='class'){
+return 'this.'+left.to_js()+'='+right.to_js()
+}
+}
+}
+}
+function $AttrCtx(context){
+this.type='attribute'
+this.parent=context
+this.tree=[]
+this.func='getattr' 
+context.tree.push(this)
+this.toString=function(){return '(attr) '+this.name}
+this.to_js=function(){
+var name=this.name
+if(name.substr(0,2)==='$$'){name=name.substr(2)}
+if(name.substr(0,2)!=='__'){name='__getattr__("'+name+'")'}
+return '.'+name
+}
+}
+function $CallArgCtx(context){
+this.type='call_arg'
+this.toString=function(){return 'call_arg '+this.tree}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.expect='id'
+this.to_js=function(){return $to_js(this.tree)}
+}
+function $CallCtx(context){
+this.type='call'
+this.toString=function(){return 'call ('+this.tree+')'}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){return '('+$to_js(this.tree)+')'}
+}
+function $ClassCtx(context){
+this.type='class'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.expect='id'
+this.toString=function(){return 'class '+this.tree}
+this.transform=function(node,rank){
+var instance_decl=new $Node('expression')
+new $NodeJSCtx(instance_decl,'var $instance = this')
+node.insert(0,instance_decl)
+js=this.name+'=$class_constructor("'+this.name+'",$'+this.name+')'
+var cl_cons=new $Node('expression')
+new $NodeJSCtx(cl_cons,js)
+node.parent.insert(rank+1,cl_cons)
+if(this.parent.node.module==='__main__'){
+js='window.'+this.name+'='+this.name
+var w_decl=new $Node('expression')
+new $NodeJSCtx(w_decl,js)
+node.parent.insert(rank+2,w_decl)
+}
+}
+this.to_js=function(){
+return '$'+this.name+'=function()'
+}
+}
+function $CompIfCtx(context){
+this.type='comp_if'
+context.parent.intervals.push($pos)
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return '(comp if) '+this.tree}
+this.to_js=function(){return 'comp if to js'}
+}
+function $ComprehensionCtx(context){
+this.type='comprehension'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return '(comprehension) '+this.tree}
+this.to_js=function(){
+console.log('comprenhension to JS')
+var intervals=[]
+for(var i=0;i<this.tree.length;i++){
+intervals.push(this.tree[i].start)
+console.log('intervals '+intervals)
+}
+return intervals
+}
+}
+function $CompForCtx(context){
+this.type='comp_for'
+context.parent.intervals.push($pos)
+this.parent=context
+this.tree=[]
+this.expect='in'
+context.tree.push(this)
+this.toString=function(){return '(comp for) '+this.tree}
+this.to_js=function(){return 'comp for to js'}
+}
+function $CompIterableCtx(context){
+this.type='comp_iterable'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return '(comp iter) '+this.tree}
+this.to_js=function(){return 'comp iter to js'}
+}
+function $ConditionCtx(context,token){
+this.type='condition'
+this.token=token
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return this.token+' '+this.tree}
+this.to_js=function(){
+var tok=this.token
+if(tok==='elif'){tok='else if'}
+if(this.tree.length==1){
+var res=tok+'(bool('+$to_js(this.tree)+'))'
+}else{
+var res=tok+'(bool('+this.tree[0].to_js()+'))'
+if(this.tree[1].tree.length>0){
+res +='{'+this.tree[1].to_js()+'}'
+}
+}
+return res
+}
+}
+function $DefCtx(context){
+this.type='def'
+this.name=null
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return 'def '+this.name+'('+this.tree+')'}
+this.transform=function(node,rank){
+if(this.transformed!==undefined){return}
+if(this.in_line!==undefined){
+var new_node=new $Node('expression')
+var ctx=new $NodeCtx(new_node)
+ctx.tree=[this.tree[this.tree.length-1]]
+node.add(new_node)
+}
+var scope=$get_scope(this)
+if(scope !==null && scope.ntype==='class'){
+var func_args=this.tree[0]
+if(func_args.tree.length==0){throw Error('no argument to class func')}
+var first_arg=func_args.tree[0]
+if(first_arg.type!=='func_arg_id'){throw Error('wrong first argument '+first_arg.type)}
+func_args.tree.splice(0,1)
+var js='var '+first_arg.name+' = $instance'
+var new_node3=new $Node('expression')
+new $NodeJSCtx(new_node3,js)
+node.children.splice(0,0,new_node3)
+}
+var required=''
+var defaults=''
+var other_args=null
+var other_kw=null
+var env=[]
+for(var i=0;i<this.tree[0].tree.length;i++){
+var arg=this.tree[0].tree[i]
+if(arg.type==='func_arg_id'){
+if(arg.tree.length===0){required+='"'+arg.name+'",'}
+else{
+defaults+='"'+arg.name+'":'+$to_js(arg.tree)+','
+if(arg.tree[0].type==='expr' 
+&& arg.tree[0].tree[0].type==='id'){
+env.push(arg.tree[0].tree[0].value)
+}
+}
+}else if(arg.type==='star_arg'){other_args='"'+arg.name+'"'}
+else if(arg.type==='double_star_arg'){other_kw='"'+arg.name+'"'}
+}
+this.env=env
+if(required.length>0){required=required.substr(0,required.length-1)}
+if(defaults.length>0){defaults=defaults.substr(0,defaults.length-1)}
+var js='var $ns=$MakeArgs("'+this.name+'",arguments,['+required+'],'
+js +='{'+defaults+'},'+other_args+','+other_kw+')'
+var new_node1=new $Node('expression')
+new $NodeJSCtx(new_node1,js)
+var js='for($var in $ns){eval("var "+$var+"=$ns[$var]")}'
+var new_node2=new $Node('expression')
+new $NodeJSCtx(new_node2,js)
+node.children.splice(0,0,new_node1,new_node2)
+var try_node=new $Node('expression')
+new $NodeJSCtx(try_node,'try')
+var def_func_node=new $Node('expression')
+new $NodeJSCtx(def_func_node,'return function()')
+try_node.add(def_func_node)
+for(var i=0;i<node.children.length;i++){
+def_func_node.add(node.children[i])
+}
+var ret_node=new $Node('expression')
+var catch_node=new $Node('expression')
+var js='catch(err'+$loop_num+')'
+js +='{$raise(err'+$loop_num+'.name,err'+$loop_num+'.message)}'
+new $NodeJSCtx(catch_node,js)
+node.children=[]
+node.add(try_node)
+node.add(catch_node)
+var txt=')('
+for(var i=0;i<this.env.length;i++){
+txt +=this.env[i]
+if(i<this.env.length-1){res +=','}
+}
+new $NodeJSCtx(ret_node,txt+')')
+node.parent.insert(rank+1,ret_node)
+if(scope===null && node.module==='__main__'){
+js='window.'+this.name+'='+this.name
+new_node1=new $Node('expression')
+new $NodeJSCtx(new_node1,js)
+node.parent.children.splice(rank+2,0,new_node1)
+}
+this.transformed=true
+}
+this.to_js=function(indent){
+var scope=$get_scope(this)
+if(scope===null || scope.ntype!=='class'){
+res=this.name+'= (function ('
+}else{
+res='this.'+this.name+'= (function('
+}
+for(var i=0;i<this.env.length;i++){
+res+=this.env[i]
+if(i<this.env.length-1){res+=','}
+}
+res +=')'
+return res
+}
+}
+function $DelCtx(context){
+this.type='del'
+this.parent=context
+context.tree.push(this)
+this.tree=[]
+this.toString=function(){return 'del '+this.tree}
+this.to_js=function(){
+var expr=this.tree[0]
+if(expr.tree[0].type!=='id'){throw Error('SyntaxError, no id after del')}
+var del_id=expr.tree[0]
+if(del_id.tree.length===0||del_id.tree[del_id.tree.length-1].type!=='sub'){
+throw Error('SyntaxError, no subscription for del')
+}
+var last_item=del_id.tree.pop()
+var item=last_item.tree[0].to_js()
+var res=del_id.to_js()
+del_id.tree.push(last_item)
+return res+'.__delitem__('+item+')'
+}
+}
+function $DictCtx(context){
+this.type='dict'
+this.parent=context.parent
+context.parent.tree.pop()
+context.parent.tree.push(this)
+context.name='dict_key'
+this.tree=[context]
+this.expect=','
+this.toString=function(){return 'dict '+this.tree}
+}
+function $DictOrSetCtx(context){
+this.type='dict_or_set'
+this.real='dict_or_set'
+this.expect='id'
+this.closed=false
+this.toString=function(){
+if(this.real==='dict'){return '(dict) {'+this.tree+'}'}
+else if(this.real==='set'){return '(set) {'+this.tree+'}'}
+else{return '(dict_or_set) {'+this.tree+'}'}
+}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){
+if(this.real==='dict'){
+var res='dict(['
+for(var i=0;i<this.items.length;i+=2){
+res+='['+this.items[i].to_js()+','+this.items[i+1].to_js()+']'
+if(i<this.items.length-2){res+=','}
+}
+return res+'])'+$to_js(this.tree)
+}else{return 'set(['+$to_js(this.items)+'])'+$to_js(this.tree)}
+}
+}
+function $DoubleStarArgCtx(context){
+this.type='double_star_arg'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return '**'+this.tree}
+this.to_js=function(){return '$pdict('+this.name+')'}
+}
+function $ExceptCtx(context){
+this.type='except'
+this.parent=context
+context.tree.push(this)
+this.tree=[]
+this.toString=function(){return '(except) '}
+this.to_js=function(){
+if(this.tree.length===0){return 'else'}
+else{
+var target=this.tree[0]
+var res='else if(['
+for(var i=0;i<target.tree.length;i++){
+res+='"'+target.tree[i].value+'"'
+if(i<target.tree.length-1){res+=','}
+}
+res +='].indexOf('+this.error_name+'.name)>-1)'
+return res
+}
+}
+}
+function $ExprCtx(context,name,with_commas){
+this.type='expr'
+this.name=name
+this.with_commas=with_commas
+this.expect=',' 
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return '(expr '+with_commas+') '+this.tree}
+this.to_js=function(){
+if(this.type==='list'){return '['+$to_js(this.tree)+']'}
+else if(this.tree.length===1){return this.tree[0].to_js()}
+else{return 'tuple('+$to_js(this.tree)+')'}
+}
+}
+function $ExprNot(context){
+this.type='expr_not'
+this.toString=function(){return '(expr_not)'}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+}
+function $FloatCtx(context,value){
+this.type='float'
+this.value=value
+this.toString=function(){return 'float '+this.value}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){return 'float('+this.value+')'}
+}
+function $ForTarget(context){
+this.type='for_target'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return 'for_target'+' '+this.tree}
+this.to_js=function(){return $to_js(this.tree)}
+}
+function $ForExpr(context){
+this.type='for'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return '(for) '+this.tree}
+this.transform=function(node,rank){
+var new_nodes=[]
+var new_node=new $Node('expression')
+var target=this.tree[0]
+var iterable=this.tree[1]
+new $NodeJSCtx(new_node,'var $iter'+$loop_num+'='+iterable.to_js())
+new_nodes.push(new_node)
+new_node=new $Node('expression')
+var js='for(var $i'+$loop_num+'=0;$i'+$loop_num
+js +='<$iter'+$loop_num+'.__len__();$i'+$loop_num+'++)'
+new $NodeJSCtx(new_node,js)
+new_nodes.push(new_node)
+var children=node.children
+node.parent.children.splice(rank,1)
+for(var i=new_nodes.length-1;i>=0;i--){
+node.parent.insert(rank,new_nodes[i])
+}
+var new_node=new $Node('expression')
+node.insert(0,new_node)
+var context=new $NodeCtx(new_node)
+var target_expr=new $ExprCtx(context,'left',true)
+target_expr.tree=target.tree
+var assign=new $AssignCtx(target_expr)
+assign.tree[1]=new $JSCode('$iter'+$loop_num+'.__item__($i'+$loop_num+')')
+node.parent.children[rank+1].children=children
+$loop_num++
+}
+this.to_js=function(){
+var iterable=this.tree.pop()
+return 'for '+$to_js(this.tree)+' in '+iterable.to_js()
+}
+}
+function $FuncArgs(context){
+this.type='func_args'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return 'func args '+this.tree}
+this.expect='id'
+this.has_default=false
+this.has_star_arg=false
+this.has_kw_arg=false
+this.to_js=function(){return $to_js(this.tree)}
+}
+function $FuncArgIdCtx(context,name){
+this.type='func_arg_id'
+this.name=name
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return 'func arg id '+this.name +'='+this.tree}
+this.expect='='
+this.to_js=function(){return this.name+$to_js(this.tree)}
+}
+function $GlobalCtx(context){
+this.type='global'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.expect='id'
+this.toString=function(){return 'global '+this.tree}
+this.transform=function(node,rank){
+var scope=$get_scope(this)
+if(scope.globals===undefined){scope.globals=[]}
+for(var i=0;i<this.tree.length;i++){
+scope.globals.push(this.tree[i].value)
+}
+}
+this.to_js=function(){return ''}
+}
+function $IdCtx(context,value,minus){
+this.type='id'
+this.toString=function(){return '(id) '+this.value+':'+(this.tree||'')}
+this.value=value
+this.minus=minus
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){
+var val=this.value
+if(['print','alert','eval'].indexOf(this.value)>-1){val='$'+val}
+return val+$to_js(this.tree,'')
+}
+}
+function $ImportCtx(context){
+this.type='import'
+this.toString=function(){return 'import '+this.tree}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){return '$import("'+$to_js(this.tree)+'")'}
+}
+function $IntCtx(context,value){
+this.type='int'
+this.value=value
+this.toString=function(){return 'int '+this.value}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){return 'Number('+this.value+')'}
+}
+function $JSCode(js){
+this.js=js
+this.toString=function(){return this.js}
+this.to_js=function(){return this.js}
+}
+function $KwArgCtx(context){
+this.type='kwarg'
+this.toString=function(){return 'kwarg '+this.tree[0]+'='+this.tree[1]}
+this.parent=context.parent
+this.tree=[context.tree[0]]
+context.parent.tree.pop()
+context.parent.tree.push(this)
+this.to_js=function(){
+var res='$Kw("'+this.tree[0].to_js()+'",'
+res +=$to_js(this.tree.slice(1,this.tree.length))+')'
+return res
+}
+}
+function $ListOrTupleCtx(context,real){
+this.type='list_or_tuple'
+this.start=$pos
+this.real=real
+this.expect='id'
+this.closed=false
+this.toString=function(){
+if(this.real==='list'){return '(list) ['+this.tree+']'}
+else if(this.real==='list_comp'){return '(list comp) ['+this.intervals+'-'+this.tree+']'}
+else{return '(tuple) ('+this.tree+')'}
+}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){
+if(this.real==='list'){return '['+$to_js(this.tree)+']'}
+else if(this.real==='list_comp'){
+var res_env=[],local_env=[],env=[]
+var ctx_node=this
+while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
+var module=ctx_node.node.module
+var src=document.$py_src[module]
+for(var i=0;i<this.expression.length;i++){
+var name=this.expression[i].tree[0].value
+if(res_env.indexOf(name)===-1){res_env.push(name)}
+}
+var comp=this.tree[0]
+for(var i=0;i<comp.tree.length;i++){
+var elt=comp.tree[i]
+if(elt.type==='comp_for'){
+var target_list=elt.tree[0]
+for(var j=0;j<target_list.tree.length;j++){
+var name=target_list.tree[j].value
+if(local_env.indexOf(name)===-1){
+local_env.push(name)
+}
+}
+var comp_iter=elt.tree[1].tree[0]
+for(var j=0;j<comp_iter.tree.length;j++){
+var name=comp_iter.tree[j].value
+if(env.indexOf(name)===-1 && local_env.indexOf(name)==-1){
+env.push(name)
+}
+}
+}else if(elt.type==="comp_if"){
+var if_expr=elt.tree[0]
+for(var j=0;j<if_expr.tree.length;j++){
+var name=if_expr.tree[j].value
+if(env.indexOf(name)===-1 && local_env.indexOf(name)==-1){
+env.push(name)
+}
+}
+}
+}
+for(var i=0;i<res_env.length;i++){
+if(local_env.indexOf(res_env[i])===-1){
+env.push(res_env[i])
+}
+}
+var res='{'
+for(var i=0;i<env.length;i++){
+res +="'"+env[i]+"':"+env[i]
+if(i<env.length-1){res+=','}
+}
+res +='},'
+var qesc=new RegExp('"',"g")
+for(var i=1;i<this.intervals.length;i++){
+res +='"'+src.substring(this.intervals[i-1],this.intervals[i]).replace(qesc,'\\"')+'"'
+if(i<this.intervals.length-1){res+=','}
+}
+return '$list_comp1('+res+')'
+}else if(this.real==='tuple'){
+if(this.tree.length===1){return this.tree[0].to_js()}
+else{return 'tuple('+$to_js(this.tree)+')'}
+}
+}
+}
+function $NodeCtx(node){
+this.node=node
+node.context=this
+this.tree=[]
+this.type='node'
+this.toString=function(){return 'node '+this.tree}
+this.to_js=function(){
+if(this.tree.length>1){
+var new_node=new $Node('expression')
+var ctx=new $NodeCtx(new_node)
+ctx.tree=[this.tree[1]]
+new_node.indent=node.indent+4
+this.tree.pop()
+node.add(new_node)
+}
+return $to_js(this.tree)
+}
+}
+function $NodeJSCtx(node,js){
+this.node=node
+node.context=this
+this.type='node_js'
+this.tree=[js]
+this.toString=function(){return 'js '+js}
+this.to_js=function(){return js}
+}
+function $NotCtx(context){
+this.type='not'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return 'not ('+this.tree+')'}
+this.to_js=function(){return '!bool('+$to_js(this.tree)+')'}
+}
+function $OpCtx(context,op){
+this.type='op'
+this.op=op
+this.toString=function(){return '(op '+this.op+')'+this.tree}
+this.parent=context.parent
+this.tree=[context]
+context.parent.tree.pop()
+context.parent.tree.push(this)
+this.to_js=function(){
+if(this.op==='and'){
+var res='$test_expr($test_item('+this.tree[0].to_js()+')&&'
+res +='$test_item('+this.tree[1].to_js()+'))'
+return res
+}else if(this.op==='or'){
+var res='$test_expr($test_item('+this.tree[0].to_js()+')||'
+res +='$test_item('+this.tree[1].to_js()+'))'
+return res
+}else{
+var res=this.tree[0].to_js()
+res +='.__'+$operators[this.op]+'__('+this.tree[1].to_js()+')'
+return res
+}
+}
+}
+function $ParentClassCtx(context){
+this.type='parent_class'
+this.expect='id'
+this.toString=function(){return '('+this.tree+')'}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+}
+function $PassCtx(context){
+this.type='pass'
+this.toString=function(){return '(pass)'}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){return 'void(0)'}
+}
+function $ReturnCtx(context){
+this.type='return'
+this.toString=function(){return 'return '+this.tree}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){return 'return '+$to_js(this.tree)}
+}
+function $SingleKwCtx(context,token){
+this.type='single_kw'
+this.token=token
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return this.token}
+this.to_js=function(){return this.token}
+}
+function $StarArgCtx(context){
+this.type='star_arg'
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.toString=function(){return '*'+this.tree}
+this.to_js=function(){
+return '$ptuple('+this.name+')'
+}
+}
+function $StringCtx(context,value){
+this.type='str'
+this.value=value
+this.toString=function(){return 'string '+this.value+' '+(this.tree||'')}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){
+return this.value.replace(/\n/g,' \\\n')+$to_js(this.tree,'')
+}
+}
+function $SubCtx(context){
+this.type='sub'
+this.func='getitem' 
+this.toString=function(){return '(sub) '+this.tree}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){
+var res='.__'+this.func+'__('
+if(this.tree.length===1){
+return res+this.tree[0].to_js()+')'
+}else{
+res +='slice('
+for(var i=0;i<this.tree.length;i++){
+if(this.tree[i].type==='abstract_expr'){res+='null'}
+else{res+=this.tree[i].to_js()}
+if(i<this.tree.length-1){res+=','}
+}
+return res+'))'
+}
+}
+}
+function $TargetListCtx(context){
+this.type='target_list'
+this.parent=context
+this.tree=[]
+this.expect='id'
+context.tree.push(this)
+this.toString=function(){return '(target list) '+this.tree}
+}
+function $TernaryCtx(context){
+this.type='ternary'
+this.parent=context.parent
+context.parent.tree.pop()
+context.parent.tree.push(this)
+context.parent=this
+this.tree=[context]
+this.toString=function(){return '(ternary) '+this.tree}
+this.to_js=function(){
+var qesc=new RegExp('"',"g")
+var args=this.tree[1].to_js().replace(qesc,'\\"')+','
+args +=this.tree[0].to_js().replace(qesc,'\\"')+','
+args +=this.tree[2].to_js().replace(qesc,'\\"')
+return '$ternary('+$to_js(this.tree)+')'
+}
+}
+function $TryCtx(context){
+this.type='try'
+this.parent=context
+context.tree.push(this)
+this.toString=function(){return '(try) '}
+this.transform=function(node,rank){
+if(node.parent.children.length===rank+1){
+$_SyntaxError("missing clause after 'try' 1")
+}else{
+var next_ctx=node.parent.children[rank+1].context.tree[0]
+if(['except','finally'].indexOf(next_ctx.type)===-1){
+$_SyntaxError("missing clause after 'try' 2")
+}
+}
+new $NodeJSCtx(node,'try')
+var catch_node=new $Node('expression')
+new $NodeJSCtx(catch_node,'catch($err'+$loop_num+')')
+node.parent.insert(rank+1,catch_node)
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,'if(false){void(0)}')
+catch_node.insert(0,new_node)
+var pos=rank+2
+var has_default=false 
+while(true){
+if(pos===node.parent.children.length){break}
+var ctx=node.parent.children[pos].context.tree[0]
+if(ctx.type==='except'||
+(ctx.type==='single_kw' && ctx.token==='finally')){
+node.parent.children[pos].context.tree[0].error_name='$err'+$loop_num
+catch_node.insert(catch_node.children.length,
+node.parent.children[pos])
+if(ctx.type==='except' && ctx.tree.length===0){
+if(has_default){$_SyntaxError('more than one except: line')}
+has_default=true
+}
+node.parent.children.splice(pos,1)
+}else{break}
+}
+if(!has_default){
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,'else{throw $err'+$loop_num+'}')
+catch_node.insert(catch_node.children.length,new_node)
+}
+$loop_num++
+}
+this.to_js=function(){return 'try'}
+}
+function $UnaryCtx(context,op){
+this.type='unary'
+this.op=op
+this.toString=function(){return '(unary) '+this.op+' ['+this.tree+']'}
+this.parent=context
+this.tree=[]
+context.tree.push(this)
+this.to_js=function(){return this.op+$to_js(this.tree)}
+}
+var $loop_num=0
+var $iter_num=0 
+function $add_line_num(node,rank){
+if(node.type==='module'){
+var i=0
+while(i<node.children.length){
+i +=$add_line_num(node.children[i],i)
+}
+}else{
+var elt=node.context.tree[0],offset=1
+var flag=true
+if(node.line_num===undefined){flag=false}
+if(elt.type==='condition' && elt.token==='elif'){flag=false}
+else if(elt.type==='except'){flag=false}
+else if(elt.type==='single_kw'){flag=false}
+if(flag){
+js='document.$line_info=['+node.line_num+',"'+node.module+'"]'
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,js)
+node.parent.insert(rank,new_node)
+offset=2
+}
+var i=0
+while(i<node.children.length){
+i +=$add_line_num(node.children[i],i)
+}
+return offset
+}
+}
+function $augmented_assign(context,op){
+var assign=new $AssignCtx(context)
+var new_op=new $OpCtx(context,op.substr(0,op.length-1))
+assign.tree.push(new_op)
+context.parent.tree.pop()
+context.parent.tree.push(assign)
+return new_op
+}
+function $get_scope(context){
+var ctx_node=context.parent
+while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
+var tree_node=ctx_node.node
+var scope=null
+while(tree_node.parent.type!=='module'){
+var ntype=tree_node.parent.context.tree[0].type
+if(['def','class'].indexOf(ntype)>-1){
+scope=tree_node.parent
+scope.ntype=ntype
+break
+}
+tree_node=tree_node.parent
+}
+return scope
+}
+function $to_js(tree,sep){
+if(sep===undefined){sep=','}
+var res=''
+for(var i=0;i<tree.length;i++){
+if(tree[i].to_js!==undefined){
+res +=tree[i].to_js()
+}else{
+throw Error('no to_js() for '+tree[i])
+}
+if(i<tree.length-1){res+=sep}
+}
+return res
+}
+var $expr_starters=['id','int','float','str','[','(','{','not']
+function $arbo(ctx){
+while(ctx.parent!=undefined){ctx=ctx.parent}
+return ctx
+}
+function $transition(context,token){
+if(context.type==='abstract_expr'){
+if($expr_starters.indexOf(token)>-1){
+context.parent.tree.pop()
+var commas=context.with_commas
+context=context.parent
+}
+if(token==='id'){return new $IdCtx(new $ExprCtx(context,'id',commas),arguments[2])}
+else if(token==='str'){return new $StringCtx(new $ExprCtx(context,'str',commas),arguments[2])}
+else if(token==='int'){return new $IntCtx(new $ExprCtx(context,'int',commas),arguments[2])}
+else if(token==='float'){return new $FloatCtx(new $ExprCtx(context,'float',commas),arguments[2])}
+else if(token==='('){return new $ListOrTupleCtx(new $ExprCtx(context,'tuple',commas),'tuple')}
+else if(token==='['){return new $ListOrTupleCtx(new $ExprCtx(context,'list',commas),'list')}
+else if(token==='{'){return new $DictOrSetCtx(new $ExprCtx(context,'dict_or_set',commas))}
+else if(token==='not'){return new $NotCtx(new $ExprCtx(context,'not',commas))}
+else if(token==='op' && '+-'.search(arguments[2])){
+return new $UnaryCtx(context,arguments[2])
+}else if(token==='='){$_SyntaxError(context,token)}
+else{return $transition(context.parent,token,arguments[2])}
+}else if(context.type==='assert'){
+if($expr_starters.indexOf(token)>-1&&context.init===undefined){
+context.init=true
+return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+}else if(token==='eol'&&context.init===true){
+return $transition(context.parent,token)
+}else{$_SyntaxError(context,token)}
+}else if(context.type==='assign'){
+if(token==='eol'){return $transition(context.parent,'eol')}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='attribute'){
+if(token==='id'){
+var name=arguments[2]
+if(name.substr(0,2)=='$$'){name=name.substr(2)}
+context.name=name
+return context.parent
+}else{$_SyntaxError(context,token)}
+}else if(context.type==='call'){
+if(token===','){return context}
+else if($expr_starters.indexOf(token)>-1){
+var expr=new $CallArgCtx(context)
+return $transition(expr,token,arguments[2])
+}else if(token===')'){return context.parent}
+else if(token==='op'){
+var op=arguments[2]
+if(op==='-'){return new $UnaryCtx(context,'-')}
+else if(op==='+'){return context}
+else if(op==='*'){return new $StarArgCtx(context)}
+else if(op==='**'){return new $DoubleStarArgCtx(context)}
+else{throw Error('SyntaxError')}
+}else{return $transition(context.parent,token,arguments[2])}
+}else if(context.type==='call_arg'){
+if($expr_starters.indexOf(token)>-1 && context.expect==='id'){
+context.expect=','
+var expr=new $AbstractExprCtx(context,false)
+return $transition(expr,token,arguments[2])
+}else if(token==='=' && context.expect===','){
+return new $ExprCtx(new $KwArgCtx(context),'kw_value',false)
+}else if(token==='op' && context.expect==='id'){
+var op=arguments[2]
+if(op==='*'){return new $StarArgCtx(context)}
+else if(op==='**'){return new $DoubleStarArgCtx(context)}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(token===')' && context.expect===','){
+return $transition(context.parent,token)
+}else if(token===','&& context.expect===','){
+return new $CallArgCtx(context.parent)
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='class'){
+if(token==='id' && context.expect==='id'){
+context.name=arguments[2]
+context.expect='(:'
+return context
+}
+else if(token==='(' && context.expect==='(:'){
+return new $ParentClassCtx(context)
+}else if(token===':' && context.expect==='(:'){return context.parent}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='comp_if'){
+return $transition(context.parent,token,arguments[2])
+}else if(context.type==='comp_for'){
+if(token==='in' && context.expect==='in'){
+context.expect=null
+return new $AbstractExprCtx(new $CompIterableCtx(context),true)
+}else if(context.expect===null){
+return $transition(context.parent,token,arguments[2])
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='comp_iterable'){
+return $transition(context.parent,token,arguments[2])
+}else if(context.type==='comprehension'){
+if(token==='if'){return new $AbstractExprCtx(new $CompIfCtx(context),false)}
+else if(token==='for'){return new $TargetListCtx(new $CompForCtx(context))}
+else{return $transition(context.parent,token,arguments[2])}
+}else if(context.type==='condition'){
+if(token===':'){
+var new_node=new $Node('expression')
+context.parent.node.add(new_node)
+return new $NodeCtx(new_node)
+}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='def'){
+if(token==='id'){
+if(context.name){
+$_SyntaxError(context,'token '+token+' after '+context)
+}else{
+context.name=arguments[2]
+return context
+}
+}else if(token==='('){return new $FuncArgs(context)}
+else if(token===':'){return context.parent}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='dict_or_set'){
+if(context.closed){
+if(token==='['){return new $SubCtx(context)}
+else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
+else if(token==='.'){return new $AttrCtx(context)}
+else if(token==='op'){
+return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
+}else{return $transition(context.parent,token,arguments[2])}
+}else{
+if(context.expect===','){
+if(token==='}'){
+if((context.real==='set')||
+(context.real==='dict'&&context.tree.length%2===0)){
+context.items=context.tree
+context.tree=[]
+context.closed=true
+return context
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(token===','){
+if(context.real==='dict_or_set'){context.real='set'}
+if(context.real==='dict' && context.tree.length%2){
+$_SyntaxError(context,'token '+token+' after '+context)
+}
+context.expect='id'
+return context
+}else if(token===':'){
+if(context.real==='dict_or_set'){context.real='dict'}
+if(context.real==='dict'){
+context.expect='id'
+return context
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.expect==='id'){
+if(token==='}'&&context.tree.length===0){
+context.items=[]
+context.tree=[]
+context.closed=true
+context.real='dict'
+return context
+}else if($expr_starters.indexOf(token)>-1){
+context.expect=','
+var expr=new $AbstractExprCtx(context,false)
+return $transition(expr,token,arguments[2])
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else{return $transition(context.parent,token,arguments[2])}
+}
+}else if(context.type==='double_star_arg'){
+if(token==='id'){
+context.name=arguments[2]
+context.parent.expect=','
+return context.parent
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='except'){
+if(token==='id'){
+return $transition(new $TargetListCtx(context),token,arguments[2])
+}else if(token===':'){
+return context.parent
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='expr'){
+if($expr_starters.indexOf(token)>-1 && context.expect==='expr'){
+context.expect=','
+return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+}else if(token==='not'&&context.expect===','){
+return new $ExprNot(context)
+}else if(token==='in'&&context.expect===','){
+return new $AbstractExprCtx(new $OpCtx(context,'in'),false)
+}else if(token===',' && context.expect===','){
+if(context.with_commas){
+context.expect='expr'
+return context
+}else{return $transition(context.parent,token)}
+}else if(token==='op'){
+var op_parent=context.parent,op=arguments[2]
+var op1=context.parent,repl=null
+while(true){
+if(op1.type==='expr'){op1=op1.parent}
+else if(op1.type==='op'&&$op_weight[op1.op]>$op_weight[op]){repl=op1;op1=op1.parent}
+else{break}
+}
+if(repl===null){
+context.parent.tree.pop()
+var expr=new $ExprCtx(op_parent,'operand',context.with_commas)
+expr.expect=','
+context.parent=expr
+var new_op=new $OpCtx(context,op)
+return new $AbstractExprCtx(new_op,false)
+}
+repl.parent.tree.pop()
+var expr=new $ExprCtx(repl.parent,'operand',false)
+expr.tree=[op1]
+repl.parent=expr
+var new_op=new $OpCtx(repl,op)
+return new $AbstractExprCtx(new_op,false)
+}else if(token==='augm_assign' && context.expect===','){
+return $augmented_assign(context,arguments[2])
+}else if(token==='=' && context.expect===','){
+if(context.parent.type==="call_arg"){
+return new $AbstractExprCtx(new $KwArgCtx(context),true)
+}else{
+while(context.parent!==undefined){context=context.parent}
+context=context.tree[0]
+return new $AbstractExprCtx(new $AssignCtx(context),true)
+}
+}else if(token==='if' && context.parent.type!=='comp_iterable'){
+return new $AbstractExprCtx(new $TernaryCtx(context),false)
+}else{return $transition(context.parent,token)}
+}else if(context.type==='expr_not'){
+if(token==='in'){
+context.parent.tree.pop()
+return new $AbstractExprCtx(new $OpCtx(context.parent,'not_in'),false)
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='for'){
+if(token==='in'){return new $AbstractExprCtx(context,true)}
+else if(token===':'){return context.parent}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='func_arg_id'){
+if(token==='=' && context.expect==='='){
+context.parent.has_default=true
+return new $AbstractExprCtx(context,false)
+}else if(token===',' || token===')'){
+if(context.parent.has_default && context.tree.length==0){
+throw Error('SyntaxError: non-default argument follows default argument')
+}else{
+return $transition(context.parent,token)
+}
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='func_args'){
+if(token==='id' && context.expect==='id'){
+context.expect=','
+return new $FuncArgIdCtx(context,arguments[2])
+}else if(token===','){
+if(context.has_kw_arg){throw Error('SyntaxError')}
+else if(context.expect===','){
+context.expect='id'
+return context
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(token===')'){
+if(context.expect===','){return context.parent}
+else if(context.tree.length==0){return context.parent}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(token==='op'){
+var op=arguments[2]
+context.expect=','
+if(op=='*'){return new $StarArgCtx(context)}
+else if(op=='**'){return new $DoubleStarArgCtx(context)}
+else{$_SyntaxError(context,'token '+op+' after '+context)}
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='global'){
+if(token==='id' && context.expect==='id'){
+new $IdCtx(context,arguments[2])
+context.expect=','
+return context
+}else if(token===',' && context.expect===','){
+context.expect='id'
+return context
+}else if(token==='eol' && context.expect===','){
+return $transition(context.parent,token)
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='id'){
+if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
+else if(token==='('){return new $CallCtx(context)}
+else if(token==='.'){return new $AttrCtx(context)}
+else if(token==='='){
+if(context.parent.type==='expr' &&
+context.parent.parent !==undefined &&
+context.parent.parent.type==='call_arg'){
+return new $AbstractExprCtx(new $KwArgCtx(context.parent),false)
+}else{return $transition(context.parent,token,arguments[2])}
+}else if(token==='op'){return $transition(context.parent,token,arguments[2])}
+else{return $transition(context.parent,token,arguments[2])}
+}else if(context.type==='import'){
+if(token==='id'){return new $IdCtx(context,arguments[2])}
+else{return $transition(context.parent,token)}
+}else if(context.type==='int'||context.type==='float'){
+if($expr_starters.indexOf(token)>-1){
+$_SyntaxError(context,'token '+token+' after '+context)
+}else{return $transition(context.parent,token,arguments[2])}
+}else if(context.type==='kwarg'){
+if(token===')'){return $transition(context.parent,token)}
+else if(token===','){return new $CallArgCtx(context.parent)}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='list_or_tuple'){
+if(context.closed){
+if(token==='['){return new $SubCtx(context)}
+else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
+else if(token==='.'){return new $AttrCtx(context)}
+else if(token==='op'){
+return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
+}else{return $transition(context.parent,token,arguments[2])}
+}else{
+if(context.expect===','){
+if(context.real==='tuple' && token===')'){
+context.closed=true
+return context
+}else if((context.real==='list'||context.real==='list_comp')
+&& token===']'){
+context.closed=true
+if(context.real==='list_comp'){context.intervals.push($pos)}
+return context
+}else if(token===','){
+context.expect='id'
+return context
+}else if(token==='for'){
+context.real='list_comp'
+context.intervals=[context.start+1]
+context.expression=context.tree
+context.tree=[]
+var comp=new $ComprehensionCtx(context)
+return new $TargetListCtx(new $CompForCtx(comp))
+}else{return $transition(context.parent,token,arguments[2])}
+}else if(context.expect==='id'){
+if(context.real==='tuple' && token===')'){
+context.closed=true
+return context
+}else if(context.real==='list'&& token===']'){
+context.closed=true
+return context
+}else if(token !==')'&&token!==']'&&token!==','){
+context.expect=','
+var expr=new $AbstractExprCtx(context,false)
+return $transition(expr,token,arguments[2])
+}
+}else{return $transition(context.parent,token,arguments[2])}
+}
+}else if(context.type==='list_comp'){
+if(token===']'){return context.parent}
+else if(token==='in'){return new $ExprCtx(context,'iterable',true)}
+else if(token==='if'){return new $ExprCtx(context,'condition',true)}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='node'){
+if($expr_starters.indexOf(token)>-1){
+var expr=new $AbstractExprCtx(context,true)
+return $transition(expr,token,arguments[2])
+}else if(token==='class'){return new $ClassCtx(context)}
+else if(token==='def'){return new $DefCtx(context)}
+else if(token==='for'){return new $TargetListCtx(new $ForExpr(context))}
+else if(['if','elif','while'].indexOf(token)>-1){
+return new $AbstractExprCtx(new $ConditionCtx(context,token),false)
+}else if(['else','finally'].indexOf(token)>-1){
+return new $SingleKwCtx(context,token)
+}else if(token==='try'){return new $TryCtx(context)}
+else if(token==='except'){return new $ExceptCtx(context)}
+else if(token==='assert'){return new $AssertCtx(context)}
+else if(token==='import'){return new $ImportCtx(context)}
+else if(token==='global'){return new $GlobalCtx(context)}
+else if(token==='pass'){return new $PassCtx(context)}
+else if(token==='return'){
+var ret=new $ReturnCtx(context)
+return new $AbstractExprCtx(ret,true)
+}else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),false)}
+else if(token===':'){
+var tree_node=context.node
+var new_node=new $Node('expression')
+tree_node.add(new_node)
+return new $NodeCtx(new_node)
+}else if(token==='eol'){
+if(context.tree.length===0){
+context.node.parent.children.pop()
+return context.node.parent.context
+}
+return context
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='not'){
+if(token==='in'){
+context.parent.parent.tree.pop()
+return new $ExprCtx(new $OpCtx(context.parent,'not_in'),'op',false)
+}else if($expr_starters.indexOf(token)>-1){
+var expr=new $AbstractExprCtx(context,false)
+return $transition(expr,token,arguments[2])
+}else{return $transition(context.parent,token)}
+}else if(context.type==='op'){
+if($expr_starters.indexOf(token)>-1){
+return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+}else if(token==='op' && '+-'.search(arguments[2])>-1){
+return new $UnaryCtx(context,arguments[2])
+}else{return $transition(context.parent,token)}
+}else if(context.type==='parent_class'){
+if(token==='id' && context.expect==='id'){
+new $IdCtx(context,arguments[2])
+context.expect=','
+return context
+}else if(token===',' && context.expect==','){
+context.expect='id'
+return context
+}else if(token===')'){return context.parent}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='pass'){
+if(token==='eol'){return context.parent}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='return'){
+return $transition(context.parent,token)
+}else if(context.type==='single_kw'){
+if(token===':'){return context.parent}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='star_arg'){
+if(token==='id'){
+context.name=arguments[2]
+context.parent.expect=','
+return context.parent
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='str'){
+if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
+else if(token==='('){return new $CallCtx(context)}
+else if(token==='.'){return new $AttrCtx(context)}
+else if(token=='str'){context.value +='+'+arguments[2];return context}
+else{return $transition(context.parent,token,arguments[2])}
+}else if(context.type==='sub'){
+if($expr_starters.indexOf(token)>-1){
+var expr=new $AbstractExprCtx(context,false)
+return $transition(expr,token,arguments[2])
+}else if(token===']'){return context.parent}
+else if(token===':'){
+return new $AbstractExprCtx(context,false)
+}else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='target_list'){
+if(token==='id' && context.expect==='id'){
+context.expect=','
+new $IdCtx(context,arguments[2])
+return context
+}else if((token==='('||token==='[')&&context.expect==='id'){
+context.expect=','
+return new $TargetListCtx(context)
+}else if((token===')'||token===']')&&context.expect===','){
+return context.parent
+}else if(token===',' && context.expect==','){
+context.expect='id'
+return context
+}else if(context.expect===','){return $transition(context.parent,token,arguments[2])}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='ternary'){
+if(token==='else'){return new $AbstractExprCtx(context,false)}
+else{return $transition(context.parent,token,arguments[2])}
+}else if(context.type==='try'){
+if(token===':'){return context.parent}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==='unary'){
+if(['int','float'].indexOf(token)>-1){
+context.parent.tree.pop()
+var value=arguments[2]
+if(context.op==='-'){value=-value}
+return $transition(context.parent,token,value)
+}else if(token==='id'){
+context.parent.tree.pop()
+if(context.op==='-'){
+var int_expr=new $IntCtx(context.parent,-1)
+return $transition(new $OpCtx(int_expr,'*'),token,arguments[2])
+}else{
+return $transition(context.parent,token,arguments[2])
+}
+}else if(token==="op" && '+-'.search(arguments[2])>-1){
+var op=arguments[2]
+if(context.op===op){context.op='+'}else{context.op='-'}
+return context
+}else{return $transition(context.parent,token,arguments[2])}
+}
+}
+function $py2js(src,module){
+src=src.replace(/\r\n/gm,'\n')
+while(src.length>0 &&(src.charAt(0)=="\n" || src.charAt(0)=="\r")){
+src=src.substr(1)
+}
+if(src.charAt(src.length-1)!="\n"){src+='\n'}
+if(module===undefined){module='__main__'}
+document.$py_src[module]=src 
+var root=$tokenize(src,module)
+root.transform()
+if(document.$debug>0){$add_line_num(root,null,module)}
+return root
+}
 function $tokenize(src,module){
 var delimiters=[["#","\n","comment"],['"""','"""',"triple_string"],
 ["'","'","string"],['"','"',"string"],
@@ -2886,45 +3270,36 @@ var br_open={"(":0,"[":0,"{":0}
 var br_close={")":"(","]":"[","}":"{"}
 var br_stack=""
 var br_pos=new Array()
-var kwdict=["False","class","finally","is","return",
-"None","continue","for","lambda","try","raise","True","def","from",
+var kwdict=["class","is","return",
+"for","lambda","try","finally","raise","def","from",
 "nonlocal","while","del","global","with",
-"as","elif","if","yield","assert","else","import","pass",
-"break","except","raise"]
-var unsupported=["is","from","nonlocal","with",
-"as","yield"]
-var forbidden=['item','var',
-'closed','defaultStatus','document','frames',
-'history','innerHeight','innerWidth','length',
-'location','name','navigator','opener',
-'outerHeight','outerWidth','pageXOffset','pageYOffset',
-'parent','screen','screenLeft','screenTop',
-'screenX','screenY','self','status',
-'top',
-'super']
+"as","elif","else","if","yield","assert","import",
+"except","raise","in","not","pass",
+]
+var unsupported=["is","from","nonlocal","with","yield"]
+var $indented=['class','def','for','condition','single_kw','try','except']
+var forbidden=['case','catch','debugger','default','delete',
+'do','function','instanceof','new','switch','this','throw',
+'typeof','var','void','with','enum','export','extends','super']
 var punctuation={',':0,':':0}
 var int_pattern=new RegExp("^\\d+")
 var float_pattern=new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
 var id_pattern=new RegExp("[\\$_a-zA-Z]\\w*")
-var stack=new Array()
+var qesc=new RegExp('"',"g")
+var context=null
+var root=new $Node('module')
+root.indent=-1
+var new_node=new $Node('expression')
+current=root
 var name=""
 var _type=null
 var pos=0
-while(pos<src.length && src.charAt(pos)==' '){pos++}
-var indent_stack=[pos]
-stack.push(['indent',pos,0])
-var pos2line={}
+indent=null
 var lnum=1
-for(i=0;i<src.length;i++){
-pos2line[i]=lnum
-if(src.charAt(i)=='\n'){lnum+=1}
-}
-lnum=0
 while(pos<src.length){
-document.line_num=pos2line[pos]
 var flag=false
 var car=src.charAt(pos)
-if(stack.length==0 || $last(stack)[0]=='newline'){
+if(indent===null){
 var indent=0
 while(pos<src.length){
 if(src.charAt(pos)==" "){indent++;pos++}
@@ -2933,41 +3308,33 @@ indent++;pos++
 while(indent%8>0){indent++}
 }else{break}
 }
-if(src.charAt(pos)=='\n'){pos++;lnum++;continue}
+if(src.charAt(pos)=='\n'){pos++;lnum++;indent=null;continue}
 else if(src.charAt(pos)==='#'){
 var offset=src.substr(pos).search(/\n/)
 if(offset===-1){break}
-pos+=offset+1;lnum++;continue
+pos+=offset+1;lnum++;indent=null;continue
 }
-if(stack.length>1){
-if(indent>$last(indent_stack)){
-if(stack[stack.length-2][0]!="delimiter" &&
-stack[stack.length-2][1]!=":"){
-$IndentationError(module,"unexpected indent",pos)
+new_node.indent=indent
+new_node.line_num=lnum
+new_node.module=module
+if(indent>current.indent){
+if(context!==null){
+if($indented.indexOf(context.tree[0].type)==-1){
+$IndentationError(module,'unexpected indent',pos)
+}
+}
+current.add(new_node)
 }else{
-indent_stack.push(indent)
-}
-}else if(indent==$last(indent_stack)){
-if(stack[stack.length-2][0]=="delimiter" &&
-stack[stack.length-2][1]==":"){
-$IndentationError(module,"expected an indented block",pos)
-}
-}else if(indent<$last(indent_stack)){
-indent_stack.pop()
-while(true){
-if(indent_stack.length==0){
+while(indent!==current.indent){
+current=current.parent
+if(current===undefined || indent>current.indent){
 $IndentationError(module,'unexpected indent',pos)
 }
-if(indent>$last(indent_stack)){
-$IndentationError(module,'unexpected indent',pos)
-}else if(indent==$last(indent_stack)){break}
-else{indent_stack.pop()}
 }
+current.parent.add(new_node)
 }
-}else if(indent>0){
-$IndentationError(module,"unexpected indent",pos)
-}
-stack.push(["indent",indent,pos-indent])
+current=new_node
+context=new $NodeCtx(new_node)
 continue
 }
 if(car=="#"){
@@ -3005,10 +3372,9 @@ if(_type=="triple_string" && src.substr(end,3)!=car+car+car){
 end++
 }else{
 found=true
-if(stack.length>0 && $last(stack)[0]=="str"){
-stack.push(['operator','+',end])
-}
-stack.push(["str",zone+car,pos])
+$pos=pos-zone.length-1
+var string=zone.substr(1).replace(qesc,'\\"')
+context=$transition(context,'str',zone+car)
 pos=end+1
 if(_type=="triple_string"){pos=end+3}
 break
@@ -3040,32 +3406,39 @@ if(unsupported.indexOf(name)>-1){
 document.line_num=pos2line[pos]
 $SyntaxError(module,"Unsupported Python keyword '"+name+"'",pos)
 }
-stack.push(["keyword",name,pos-name.length])
+$pos=pos-name.length
+context=$transition(context,name)
 }else if(name in $operators){
-stack.push(["operator",name,pos-name.length])
-}else if(stack.length>1 && $last(stack)[0]=="point"
-&&(['id','str','int','float','qualifier','bracket'].indexOf(stack[stack.length-2][0])>-1)){
-stack.push(["qualifier",name,pos-name.length])
+$pos=pos-name.length
+context=$transition(context,'op',name)
 }else{
 if(forbidden.indexOf(name)>-1){name='$$'+name}
-stack.push(["id",name,pos-name.length])
+$pos=pos-name.length
+context=$transition(context,'id',name)
 }
 name=""
 continue
 }
 }
 if(car=="."){
-stack.push(["point",".",pos])
+$pos=pos
+context=$transition(context,'.')
 pos++;continue
 }
 if(car.search(/\d/)>-1){
 var res=float_pattern.exec(src.substr(pos))
 if(res){
-if(res[0].search('e')>-1){stack.push(["float",res[0],pos])}
-else{stack.push(["float",eval(res[0]),pos])}
+if(res[0].search('e')>-1){
+$pos=pos
+context=$transition(context,'float',res[0])
+}else{
+$pos=pos
+context=$transition(context,'float',eval(res[0]))
+}
 }else{
 res=int_pattern.exec(src.substr(pos))
-stack.push(["int",eval(res[0]),pos])
+$pos=pos
+context=$transition(context,'int',eval(res[0]))
 }
 pos +=res[0].length
 continue
@@ -3075,18 +3448,21 @@ lnum++
 if(br_stack.length>0){
 pos++;continue
 }else{
-if(stack[stack.length-1][0]!="newline"){
-stack.push(["newline",lnum,pos])
-}else{
-stack[stack.length-1][1]=lnum 
-}
+if(current.context.tree.length>0){
+$pos=pos
+context=$transition(context,'eol')
+indent=null
+new_node=new $Node()
+}else{console.log('empty LINE '+lnum)
+new_node.line_num=lnum}
 pos++;continue
 }
 }
 if(car in br_open){
 br_stack +=car
 br_pos[br_stack.length-1]=pos
-stack.push(["bracket",car,pos])
+$pos=pos
+context=$transition(context,car)
 pos++;continue
 }
 if(car in br_close){
@@ -3097,25 +3473,25 @@ document.line_num=pos2line[pos]
 $SyntaxError(module,"Unbalanced bracket",pos)
 }else{
 br_stack=br_stack.substr(0,br_stack.length-1)
-stack.push(["bracket",car,pos])
+$pos=pos
+context=$transition(context,car)
 pos++;continue
 }
 }
 if(car=="="){
 if(src.charAt(pos+1)!="="){
-if(br_stack.length==0){
-stack.push(["assign","=",pos])
-}else{
-stack.push(["delimiter","=",pos])
-}
+$pos=pos
+context=$transition(context,'=')
 pos++;continue
 }else{
-stack.push(["operator","==",pos])
+$pos=pos
+context=$transition(context,'op','==')
 pos+=2;continue
 }
 }
 if(car in punctuation){
-stack.push(["delimiter",car,pos])
+$pos=pos
+context=$transition(context,car)
 pos++;continue
 }
 if(car in $first_op_letter){
@@ -3126,11 +3502,12 @@ if(op_sign==src.substr(pos,op_sign.length)
 op_match=op_sign
 }
 }
+$pos=pos
 if(op_match.length>0){
 if(op_match in $augmented_assigns){
-stack.push(["assign",op_match,pos])
+context=$transition(context,'augm_assign',op_match)
 }else{
-stack.push(["operator",op_match,pos])
+context=$transition(context,'op',op_match)
 }
 pos +=op_match.length
 continue
@@ -3139,357 +3516,44 @@ continue
 if(car=='\\' && src.charAt(pos+1)=='\n'){
 lnum++;pos+=2;continue
 }
-if(car!=' '){$SyntaxError(module,'unknown token ['+car+']',pos)}
+if(car!=' '&&car!=='\t'){$SyntaxError(module,'unknown token ['+car+']',pos)}
 pos +=1
 }
 if(br_stack.length!=0){
 pos=br_pos.pop()
 document.line_num=pos2line[pos]
-$SyntaxError(module,"Unbalanced bracket "+br_stack.charAt(br_stack.length-1),pos)
+throw Error("Unbalanced bracket "+br_stack.charAt(br_stack.length-1),pos)
 }
-return stack
+return root
 }
-function Atom(stack){
-this.parent=stack
-this.type=null
-this.stack=function(){
-return new Stack(this.parent.list.slice(this.start,this.end+1))
+function brython(debug){
+document.$py_src={}
+document.$debug=debug
+var elts=document.getElementsByTagName("script")
+for(var $i=0;$i<elts.length;$i++){
+var elt=elts[$i]
+if(elt.type=="text/python"){
+var src=(elt.innerHTML || elt.textContent)
+var root=$py2js(src,'__main__')
+var js=root.to_js()
+if(debug===2){console.log(js)}
+eval(js)
 }
-this.list=function(){
-return this.parent.list.slice(this.start,this.end+1)
-}
-this.to_js=function(){return this.stack().to_js()}
-}
-function Stack(stack_list){
-this.list=stack_list
-}
-Stack.prototype.atom_at=function(pos,implicit_tuple){
-if(!implicit_tuple){return this.raw_atom_at(pos)}
 else{
-var items=this.tuple_at(pos)
-atom=new Atom(this)
-atom.items=items
-if(items.length==1){return items[0]}
-else{
-atom.type="tuple"
-atom.start=items[0].start
-atom.end=items[items.length-1].end
-return atom
-}
-}
-}
-Stack.prototype.atom_before=function(pos,implicit_tuple){
-atom=new Atom(this)
-if(pos==0){return null}
-atom.end=pos-1
-atom.start=pos-1
-var atom_parts=$List2Dict("id","assign_id","str",'int','float',"point","qualifier")
-var $valid_kws=$List2Dict("True","False","None")
-var closing=$List2Dict(')',']')
-while(true){
-if(atom.start==-1){break}
-var item=this.list[atom.start]
-if(item[0]in atom_parts){atom.start--;continue}
-else if(item[0]=="keyword" && item[1]in $valid_kws){
-atom.start--;continue
-}
-else if(item[0]=="bracket" && item[1]in closing){
-atom.start=this.find_previous_matching(atom.start)-1
-continue
-}
-else if(implicit_tuple && item[0]=="delimiter"
-&& item[1]==","){atom.start--;continue}
-break
-}
-atom.start++
-return this.atom_at(atom.start,implicit_tuple)
-}
-Stack.prototype.dump=function(){
-ch=''
-for(var i=0;i<this.list.length;i++){
-_item=this.list[i]
-ch +=i+' '+_item[0]+' '+_item[1]+'\n'
-}
-alert(ch)
-}
-Stack.prototype.find_block=function(pos){
-var item=this.list[pos]
-var closing_pos=this.find_next_at_same_level(pos+1,'delimiter',':')
-if(closing_pos!=null){
-var kw_indent=this.indent(pos)
-var stop=closing_pos
-while(true){
-nl=this.find_next(stop,"newline")
-if(nl==null){stop=this.list.length-1;break}
-if(nl<this.list.length-1){
-if(this.list[nl+1][0]=="indent"){
-if(this.list[nl+1][1]<=kw_indent){
-stop=nl
-break
-}
-}else{
-stop=nl
-break
-}
-}else{
-stop=this.list.length-1
-break
-}
-stop=nl+1
-}
-return[closing_pos,stop,kw_indent]
-}else{return null}
-}
-Stack.prototype.find_next=function(){
-var pos=arguments[0]
-var _type=arguments[1]
-var values=null
-if(arguments.length>2){
-values={}
-for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
-}
-for(i=pos;i<this.list.length;i++){
-if(this.list[i][0]===_type){
-if(values===null){
-return i
-}else if(this.list[i][1]in values){
-return i
-}
-}
-}
-return null
-}
-Stack.prototype.find_next_at_same_level=function(){
-var pos=arguments[0]
-var _type=arguments[1]
-var values=null
-if(arguments.length>2){
-values={}
-for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
-}
-while(true){
-if(this.list[pos][0]==_type){
-if(values==null){return pos}
-else if(this.list[pos][1]in values){return pos}
-}else if(this.list[pos][0]=="bracket"){
-if(this.list[pos][1]in $OpeningBrackets){
-pos=this.find_next_matching(pos)
-}else if(this.list[pos][1]in $ClosingBrackets){
-return null
-}
-}
-pos++
-if(pos>this.list.length-1){return null}
-}
-}
-Stack.prototype.find_next_matching=function(pos){
-var brackets={"(":")","[":"]","{":"}"}
-var _item=this.list[pos]
-if(_item[0]=="bracket"){
-opening=_item[1]
-count=0
-for(i=pos;i<this.list.length;i++){
-if(this.list[i][0]=="bracket"){
-var value=this.list[i][1]
-if(value==opening){count +=1}
-else if(value==brackets[opening]){
-count -=1
-if(count==0){return i}
-}
-}
-}
-}
-return null
-}
-Stack.prototype.find_previous=function(){
-var pos=arguments[0]
-var _type=arguments[1]
-var values=null
-if(arguments.length>2){
-values={}
-for(i=2;i<arguments.length;i++){values[arguments[i]]=0}
-}
-for(i=pos;i>=0;i--){
-if(this.list[i][0]==_type){
-if(values==null){
-return i
-}else if(this.list[i][1]in values){
-return i
-}
-}
-}
-return null
-}
-Stack.prototype.find_previous_matching=function(pos){
-var brackets={")":"(","]":"[","}":"{"}
-var item=this.list[pos]
-var i=0
-if(item[0]=="bracket"){
-closing=item[1]
-count=0
-for(i=pos;i>=0;i--){
-if(this.list[i][0]=="bracket"){
-var value=this.list[i][1]
-if(value==closing){count +=1;}
-else if(value==brackets[closing]){
-count -=1
-if(count==0){return i}
-}
-}
-}
-}
-return null
-}
-Stack.prototype.ids_in=function(){
-var ids=[]
-for(var i=0;i<this.list.length;i++){
-if(this.list[i][0]==='id'){
-var loc_var=this.list[i][1]
-if(ids.indexOf(loc_var)===-1){ids.push(loc_var)}
-}
-}
-return ids
-}
-Stack.prototype.indent=function(pos){
-var ipos=this.find_previous(pos,"indent")
-return this.list[ipos][1]
-}
-Stack.prototype.line_end=function(pos){
-var nl=this.find_next(pos,"newline")
-if(nl==null){nl=this.list.length}
-return nl
-}
-Stack.prototype.line_start=function(pos){
-var nl=this.find_previous(pos,"newline")
-if(nl==null){return 0}
-return nl+1 
-}
-Stack.prototype.next_at_same_indent=function(pos){
-var indent=this.indent(pos)
-var nxt_pos=this.find_next(pos,"newline")
-while(true){
-if(nxt_pos===null){return null}
-if(nxt_pos>=this.list.length-1){return null}
-else if(this.list[nxt_pos+1][0]=="indent"){
-var nxt_indent=this.list[nxt_pos+1][1]
-nxt_pos++
-}else{var nxt_indent=0}
-if(nxt_indent==indent){return nxt_pos+1}
-else if(nxt_indent<indent){return null}
-nxt_pos=this.find_next(nxt_pos+1,"newline")
-}
-}
-Stack.prototype.raw_atom_at=function(pos){
-atom=new Atom(this)
-atom.valid_type=true
-atom.start=pos
-if(pos>this.list.length-1){
-atom.valid_type=false
-atom.end=pos
-return atom
-}
-var dict1=$List2Dict('id','assign_id','str','int','float')
-var $valid_kws=$List2Dict("True","False","None")
-if(this.list[pos][0]in dict1 || 
-(this.list[pos][0]=="keyword" && this.list[pos][1]in $valid_kws)||
-(this.list[pos][0]=="bracket" && 
-(this.list[pos][1]=="(" || this.list[pos][1]=='['))){
-atom.type=this.list[pos][0]
-end=pos
-if(this.list[pos][0]=='bracket'){
-atom.type="tuple"
-end=this.find_next_matching(pos)
-}
-while(end<this.list.length-1){
-var item=this.list[end+1]
-if(item[0]in dict1 && atom.type=="qualified_id"){
-end +=1
-}else if(item[0]=="point"||item[0]=="qualifier"){
-atom.type="qualified_id"
-end +=1
-}else if(item[0]=="bracket" && item[1]=='('){
-atom.type="function_call"
-end=this.find_next_matching(end+1)
-}else if(item[0]=="bracket" && item[1]=='['){
-atom.type="slicing"
-end=this.find_next_matching(end+1)
-}else{
+var br_scripts=['brython.js','py_list.js']
+for(var j=0;j<br_scripts.length;j++){
+var bs=br_scripts[j]
+if(elt.src.substr(elt.src.length-bs.length)==bs){
+if(elt.src.length===bs.length ||
+elt.src.charAt(elt.src.length-bs.length-1)=='/'){
+document.$brython_path=elt.src.substr(0,elt.src.length-bs.length)
 break
 }
 }
-atom.end=end
-return atom
-}else if(this.list[pos][0]=="bracket" && 
-(this.list[pos][1]=="(" || this.list[pos][1]=='[')){
-atom.type="tuple"
-atom.end=this.find_next_matching(pos)
-return atom
-}else{
-atom.type=this.list[pos][0]
-atom.valid_type=false
-atom.end=pos
-return atom
 }
 }
-Stack.prototype.split=function(delimiter){
-var items=new Array(), count=0,pos=0,start=0
-while(pos<this.list.length){
-pos=this.find_next_at_same_level(pos,'delimiter',delimiter)
-if(pos==null){pos=this.list.length;break}
-var s=new Stack(this.list.slice(start,pos))
-s.start=start
-s.end=pos-1
-items.push(s)
-start=pos+1
-pos++
 }
-var s=new Stack(this.list.slice(start,pos))
-s.start=start
-s.end=pos-1
-if(s.end<start){s.end=start}
-items.push(s)
-return items
-}
-Stack.prototype.to_js=function(){
-var i=0,j=0,x=null
-var js="",scope_stack=[]
-var t2=$List2Dict('id','assign_id','str','int','float','keyword','code')
-for(i=0;i<this.list.length;i++){
-x=this.list[i]
-if(x[0]=="indent"){
-for(j=0;j<x[1];j++){js +=" "}
-}else if(x[0]in t2){
-if(x[0]=='int'){js +='Number('+x[1]+')'}
-else if(x[0]==='float'){js +='float('+x[1]+')'}
-else if(x[0]==='str'){js+=x[1].replace(/\n/gm,'\\n')}
-else{js +=x[1]}
-if(i<this.list.length-1 && this.list[i+1][0]!="bracket"
-&& this.list[i+1][0]!="point" && this.list[i+1][0]!="delimiter"){
-js +=" "
-}
-}else{
-if(x[0]=="newline"){js +='\r\n'}
-else{js +=x[1]}
-}
-}
-return js
-}
-Stack.prototype.tuple_at=function(pos){
-var first=this.raw_atom_at(pos)
-var items=[first]
-while(true){
-var last=items[items.length-1]
-if(last.end+1>=this.list.length){break}
-var delim=this.list[last.end+1]
-if(delim[0]=='delimiter' && delim[1]==','){
-var next=this.raw_atom_at(last.end+2)
-if(next !==null && next.valid_type){items.push(next)}
-else{break}
-}else{break}
-}
-return items
-}
-function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
+}function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
 var i=null,$PyVars={},$def_names=[],$ns={}
 for(var k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
 if($other_args !=null){$ns[$other_args]=[]}
