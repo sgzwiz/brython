@@ -233,6 +233,9 @@ String.prototype.__setattr__ = function(attr,value){setattr(this,attr,value)}
 String.prototype.__setitem__ = function(attr,value){
     $raise('TypeError',"'str' object does not support item assignment")
 }
+String.prototype.__str__ = function(){
+    return this.toString()
+}
 
 // generate comparison methods
 var $comp_func = function(other){
