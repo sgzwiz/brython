@@ -69,31 +69,46 @@ function $import_py(module){
     $xmlhttp.send()
     if(res.constructor===Error){res.name='ImportError';throw res} // module not found
     var root = $py2js(res,module)
-    // insert module name as a JS object
+    var body = root.children
+    root.children = []
+    // use the module pattern : module name returns the results of an anonymous function
     var mod_node = new $Node('expression')
-    new $NodeJSCtx(mod_node,module+'= new object()')
+    new $NodeJSCtx(mod_node,module+'= (function()')
     root.insert(0,mod_node)
-    // search for module-level names
-    // functions and variables
-    for(var i=1;i<root.children.length;i++){
-        var node = root.children[i]
+    mod_node.children = body
+    // search for module-level names : functions, classes and variables
+    var names = []
+    for(var i=1;i<mod_node.children.length;i++){
+        var node = mod_node.children[i]
         var ctx = node.context.tree[0]
-        if(ctx.type==='def'){
-            node.context.tree=[]
-            var assign = new $AssignCtx(new $IdCtx(new $ExprCtx(node.context,'func',false),module+'.'+ctx.name))
-            ctx.name=''
-            assign.tree[1]=ctx
-            ctx.parent = assign
+        if(ctx.type==='def'||ctx.type==='class'){
+            if(names.indexOf(ctx.name)===-1){names.push(ctx.name)}
+            
         }else if(ctx.type==='assign'){
             var left = ctx.tree[0]
-            if(left.type==='expr'&&left.tree[0].type==='id'){
-                console.log('reset id')
-                left.tree[0].value=module+'.'+left.tree[0].value
+            if(left.type==='expr'&&left.tree[0].type==='id'&&left.tree[0].tree.length===0){
+                var id_name = left.tree[0].value
+                if(names.indexOf(id_name)===-1){names.push(id_name)}
             }
-        }else{
-            console.log('ctx type '+ctx.type)
         }
     }
+    // create the object that will be returned when the anonymous function is run
+    var ret_code = 'return {'
+    for(var i=0;i<names.length;i++){
+        ret_code += names[i]+':'+names[i]+','
+    }
+    ret_code += '__getattr__:function(attr){return this[attr]},'
+    ret_code += '__setattr__:function(attr,value){this[attr]=value}'
+    ret_code += '}'
+    var ret_node = new $Node('expression')
+    new $NodeJSCtx(ret_node,ret_code)
+    mod_node.add(ret_node)
+    // add parenthesis for anonymous function execution
+    
+    var ex_node = new $Node('expression')
+    new $NodeJSCtx(ex_node,')()')
+    root.add(ex_node)
+    
     try{
         var js = root.to_js()
         eval(js)
