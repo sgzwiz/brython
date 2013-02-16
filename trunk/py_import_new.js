@@ -67,6 +67,15 @@ function $import_py(module){
     }
     $xmlhttp.open('GET',module+'.py'+fake_qs,false)
     $xmlhttp.send()
+
+    // patch by Bill Earney
+    if(res.constructor===Error){
+      // try seeing if import candidate is really a dir name with __init__.py
+      res=null
+      $xmlhttp.open('GET',module+'/__init__.py'+fake_qs,false)
+      $xmlhttp.send()
+    }
+
     if(res.constructor===Error){res.name='ImportError';throw res} // module not found
     var root = $py2js(res,module)
     var body = root.children

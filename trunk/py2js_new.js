@@ -202,7 +202,7 @@ function $AssertCtx(context){
         not_ctx.tree = this.tree
         node.context = new_ctx
         var new_node = new $Node('expression')
-        new $NodeJSCtx(new_node,'throw Error("AssertionError")')
+        new $NodeJSCtx(new_node,'$raise("AssertionError")')
         node.add(new_node)
     }
 }
@@ -220,7 +220,6 @@ function $AssignCtx(context){
         // rank is the rank of this line in node
         var left = this.tree[0]
         while(left.type==='assign'){ // chained assignment : x=y=z
-            console.log('left is assign : '+left)
             var new_node = new $Node('expression')
             var node_ctx = new $NodeCtx(new_node)
             node_ctx.tree = [left]
@@ -380,23 +379,22 @@ function $ClassCtx(context){
         var instance_decl = new $Node('expression')
         new $NodeJSCtx(instance_decl,'var $instance = this')
         node.insert(0,instance_decl)
-        console.log('class node, first child ')
 
         // class constructor
         js = this.name+'=$class_constructor("'+this.name+'",$'+this.name+')'
         var cl_cons = new $Node('expression')
         new $NodeJSCtx(cl_cons,js)
-        // add declaration of class at window level
-        js = 'window.'+this.name+'='+this.name
-        var w_decl = new $Node('expression')
-        new $NodeJSCtx(w_decl,js)
-        // add nodes
-        console.log('add 2 nodes')
         node.parent.insert(rank+1,cl_cons)
-        node.parent.insert(rank+2,w_decl)
+        // add declaration of class at window level
+        if(this.parent.node.module==='__main__'){
+            js = 'window.'+this.name+'='+this.name
+            var w_decl = new $Node('expression')
+            new $NodeJSCtx(w_decl,js)
+            node.parent.insert(rank+2,w_decl)
+        }
     }
     this.to_js = function(){
-        return 'function $'+this.name+'()'
+        return '$'+this.name+'=function()'
     }
 }
 
@@ -495,7 +493,6 @@ function $DefCtx(context){
             if(func_args.tree.length==0){throw Error('no argument to class func')}
             var first_arg = func_args.tree[0]
             if(first_arg.type!=='func_arg_id'){throw Error('wrong first argument '+first_arg.type)}
-            console.log('self is '+first_arg.name)
             func_args.tree.splice(0,1) // remove self from function definition
             var js = 'var '+first_arg.name+' = $instance'
             var new_node3 = new $Node('expression')
@@ -529,7 +526,7 @@ function $DefCtx(context){
         js += '{'+defaults+'},'+other_args+','+other_kw+')'
         var new_node1 = new $Node('expression')
         new $NodeJSCtx(new_node1,js)
-        var js = 'for($var in $ns){console.log($var+":"+$ns[$var]);eval("var "+$var+"=$ns[$var]")}'
+        var js = 'for($var in $ns){eval("var "+$var+"=$ns[$var]")}'
         var new_node2 = new $Node('expression')
         new $NodeJSCtx(new_node2,js)
         node.children.splice(0,0,new_node1,new_node2)
@@ -1054,7 +1051,9 @@ function $StarArgCtx(context){
     this.tree = []
     context.tree.push(this)
     this.toString = function(){return '*'+this.tree}
-    this.to_js = function(){return '$ptuple('+this.tree[0].value+')'}
+    this.to_js = function(){
+        return '$ptuple('+this.name+')'
+    }
 }
 
 function $StringCtx(context,value){
@@ -1863,17 +1862,10 @@ function $tokenize(src,module){
         ]
     var unsupported = ["is","from","nonlocal","with","yield"]
     var $indented = ['class','def','for','condition','single_kw','try','except']
-    // causes errors for some browsers
-    // complete list at http://www.javascripter.net/faq/reserved.htm
-    var forbidden = ['item','var',
-        'closed','defaultStatus','document','frames',
-        'history','innerHeight','innerWidth','length',
-        'location','name','navigator','opener',
-        'outerHeight','outerWidth','pageXOffset','pageYOffset',
-        'parent','screen','screenLeft','screenTop',
-        'screenX','screenY','self','status',
-        'top',
-        'super']
+    // from https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Reserved_Words
+    var forbidden = ['case','catch','debugger','default','delete',
+        'do','function','instanceof','new','switch','this','throw',
+        'typeof','var','void','with','enum','export','extends','super']
 
     var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
@@ -2132,7 +2124,7 @@ function $tokenize(src,module){
         if(car=='\\' && src.charAt(pos+1)=='\n'){
             lnum++;pos+=2;continue
         }
-        if(car!=' '){$SyntaxError(module,'unknown token ['+car+']',pos)}
+        if(car!=' '&&car!=='\t'){$SyntaxError(module,'unknown token ['+car+']',pos)}
         pos += 1
     }
 
