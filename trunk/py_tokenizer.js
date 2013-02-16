@@ -306,7 +306,7 @@ function $tokenize(src,module){
         if(car=='\\' && src.charAt(pos+1)=='\n'){
             lnum++;pos+=2;continue
         }
-        if(car!=' '){$SyntaxError(module,'unknown token ['+car+']',pos)}
+        if(car!=' '&&car!=='\t'){$SyntaxError(module,'unknown token ['+car+']',pos)}
         pos += 1
     }
 
