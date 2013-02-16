@@ -237,7 +237,8 @@ function exec(src){
     try{eval($py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){$raise('ExecutionError',err.message)}
-        else{throw err}
+        //else if(document.$stderr){document.$stderr.write(document.$stderr_buff)}
+        throw err
     }
 }         
 
@@ -853,11 +854,14 @@ tuple.__str__ = function(){return "<class 'tuple'>"}
 tuple.toString = tuple.__str__
 
 function zip(){
+    var $ns=$MakeArgs('zip',arguments,[],{},'args','kw')
+    var args = $ns['args']
+    var kw = $ns['kw']
     var rank=0,res=[]
     while(true){
         var line=[],flag=true
-        for(var i=0;i<arguments.length;i++){
-            var x=arguments[i].__item__(rank)
+        for(var i=0;i<args.length;i++){
+            var x=args[i].__item__(rank)
             if(x===undefined){flag=false;break}
             line.push(x)
         }

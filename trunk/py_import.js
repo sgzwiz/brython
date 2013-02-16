@@ -61,45 +61,66 @@ function $import_py(module){
             if($xmlhttp.status==200 || $xmlhttp.status==0){res=$xmlhttp.responseText}
             else{
                 // don't throw an exception here, it will not be caught (issue #30)
-                res = Error('NotFoundError',"No module named '"+module+"'")
+                res = Error('ImportError',"No module named '"+module+"'")
             }
         }
     }
     $xmlhttp.open('GET',module+'.py'+fake_qs,false)
     $xmlhttp.send()
-    if(res.constructor===Error){throw res} // module not found
-    var stack = $py2js(res,module)
-    // insert module name as a JS object
-    stack.list.splice(0,0,['code',module+'= new object()'],['newline','\n'])
-    // search for module-level names
-    // functions
-    var $pos=0           
-    while(true){
-        var $mlname_pos = stack.find_next_at_same_level($pos,"keyword","function")
-        if($mlname_pos===null){break}
-        var $func_name = stack.list[$mlname_pos+1][1]
-        stack.list.splice($mlname_pos,2,['code',module+'.'+$func_name+"=function"])
-        // modify declaration at the end of function
-        var br_pos = stack.find_next($mlname_pos,'bracket','{')
-        var br_end = stack.find_next_matching(br_pos)
-        var $fend = stack.find_next(br_end,"func_end")
-        var $fend_code = stack.list[$fend][1]
-        $fend_code = module+'.'+$fend_code.substr(1)
-        $pv_pos = $fend_code.search(';')
-        $fend_code = ";"+$fend_code.substr(0,$pv_pos)
-        stack.list[$fend][1] = $fend_code
-        $pos = $mlname_pos+1
+
+    // patch by Bill Earney
+    if(res.constructor===Error){
+      // try seeing if import candidate is really a dir name with __init__.py
+      res=null
+      $xmlhttp.open('GET',module+'/__init__.py'+fake_qs,false)
+      $xmlhttp.send()
     }
-    // variables
-    var $pos=0           
-    while(true){
-        var $mlname_pos = stack.find_next_at_same_level($pos,"assign_id")
-        if($mlname_pos===null){break}
-        stack.list[$mlname_pos][1]=module+'.'+stack.list[$mlname_pos][1]
-        $pos = $mlname_pos+1
+
+    if(res.constructor===Error){res.name='ImportError';throw res} // module not found
+    var root = $py2js(res,module)
+    var body = root.children
+    root.children = []
+    // use the module pattern : module name returns the results of an anonymous function
+    var mod_node = new $Node('expression')
+    new $NodeJSCtx(mod_node,module+'= (function()')
+    root.insert(0,mod_node)
+    mod_node.children = body
+    // search for module-level names : functions, classes and variables
+    var names = []
+    for(var i=1;i<mod_node.children.length;i++){
+        var node = mod_node.children[i]
+        var ctx = node.context.tree[0]
+        if(ctx.type==='def'||ctx.type==='class'){
+            if(names.indexOf(ctx.name)===-1){names.push(ctx.name)}
+            
+        }else if(ctx.type==='assign'){
+            var left = ctx.tree[0]
+            if(left.type==='expr'&&left.tree[0].type==='id'&&left.tree[0].tree.length===0){
+                var id_name = left.tree[0].value
+                if(names.indexOf(id_name)===-1){names.push(id_name)}
+            }
+        }
     }
+    // create the object that will be returned when the anonymous function is run
+    var ret_code = 'return {'
+    for(var i=0;i<names.length;i++){
+        ret_code += names[i]+':'+names[i]+','
+    }
+    ret_code += '__getattr__:function(attr){return this[attr]},'
+    ret_code += '__setattr__:function(attr,value){this[attr]=value}'
+    ret_code += '}'
+    var ret_node = new $Node('expression')
+    new $NodeJSCtx(ret_node,ret_code)
+    mod_node.add(ret_node)
+    // add parenthesis for anonymous function execution
+    
+    var ex_node = new $Node('expression')
+    new $NodeJSCtx(ex_node,')()')
+    root.add(ex_node)
+    
     try{
-        eval(stack.to_js())
+        var js = root.to_js()
+        eval(js)
         // add class and __str__
         eval(module+'.__class__ = $type')
         eval(module+'.__str__ = function(){return "<module \''+module+"'>\"}")

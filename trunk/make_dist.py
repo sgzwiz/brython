@@ -6,24 +6,26 @@ import datetime
 now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
 sources = ['py_classes','py_list','py_string','py_import',
-    'py2js','py_tokenizer','py_tokens','py_utils',
+    'py2js','py_utils',
     'py_ajax','py_dom','py_svg','py_local_storage']
 
 # update version number in module sys
 sys_src = open('libs/sys.js').read()
 
-sys_src = re.sub('version_info:\[1,0,".*?"\]',
-    'version_info:[1,0,"%s"]' %now,sys_src)
+sys_src = re.sub('version_info:\[1,1,".*?"\]',
+    'version_info:[1,1,"%s"]' %now,sys_src)
 out = open('libs/sys.js','w')
 out.write(sys_src)
 out.close()
 
 res = '// brython.js www.brython.info\n'
-res += '// version 1.0.%s\n' %now
+res += '// version 1.1.%s\n' %now
 res += '// version compiled from commented, indented source files at http://code.google.com/p/brython/\n'
 src_size = 0
 for fname in sources:
     src = open(fname+'.js').read()
+    if fname=='py2js_new':
+        src = src.replace('context','C')
     src_size += len(src)
     pos = 0
     while pos<len(src):
