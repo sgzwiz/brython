@@ -857,7 +857,6 @@ function zip(){
     var $ns=$MakeArgs('zip',arguments,[],{},'args','kw')
     var args = $ns['args']
     var kw = $ns['kw']
-    console.log('zip args '+args)
     var rank=0,res=[]
     while(true){
         var line=[],flag=true

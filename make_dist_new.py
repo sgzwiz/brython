@@ -13,7 +13,7 @@ sources = ['py_classes_new','py_list','py_string_new','py_import_new',
 sys_src = open('libs/sys.js').read()
 
 sys_src = re.sub('version_info:\[1,0,".*?"\]',
-    'version_info:[1,0,"%s"]' %now,sys_src)
+    'version_info:[1,1,"%s"]' %now,sys_src)
 out = open('libs/sys.js','w')
 out.write(sys_src)
 out.close()

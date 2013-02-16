@@ -28,19 +28,6 @@ import time
 
 countries = [area.id for area in doc[AREA]]
 
-for i,area in enumerate(doc[AREA]):
-    # create a DIV for each AREA (ie each country)
-    ctag = DIV(area.id,draggable=True,id=i,Class="rounded-corners")
-    left = 10+110*(i//15)
-    _top = 100+30*(i-15*(i//15))
-    ctag.style= {'position':'absolute','left':left,'top':_top,
-        'width':80,'height':16}
-    ctag.ondragstart = drag_start
-    ctag.onmouseover = mouse_over
-    doc <= ctag
-    # drag and drop event handlers
-    area.ondragover = drag_over
-    area.ondrop = drop
 
 def mouse_over(ev):
     ev.target.style.cursor = "pointer"
@@ -67,6 +54,20 @@ def drop(ev):
         # back where we started
         go_back(elt,ev)
 
+
+for i,area in enumerate(doc[AREA]):
+    # create a DIV for each AREA (ie each country)
+    ctag = DIV(area.id,draggable=True,id=i,Class="rounded-corners")
+    left = 10+110*(i//15)
+    _top = 100+30*(i-15*(i//15))
+    ctag.style= {'position':'absolute','left':left,'top':_top,
+        'width':80,'height':16}
+    ctag.ondragstart = drag_start
+    ctag.onmouseover = mouse_over
+    doc <= ctag
+    # drag and drop event handlers
+    area.ondragover = drag_over
+    area.ondrop = drop
 step = 0
 
 def go_back(elt,mouse):
