@@ -649,7 +649,7 @@ function $DoubleStarArgCtx(context){
     this.tree = []
     context.tree.push(this)
     this.toString = function(){return '**'+this.tree}
-    this.to_js = function(){return '$pdict('+this.name+')'}
+    this.to_js = function(){return '$pdict('+$to_js(this.tree)+')'}
 }
 
 function $ExceptCtx(context){
@@ -1058,9 +1058,9 @@ function $StarArgCtx(context){
     this.parent = context
     this.tree = []
     context.tree.push(this)
-    this.toString = function(){return '*'+this.tree}
+    this.toString = function(){return '(star arg) '+this.tree}
     this.to_js = function(){
-        return '$ptuple('+this.name+')'
+        return '$ptuple('+$to_js(this.tree)+')'
     }
 }
 
@@ -1481,11 +1481,11 @@ function $transition(context,token){
 
     }else if(context.type==='double_star_arg'){
     
-        if(token==='id'){
-            context.name = arguments[2]
-            context.parent.expect=','
-            return context.parent
-        }else{$_SyntaxError(context,'token '+token+' after '+context)}
+        if($expr_starters.indexOf(token)>-1){
+            return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+        }else if(token===','){return context.parent}
+        else if(token===')'){return $transition(context.parent,token)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='except'){ 
     
@@ -1776,11 +1776,11 @@ function $transition(context,token){
 
     }else if(context.type==='star_arg'){
     
-        if(token==='id'){
-            context.name = arguments[2]
-            context.parent.expect=','
-            return context.parent
-        }else{$_SyntaxError(context,'token '+token+' after '+context)}
+        if($expr_starters.indexOf(token)>-1){
+            return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+        }else if(token===','){return context.parent}
+        else if(token===')'){return $transition(context.parent,token)}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='str'){
 
