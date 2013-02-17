@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130217-094204
+// version 1.1.20130217-220930
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -2148,7 +2148,7 @@ node.add(catch_node)
 var txt=')('
 for(var i=0;i<this.env.length;i++){
 txt +=this.env[i]
-if(i<this.env.length-1){res +=','}
+if(i<this.env.length-1){txt +=','}
 }
 new $NodeJSCtx(ret_node,txt+')')
 node.parent.insert(rank+1,ret_node)
@@ -2235,7 +2235,7 @@ this.parent=context
 this.tree=[]
 context.tree.push(this)
 this.toString=function(){return '**'+this.tree}
-this.to_js=function(){return '$pdict('+this.name+')'}
+this.to_js=function(){return '$pdict('+$to_js(this.tree)+')'}
 }
 function $ExceptCtx(context){
 this.type='except'
@@ -2444,8 +2444,13 @@ while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
 var module=ctx_node.node.module
 var src=document.$py_src[module]
 for(var i=0;i<this.expression.length;i++){
-var name=this.expression[i].tree[0].value
-if(res_env.indexOf(name)===-1){res_env.push(name)}
+if(this.expression[i].type==='expr' &&
+this.expression[i].tree[0].type==='list_or_tuple' &&
+this.expression[i].tree[0].real==='list_comp'){continue}
+var ids=$get_ids(this.expression[i])
+for(var i=0;i<ids.length;i++){
+if(res_env.indexOf(ids[i])===-1){res_env.push(ids[i])}
+}
 }
 var comp=this.tree[0]
 for(var i=0;i<comp.tree.length;i++){
@@ -2460,6 +2465,7 @@ local_env.push(name)
 }
 var comp_iter=elt.tree[1].tree[0]
 for(var j=0;j<comp_iter.tree.length;j++){
+if(comp_iter.tree[j].type!=='id'){continue}
 var name=comp_iter.tree[j].value
 if(env.indexOf(name)===-1 && local_env.indexOf(name)==-1){
 env.push(name)
@@ -2488,7 +2494,9 @@ if(i<env.length-1){res+=','}
 res +='},'
 var qesc=new RegExp('"',"g")
 for(var i=1;i<this.intervals.length;i++){
-res +='"'+src.substring(this.intervals[i-1],this.intervals[i]).replace(qesc,'\\"')+'"'
+var txt=src.substring(this.intervals[i-1],this.intervals[i]).replace(qesc,'\\"')
+txt=txt.replace(/\n/g,' ')
+res +='"'+txt+'"'
 if(i<this.intervals.length-1){res+=','}
 }
 return '$list_comp1('+res+')'
@@ -2594,9 +2602,9 @@ this.type='star_arg'
 this.parent=context
 this.tree=[]
 context.tree.push(this)
-this.toString=function(){return '*'+this.tree}
+this.toString=function(){return '(star arg) '+this.tree}
 this.to_js=function(){
-return '$ptuple('+this.name+')'
+return '$ptuple('+$to_js(this.tree)+')'
 }
 }
 function $StringCtx(context,value){
@@ -2764,6 +2772,21 @@ break
 tree_node=tree_node.parent
 }
 return scope
+}
+function $get_ids(ctx){
+var res=[]
+if(ctx.type==='id'){res.push(ctx.value)}
+if(ctx.tree!==undefined){
+for(var i=0;i<ctx.tree.length;i++){
+var res1=$get_ids(ctx.tree[i])
+for(var j=0;j<res1.length;j++){
+if(res.indexOf(res1[j])===-1){
+res.push(res1[j])
+}
+}
+}
+}
+return res
 }
 function $to_js(tree,sep){
 if(sep===undefined){sep=','}
@@ -2940,11 +2963,11 @@ return $transition(expr,token,arguments[2])
 }else{return $transition(context.parent,token,arguments[2])}
 }
 }else if(context.type==='double_star_arg'){
-if(token==='id'){
-context.name=arguments[2]
-context.parent.expect=','
-return context.parent
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
+if($expr_starters.indexOf(token)>-1){
+return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+}else if(token===','){return context.parent}
+else if(token===')'){return $transition(context.parent,token)}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
 }else if(context.type==='except'){
 if(token==='id'){
 return $transition(new $TargetListCtx(context),token,arguments[2])
@@ -3188,11 +3211,11 @@ return $transition(context.parent,token)
 if(token===':'){return context.parent}
 else{$_SyntaxError(context,'token '+token+' after '+context)}
 }else if(context.type==='star_arg'){
-if(token==='id'){
-context.name=arguments[2]
-context.parent.expect=','
-return context.parent
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
+if($expr_starters.indexOf(token)>-1){
+return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+}else if(token===','){return context.parent}
+else if(token===')'){return $transition(context.parent,token)}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
 }else if(context.type==='str'){
 if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
 else if(token==='('){return new $CallCtx(context)}
@@ -3550,7 +3573,6 @@ $xmlhttp.open('GET',elt.src,false)
 $xmlhttp.send()
 }else{
 var src=(elt.innerHTML || elt.textContent)
-exec(src)
 }
 var root=$py2js(src,'__main__')
 var js=root.to_js()
