@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130216-115059
+// version 1.1.20130217-094204
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -3533,13 +3533,30 @@ var elts=document.getElementsByTagName("script")
 for(var $i=0;$i<elts.length;$i++){
 var elt=elts[$i]
 if(elt.type=="text/python"){
+if(elt.src!==''){
+if(window.XMLHttpRequest){
+var $xmlhttp=new XMLHttpRequest()
+}else{
+var $xmlhttp=new ActiveXObject("Microsoft.XMLHTTP")
+}
+$xmlhttp.onreadystatechange=function(){
+var state=this.readyState
+if(state===4){
+src=$xmlhttp.responseText
+exec(src)
+}
+}
+$xmlhttp.open('GET',elt.src,false)
+$xmlhttp.send()
+}else{
 var src=(elt.innerHTML || elt.textContent)
+exec(src)
+}
 var root=$py2js(src,'__main__')
 var js=root.to_js()
 if(debug===2){console.log(js)}
 eval(js)
-}
-else{
+}else{
 var br_scripts=['brython.js','py_list.js']
 for(var j=0;j<br_scripts.length;j++){
 var bs=br_scripts[j]

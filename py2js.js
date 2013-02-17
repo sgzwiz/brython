@@ -2146,13 +2146,32 @@ function brython(debug){
     for(var $i=0;$i<elts.length;$i++){
         var elt = elts[$i]
         if(elt.type=="text/python"){
-            var src = (elt.innerHTML || elt.textContent)
+            if(elt.src!==''){ 
+                // format <script type="text/python" src="python_script.py">
+                // get source code by an Ajax call
+                if (window.XMLHttpRequest){// code for IE7+, Firefox, Chrome, Opera, Safari
+                    var $xmlhttp=new XMLHttpRequest();
+                }else{// code for IE6, IE5
+                    var $xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+                }
+                $xmlhttp.onreadystatechange = function(){
+                        var state = this.readyState
+                        if(state===4){
+                            src = $xmlhttp.responseText
+                            exec(src)
+                        }
+                    }
+                $xmlhttp.open('GET',elt.src,false)
+                $xmlhttp.send()
+            }else{
+                var src = (elt.innerHTML || elt.textContent)
+                exec(src)
+            }
             var root = $py2js(src,'__main__')
             var js = root.to_js()
             if(debug===2){console.log(js)}
             eval(js)
-        }
-        else{ // get path of brython.js
+        }else{ // get path of brython.js
             var br_scripts = ['brython.js','py_list.js']
             for(var j=0;j<br_scripts.length;j++){
                 var bs = br_scripts[j]
