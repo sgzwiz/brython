@@ -280,3 +280,17 @@ class NoCascade:
 
 nc = NoCascade()
 assert nc.a == 2
+
+# issue 76
+def unpack(x,y):
+    return (x,y)
+assert unpack(*[1,2])==(1,2)
+assert unpack(**{'x':1, 'y':2})==(1,2)
+class Un:
+  def unpack(self, x, y):
+    return (x,y)
+assert Un().unpack(*(1,2))==(1,2)
+assert Un().unpack(**{'x':1, 'y':2})==(1,2)
+
+# issue 81
+assert 'n' in [cardinal for cardinal in 'nesw']
