@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130217-220930
+// version 1.1.20130217-222712
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -3566,7 +3566,6 @@ $xmlhttp.onreadystatechange=function(){
 var state=this.readyState
 if(state===4){
 src=$xmlhttp.responseText
-exec(src)
 }
 }
 $xmlhttp.open('GET',elt.src,false)
