@@ -553,7 +553,7 @@ function $DefCtx(context){
         var txt = ')('
         for(var i=0;i<this.env.length;i++){
             txt += this.env[i]
-            if(i<this.env.length-1){res += ','}
+            if(i<this.env.length-1){txt += ','}
         }
         new $NodeJSCtx(ret_node,txt+')')
         node.parent.insert(rank+1,ret_node)
