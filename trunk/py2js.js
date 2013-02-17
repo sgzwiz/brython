@@ -888,9 +888,15 @@ function $ListOrTupleCtx(context,real){
             while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
             var module = ctx_node.node.module
             var src = document.$py_src[module]
+            // get ids in the expression defining the elements of the list comp
             for(var i=0;i<this.expression.length;i++){
-                var name = this.expression[i].tree[0].value
-                if(res_env.indexOf(name)===-1){res_env.push(name)}
+                if(this.expression[i].type==='expr' &&
+                    this.expression[i].tree[0].type==='list_or_tuple' &&
+                    this.expression[i].tree[0].real==='list_comp'){continue}
+                var ids = $get_ids(this.expression[i])
+                for(var i=0;i<ids.length;i++){
+                    if(res_env.indexOf(ids[i])===-1){res_env.push(ids[i])}
+                }
             }
             var comp = this.tree[0]
             for(var i=0;i<comp.tree.length;i++){
@@ -934,7 +940,9 @@ function $ListOrTupleCtx(context,real){
             res += '},'
             var qesc = new RegExp('"',"g") // to escape double quotes in arguments
             for(var i=1;i<this.intervals.length;i++){
-                res += '"'+src.substring(this.intervals[i-1],this.intervals[i]).replace(qesc,'\\"')+'"'
+                var txt = src.substring(this.intervals[i-1],this.intervals[i]).replace(qesc,'\\"')
+                txt = txt.replace(/\n/g,' ')
+                res += '"'+txt+'"'
                 if(i<this.intervals.length-1){res+=','}
             }
             return '$list_comp1('+res+')'
@@ -1246,6 +1254,22 @@ function $get_scope(context){
         tree_node = tree_node.parent
     }
     return scope
+}
+
+function $get_ids(ctx){
+    var res = []
+    if(ctx.type==='id'){res.push(ctx.value)}
+    if(ctx.tree!==undefined){
+        for(var i=0;i<ctx.tree.length;i++){
+            var res1 = $get_ids(ctx.tree[i])
+            for(var j=0;j<res1.length;j++){
+                if(res.indexOf(res1[j])===-1){
+                    res.push(res1[j])
+                }
+            }
+        }
+    }
+    return res
 }
 
 function $to_js(tree,sep){
@@ -2165,7 +2189,6 @@ function brython(debug){
                 $xmlhttp.send()
             }else{
                 var src = (elt.innerHTML || elt.textContent)
-                exec(src)
             }
             var root = $py2js(src,'__main__')
             var js = root.to_js()
