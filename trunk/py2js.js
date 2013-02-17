@@ -2183,7 +2183,6 @@ function brython(debug){
                         var state = this.readyState
                         if(state===4){
                             src = $xmlhttp.responseText
-                            exec(src)
                         }
                     }
                 $xmlhttp.open('GET',elt.src,false)
