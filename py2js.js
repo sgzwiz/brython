@@ -911,6 +911,7 @@ function $ListOrTupleCtx(context,real){
                     }
                     var comp_iter = elt.tree[1].tree[0]
                     for(var j=0;j<comp_iter.tree.length;j++){
+                        if(comp_iter.tree[j].type!=='id'){continue}
                         var name = comp_iter.tree[j].value
                         if(env.indexOf(name)===-1 && local_env.indexOf(name)==-1){
                             env.push(name)
