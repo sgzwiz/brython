@@ -55,7 +55,6 @@ function $ternary(expr1,cond,expr2){
 }
 
 function $_SyntaxError(context,msg){
-    console.log('syntax error '+msg+' context '+context)
     var ctx_node = context.parent
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
     var tree_node = ctx_node.node
@@ -72,8 +71,6 @@ function $_SyntaxError(context,msg){
     var lines = src.split('\n')
     var line_num = tree_node.line_num
     var line = lines[line_num-1]
-    console.log('error line '+line_num+' : '+msg+' '+($pos-line_pos[line_num]))
-    console.log(line)
     var err = new Error()
     err.name = 'SyntaxError'
     err.py_error = true
@@ -154,15 +151,12 @@ function $Node(type){
                 i++
             }
         }else{
-            //console.log('transforming '+this.context+' (rank '+rank+')')
             var elt=this.context.tree[0]
             if(elt.transform !== undefined){
-                //console.log('transforming '+this.context+' (rank '+rank+')')
                 elt.transform(this,rank)
             }
             var i=0
             while(i<this.children.length){
-                //console.log('transform child '+i+' of '+this.context+' : '+this.children[i].context)
                 this.children[i].transform(i)
                 i++
             }
@@ -890,9 +884,6 @@ function $ListOrTupleCtx(context,real){
             var src = document.$py_src[module]
             // get ids in the expression defining the elements of the list comp
             for(var i=0;i<this.expression.length;i++){
-                if(this.expression[i].type==='expr' &&
-                    this.expression[i].tree[0].type==='list_or_tuple' &&
-                    this.expression[i].tree[0].real==='list_comp'){continue}
                 var ids = $get_ids(this.expression[i])
                 for(var i=0;i<ids.length;i++){
                     if(res_env.indexOf(ids[i])===-1){res_env.push(ids[i])}
@@ -910,20 +901,15 @@ function $ListOrTupleCtx(context,real){
                         }
                     }
                     var comp_iter = elt.tree[1].tree[0]
-                    for(var j=0;j<comp_iter.tree.length;j++){
-                        if(comp_iter.tree[j].type!=='id'){continue}
-                        var name = comp_iter.tree[j].value
-                        if(env.indexOf(name)===-1 && local_env.indexOf(name)==-1){
-                            env.push(name)
-                        }
+                    var ids = $get_ids(comp_iter)
+                    for(var i=0;i<ids.length;i++){
+                        if(env.indexOf(ids[i])===-1){env.push(ids[i])}
                     }
                 }else if(elt.type==="comp_if"){
                     var if_expr = elt.tree[0]
-                    for(var j=0;j<if_expr.tree.length;j++){
-                        var name = if_expr.tree[j].value
-                        if(env.indexOf(name)===-1 && local_env.indexOf(name)==-1){
-                            env.push(name)
-                        }
+                    var ids = $get_ids(if_expr)
+                    for(var i=0;i<ids.length;i++){
+                        if(env.indexOf(ids[i])===-1){env.push(ids[i])}
                     }
                 }
             }
@@ -1259,7 +1245,11 @@ function $get_scope(context){
 
 function $get_ids(ctx){
     var res = []
+    if(ctx.type==='expr' &&
+        ctx.tree[0].type==='list_or_tuple' &&
+        ctx.tree[0].real==='list_comp'){return []}
     if(ctx.type==='id'){res.push(ctx.value)}
+
     if(ctx.tree!==undefined){
         for(var i=0;i<ctx.tree.length;i++){
             var res1 = $get_ids(ctx.tree[i])
