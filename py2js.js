@@ -34,7 +34,7 @@ function $_SyntaxError(context,msg){
     var module = tree_node.module
     var line_num = tree_node.line_num
     document.$line_info = [line_num,module]
-    throw SyntaxError(msg)
+    $SyntaxError(module,msg,$pos)
 }
 
 var $first_op_letter = {}
@@ -719,6 +719,16 @@ function $ForExpr(context){
         var iterable = this.tree.pop()
         return 'for '+$to_js(this.tree)+' in '+iterable.to_js()
     }
+}
+
+function $FromCtx(context){
+    this.type = 'from'
+    this.parent = context
+    this.names = []
+    context.tree.push(this)
+    this.expect = 'module'
+    this.toString = function(){return '(from) '+this.module+' (import) '+this.names}
+    this.to_js = function(){return '$import_from("'+this.module+'",'+this.names+')'}
 }
 
 function $FuncArgs(context){
@@ -1595,6 +1605,34 @@ function $transition(context,token){
         else if(token===':'){return context.parent}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
+    }else if(context.type==='from'){
+    
+        if(token==='id' && context.expect==='module'){
+            context.module = arguments[2]
+            context.expect = 'import'
+            return context
+        }else if(token==='import' && context.expect==='import'){
+            context.expect = 'id'
+            return context
+        }else if(token==='id' && context.expect==='id'){
+            context.names.push(arguments[2])
+            context.expect = ','
+            return context
+        }else if(token==='op' && arguments[2]==='*' 
+            && context.expect==='id'
+            && context.names.length ===0){
+            context.names.push(arguments[2])
+            context.expect = 'eol'
+            return context
+        }else if(token===',' && context.expect===','){
+            context.expect = 'id'
+            return context
+        }else if(token==='eol' && 
+            (context.expect ===',' || context.expect==='eol')){
+            return $transition(context.parent,token)
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
+            
+
     }else if(context.type==='func_arg_id'){
         if(token==='=' && context.expect==='='){
             context.parent.has_default = true
@@ -1764,6 +1802,7 @@ function $transition(context,token){
         }else if(token==='try'){return new $TryCtx(context)}
         else if(token==='except'){return new $ExceptCtx(context)}
         else if(token==='assert'){return new $AssertCtx(context)}
+        else if(token==='from'){return new $FromCtx(context)}
         else if(token==='import'){return new $ImportCtx(context)}
         else if(token==='global'){return new $GlobalCtx(context)}
         else if(token==='pass'){return new $PassCtx(context)}
@@ -1938,7 +1977,7 @@ function $tokenize(src,module){
         //"False","None","True","break","continue",
         // "and',"or"
         ]
-    var unsupported = ["is","from","nonlocal","with","yield"]
+    var unsupported = ["is","nonlocal","with","yield"]
     var $indented = ['class','def','for','condition','single_kw','try','except']
     // from https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Reserved_Words
     var forbidden = ['case','catch','debugger','default','delete',
