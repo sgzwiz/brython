@@ -294,3 +294,10 @@ assert Un().unpack(**{'x':1, 'y':2})==(1,2)
 
 # issue 81
 assert 'n' in [cardinal for cardinal in 'nesw']
+
+# issue 83
+def cards(cardin):
+    assert 'n' in [cardinal for index,cardinal in enumerate(cardin)]
+    assert 'n' in [cardinal for cardinal in '%s'%cardin]
+    assert (0,'n') in [(index,cardinal) for index,cardinal in enumerate('%sw'%cardin)]
+cards('nes')
