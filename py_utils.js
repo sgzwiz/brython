@@ -63,28 +63,31 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     return $ns
 }
 
-function $list_comp($loops,$expr,$cond,$env){
-    // create local variables passed from the list comp environment
-    for(var i=0;i<$env.length;i+=2){
-        eval('var '+$env[i]+'=$env['+(i+1)+']')
+function $list_comp(){
+    var $env = arguments[0]
+    for(var $arg in $env){
+        eval("var "+$arg+'=$env["'+$arg+'"]')
     }
-    var py = 'res = []\n'
-    for(var i=0;i<$loops.length;i++){
-        for(j=0;j<4*i;j++){py += ' '} // indent
-        py += 'for '+$loops[i][0]+' in '+$loops[i][1]+':\n'
+    var $res = 'res'+Math.random().toString(36).substr(2,8)
+    var $py = $res+"=[]\n"
+    var indent=0
+    for(var i=2;i<arguments.length;i++){
+        for(var j=0;j<indent;j++){$py += ' '}
+        $py += arguments[i]+':\n'
+        indent += 4
     }
-    if($cond){
-        for(var j=0;j<4*i;j++){py += ' '} // indent
-        py += 'if '+$cond+':\n'
-        i++
-    }
-    for(var j=0;j<4*i;j++){py += ' '} // indent
-    py += 'tvar = '+$expr+'\n'
-    for(var j=0;j<4*i;j++){py += ' '} // indent
-    py += 'res.append(tvar)'
-    var js = $py2js(py).to_js()
-    eval(js)
-    return res
+    for(var j=0;j<indent;j++){$py += ' '}
+    $py += $res+'.append('+arguments[1]+')'
+    var $js = $py2js($py).to_js()
+    eval($js)
+    return eval($res)    
+}
+
+function $ternary(expr1,cond,expr2){
+    var res = 'var $res=expr1\n'
+    res += 'if(!cond){$res=expr2}\n'
+    eval(res)
+    return $res
 }
 
 // transform native JS types into Brython types
