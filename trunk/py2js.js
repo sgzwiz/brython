@@ -2207,17 +2207,16 @@ function $tokenize(src,module){
         }
         if(car in br_open){
             br_stack += car
-            br_pos[br_stack.length-1] = pos
+            br_pos[br_stack.length-1] = [context,pos]
             $pos = pos
             context = $transition(context,car)
             pos++;continue
         }
         if(car in br_close){
             if(br_stack==""){
-                $SyntaxError(module,"Unexpected closing bracket",pos)
+                $SyntaxError(context,"Unexpected closing bracket")
             } else if(br_close[car]!=$last(br_stack)){
-                document.line_num = pos2line[pos]
-                $SyntaxError(module,"Unbalanced bracket",pos)
+                $SyntaxError(context,"Unbalanced bracket",pos)
             } else {
                 br_stack = br_stack.substr(0,br_stack.length-1)
                 $pos = pos
@@ -2270,9 +2269,9 @@ function $tokenize(src,module){
     }
 
     if(br_stack.length!=0){
-        pos = br_pos.pop()
-        document.line_num = pos2line[pos]
-        throw Error("Unbalanced bracket "+br_stack.charAt(br_stack.length-1),pos)
+        var br_err = br_pos[0]
+        $pos = br_err[1]
+        $_SyntaxError(br_err[0],"Unbalanced bracket "+br_stack.charAt(br_stack.length-1))
     } 
     
     return root
