@@ -1015,6 +1015,19 @@ function $PassCtx(context){
     this.to_js = function(){return 'void(0)'}
 }
 
+function $RaiseCtx(context){
+    this.type = 'raise'
+    this.toString = function(){return ' (raise) '+this.tree}
+    this.parent = context
+    this.tree = []
+    context.tree.push(this)
+    this.to_js = function(){
+        var exc = this.tree[0]
+        if(exc.type==='id'){return 'throw '+exc.value+'("")'}
+        else{return 'throw '+$to_js(this.tree)}
+    }
+}
+
 function $ReturnCtx(context){ // subscription or slicing
     this.type = 'return'
     this.toString = function(){return 'return '+this.tree}
@@ -1806,6 +1819,7 @@ function $transition(context,token){
         else if(token==='import'){return new $ImportCtx(context)}
         else if(token==='global'){return new $GlobalCtx(context)}
         else if(token==='pass'){return new $PassCtx(context)}
+        else if(token==='raise'){return new $RaiseCtx(context)}
         else if(token==='return'){
             var ret = new $ReturnCtx(context)
             return new $AbstractExprCtx(ret,true)
@@ -1857,6 +1871,14 @@ function $transition(context,token){
 
         if(token==='eol'){return context.parent}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
+
+    }else if(context.type==='raise'){ 
+
+        if(token==='id' && context.tree.length===0){
+            return new $IdCtx(new $ExprCtx(context,'exc',false),arguments[2])
+        }else if(token==='eol'){
+            return $transition(context.parent,token)
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='return'){
 
