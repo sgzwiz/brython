@@ -29,8 +29,6 @@ function $DateTime(args){
 
     var daysPerMonth = [31,28,31,30,31,30,31,31,30,31,30,31]
  
-    this.__class__ = datetime.datetime
-
     if(args.length==0){$raise('TypeError',"Required argument 'year' (pos 1) not found")}
     year = args[0]
     if(args.length==1){$raise('TypeError',"Required argument 'month' (pos 2) not found")}
