@@ -148,7 +148,7 @@ function $OptionsClass(parent){
         if(attr in this.parent.elt.options){
             var obj = eval('this.parent.options.'+attr)
             if((typeof obj)=='function'){
-                $raise('AttributeError',"'options' object has no attribute '"+attr+'"')
+                throw AttributeError("'options' object has no attribute '"+attr+'"')
             }
             return $JS2Py(obj)
         }
@@ -236,7 +236,7 @@ $JSObject.prototype.__getattr__ = function(attr){
             return $JS2Py(this.js[attr])
         }
     }else{
-        $raise("AttributeError","no attribute "+attr)
+        throw AttributeError("no attribute "+attr)
     }
 }
 
@@ -311,7 +311,7 @@ DOMNode.prototype.__delitem__ = function(key){
     if(this.nodeType===9){ // document : remove by id
         var res = document.getElementById(key)
         if(res){res.parentNode.removeChild(res)}
-        else{$raise("KeyError",key)}
+        else{throw KeyError(key)}
     }else{ // other node : remove by rank in child nodes
         this.removeChild(this.childNodes[key])
     }
@@ -320,7 +320,7 @@ DOMNode.prototype.__delitem__ = function(key){
 DOMNode.prototype.__eq__ = function(other){
     if('isEqualNode' in this){return this.isEqualNode(other)}
     else if('$brython_id' in this){return this.$brython_id===other.$brython_id}
-    else{$raise('NotImplementedError','__eq__ is not implemented')}
+    else{throw NotImplementedError('__eq__ is not implemented')}
 }
 
 DOMNode.prototype.__getattr__ = function(attr){
@@ -333,14 +333,14 @@ DOMNode.prototype.__getitem__ = function(key){
         if(typeof key==="string"){
             var res = document.getElementById(key)
             if(res){return $DOMNode(res)}
-            else{$raise("KeyError",key)}
+            else{throw KeyError(key)}
         }else{
             try{
                 var elts=document.getElementsByTagName(key.name),res=[]
                 for(var $i=0;$i<elts.length;$i++){res.push($DOMNode(elts[$i]))}
                 return res
             }catch(err){
-                $raise("KeyError",str(key))
+                throw KeyError(str(key))
             }
         }    
     }else{
@@ -382,7 +382,7 @@ DOMNode.prototype.__mul__ = function(other){
         }
         return res
     }else{
-        $raise('ValueError',"can't multiply "+this.__class__+"by "+other)
+        throw ValueError("can't multiply "+this.__class__+"by "+other)
     }
 }
 
@@ -488,7 +488,7 @@ DOMNode.prototype.get_remove = function(){
 }
 
 DOMNode.prototype.get_getContext = function(){ // for CANVAS tag
-    if(!('getContext' in this)){$raise('AttributeError',
+    if(!('getContext' in this)){throw AttributeError(
         "object has no attribute 'getContext'")}
     var obj = this
     return function(ctx){return new $JSObject(obj.getContext(ctx))}
@@ -580,7 +580,7 @@ function $Tag(tagName,args){
                 }
             } else {
                 try{elt.appendChild($first)}
-                catch(err){$raise('ValueError','wrong element '+$first)}
+                catch(err){throw ValueError('wrong element '+$first)}
             }
         }
         // attributes
@@ -598,7 +598,7 @@ function $Tag(tagName,args){
                         try{
                             elt.setAttribute($arg.name.toLowerCase(),$arg.value)
                         }catch(err){
-                            $raise('ValueError',"can't set attribute "+$arg.name)
+                            throw ValueError("can't set attribute "+$arg.name)
                         }
                     }
                 }
