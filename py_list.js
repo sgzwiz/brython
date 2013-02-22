@@ -10,7 +10,7 @@ function $list(){
 function list(){
     if(arguments.length===0){return []}
     else if(arguments.length>1){
-        $raise('TypeError',"list() takes at most 1 argument ("+arguments.length+" given)")
+        throw TypeError("list() takes at most 1 argument ("+arguments.length+" given)")
     }
     var res = []
     res.__init__(arguments[0])
@@ -53,7 +53,7 @@ Array.prototype.__delitem__ = function(arg){
             this.splice(pos,1)
             return
         }
-        else{$raise('IndexError','list index out of range')}
+        else{throw IndexError('list index out of range')}
     } else if(isinstance(arg,slice)) {
         var start = arg.start || 0
         var stop = arg.stop || this.length
@@ -81,7 +81,7 @@ Array.prototype.__delitem__ = function(arg){
         }
         return
     } else {
-        $raise('TypeError','list indices must be integer, not '+str(arg.__class__))
+        throw TypeError('list indices must be integer, not '+str(arg.__class__))
     }
 }
 
@@ -130,7 +130,9 @@ Array.prototype.__getitem__ = function(arg){
         var pos = arg
         if(arg<0){pos=items.length+pos}
         if(pos>=0 && pos<items.length){return items[pos]}
-        else{$raise('IndexError','list index out of range')}
+        else{
+            throw IndexError('list index out of range')
+        }
     } else if(isinstance(arg,slice)) {
         var step = arg.step===None ? 1 : arg.step
         if(step>0){
@@ -163,7 +165,7 @@ Array.prototype.__getitem__ = function(arg){
     } else if(isinstance(arg,bool)){
         return this.__getitem__(int(arg))
     } else {
-        $raise('TypeError','list indices must be integer, not '+str(arg.__class__))
+        throw TypeError('list indices must be integer, not '+str(arg.__class__))
     }
 }
 
@@ -191,7 +193,7 @@ Array.prototype.__next__ = function(){
         return this.valueOf()[this.iter-1]
     } else {
         this.iter = null
-        $raise('StopIteration')
+        throw StopIteration()
     }
 }
 
@@ -202,7 +204,7 @@ Array.prototype.__setitem__ = function(arg,value){
         var pos = arg
         if(arg<0){pos=this.length+pos}
         if(pos>=0 && pos<this.length){this[pos]=value}
-        else{$raise('IndexError','list index out of range')}
+        else{throw IndexError('list index out of range')}
     } else if(isinstance(arg,slice)){
         var start = arg.start===None ? 0 : arg.start
         var stop = arg.stop===None ? this.__len__() : arg.stop
@@ -218,10 +220,10 @@ Array.prototype.__setitem__ = function(arg,value){
                 this.splice(start,0,$temp[i])
             }
         }else{
-            $raise('TypeError',"can only assign an iterable")
+            throw TypeError("can only assign an iterable")
         }
     }else {
-        $raise('TypeError','list indices must be integer, not '+str(arg.__class__))
+        throw TypeError('list indices must be integer, not '+str(arg.__class__))
     }
 }
 
@@ -248,14 +250,14 @@ function $list_count(obj){
 
 function $list_extend(obj){
     return function(other){
-        if(arguments.length!=1){$raise('TypeError',
+        if(arguments.length!=1){throw TypeError(
             "extend() takes exactly one argument ("+arguments.length+" given)")}
         try{
             for(var i=0;i<other.__len__();i++){
                 obj.push(other.__item__(i))
             }
         }catch(err){
-            $raise('TypeError',"object is not iterable")
+            throw TypeError("object is not iterable")
         }
     }
 }
@@ -265,7 +267,7 @@ function $list_index(obj){
         for(var i=0;i<obj.length;i++){
             if(obj[i].__eq__(elt)){return i}
         }
-        $raise('ValueError',str(elt)+" is not in list")
+        throw ValueError(str(elt)+" is not in list")
     }
 }
 
@@ -277,7 +279,7 @@ function $list_remove(obj){
                 return
             }
         }
-        $raise('ValueError',str(elt)+" is not in list")
+        throw ValueError(str(elt)+" is not in list")
     }
 }
 
@@ -291,10 +293,10 @@ function $list_pop(obj){
                 obj.splice(pos,1)
                 return res
             }else{
-                $raise('TypeError',pos.__class__+" object cannot be interpreted as an integer")
+                throw TypeError(pos.__class__+" object cannot be interpreted as an integer")
             }
         }else{ 
-            $raise('TypeError',"pop() takes at most 1 argument ("+arguments.length+' given)')
+            throw TypeError("pop() takes at most 1 argument ("+arguments.length+' given)')
         }
     }
 }

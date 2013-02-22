@@ -13,7 +13,7 @@ str.toString = str.__str__
 String.prototype.__add__ = function(other){
     if(!(typeof other==="string")){
         try{return other.__radd__(this)}
-        catch(err){$raise('TypeError',
+        catch(err){throw TypeError(
             "Can't convert "+other.__class__+" to str implicitely")}
     }else{
         return this+other
@@ -23,7 +23,7 @@ String.prototype.__add__ = function(other){
 String.prototype.__class__ = str
 
 String.prototype.__contains__ = function(item){
-        if(!(typeof item==="string")){$raise('TypeError',
+        if(!(typeof item==="string")){throw TypeError(
              "'in <string>' requires string as left operand, not "+item.__class__)}
         var nbcar = item.length
         for(var i=0;i<this.length;i++){
@@ -84,7 +84,7 @@ String.prototype.__getitem__ = function(arg){
         var pos = arg
         if(arg<0){pos=this.length+pos}
         if(pos>=0 && pos<this.length){return this.charAt(pos)}
-        else{$raise('IndexError','string index out of range')}
+        else{throw IndexError('string index out of range')}
     } else if(isinstance(arg,slice)) {
         var step = arg.step===None ? 1 : arg.step
         if(step>0){
@@ -152,16 +152,16 @@ String.prototype.__mod__ = function(args){
             }
         this.format = function(src){
                 if(this.mapping_key!==null){
-                    if(!isinstance(src,dict)){$raise('TypeError',"format requires a mapping")}
+                    if(!isinstance(src,dict)){throw TypeError("format requires a mapping")}
                     src=src.__getitem__(this.mapping_key)
                 }
                 if(this.type=="s"){return str(src)}
                 else if(this.type=="i" || this.type=="d"){
-                    if(!isinstance(src,[int,float])){$raise('TypeError',
+                    if(!isinstance(src,[int,float])){throw TypeError(
                         "%"+this.type+" format : a number is required, not "+str(src.__class__))}
                     return str(int(src))
                 }else if(this.type=="f" || this.type=="F"){
-                    if(!isinstance(src,[int,float])){$raise('TypeError',
+                    if(!isinstance(src,[int,float])){throw TypeError(
                         "%"+this.type+" format : a number is required, not "+str(src.__class__))}
                     return str(float(src))
                 }
@@ -186,7 +186,7 @@ String.prototype.__mod__ = function(args){
         }
         elts.push(val.substr(start))
         if(!isinstance(args,tuple)){
-            if(nb_repl>1){$raise('TypeError','not enough arguments for format string')}
+            if(nb_repl>1){throw TypeError('not enough arguments for format string')}
             else{elts[1]=elts[1].format(args)}
         }else{
             if(nb_repl==args.length){
@@ -194,9 +194,9 @@ String.prototype.__mod__ = function(args){
                     var fmt = elts[1+2*i]
                     elts[1+2*i]=fmt.format(args[i])
                 }
-            }else if(nb_repl<args.length){$raise('TypeError',
+            }else if(nb_repl<args.length){throw TypeError(
                 "not all arguments converted during string formatting")
-            }else{$raise('TypeError','not enough arguments for format string')}
+            }else{throw TypeError('not enough arguments for format string')}
         }
         var res = ''
         for(var i=0;i<elts.length;i++){res+=elts[i]}
@@ -206,7 +206,7 @@ String.prototype.__mod__ = function(args){
     }
 
 String.prototype.__mul__ = function(other){
-    if(!isinstance(other,int)){$raise('TypeError',
+    if(!isinstance(other,int)){throw TypeError(
         "Can't multiply sequence by non-int of type '"+str(other.__class__)+"'")}
     $res = ''
     for(var i=0;i<other;i++){$res+=this.valueOf()}
@@ -222,7 +222,7 @@ String.prototype.__next__ = function(){
         return str(this.value.charAt(this.iter-1))
     } else {
         this.iter = null
-        $raise('StopIteration')
+        throw StopIteration()
     }
 }
 
@@ -231,7 +231,7 @@ String.prototype.__not_in__ = function(item){return !item.__contains__(this.valu
 String.prototype.__setattr__ = function(attr,value){setattr(this,attr,value)}
 
 String.prototype.__setitem__ = function(attr,value){
-    $raise('TypeError',"'str' object does not support item assignment")
+    throw TypeError("'str' object does not support item assignment")
 }
 String.prototype.__str__ = function(){
     return this.toString()
@@ -239,7 +239,7 @@ String.prototype.__str__ = function(){
 
 // generate comparison methods
 var $comp_func = function(other){
-    if(typeof other !=="string"){$raise('TypeError',
+    if(typeof other !=="string"){throw TypeError(
         "unorderable types: 'str' > "+other.__class__+"()")}
     return this > other
 }
@@ -251,7 +251,7 @@ for($op in $comps){
 
 // unsupported operations
 var $notimplemented = function(other){
-    $raise('TypeError',
+    throw TypeError(
         "unsupported operand types for OPERATOR: '"+str(this.__class__)+"' and '"+str(other.__class__)+"'")
 }
 $notimplemented += '' // coerce to string
@@ -285,7 +285,7 @@ function $string_center(obj){
 
 function $string_count(obj){
     return function(elt){
-        if(!(typeof elt==="string")){$raise('TypeError',
+        if(!(typeof elt==="string")){throw TypeError(
             "Can't convert '"+str(elt.__class__)+"' object to str implicitly")}
         var res = 0
         for(var i=0;i<obj.length-elt.length+1;i++){
@@ -326,9 +326,9 @@ function $string_find(obj){
         var $ns=$MakeArgs("str.find",arguments,['sub'],
             {'start':0,'end':obj.length},null,null)
         var sub = $ns['sub'],start=$ns['start'],end=$ns['end']
-        if(!isinstance(sub,str)){$raise('TypeError',
+        if(!isinstance(sub,str)){throw TypeError(
             "Can't convert '"+str(sub.__class__)+"' object to str implicitly")}
-        if(!isinstance(start,int)||!isinstance(end,int)){$raise('TypeError',
+        if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
             "slice indices must be integers or None or have an __index__ method")}
         var s = obj.substring(start,end)
         var escaped = list('*.[]()')
@@ -349,19 +349,19 @@ function $string_index(obj){
         var args = []
         for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
         var res = $string_find(obj).apply(obj,args)
-        if(res===-1){$raise('ValueError',"substring not found")}
+        if(res===-1){throw ValueError("substring not found")}
         else{return res}
     }
 }
 
 function $string_join(obj){
     return function(iterable){
-        if(!'__item__' in iterable){$raise('TypeError',
+        if(!'__item__' in iterable){throw TypeError(
              "'"+str(iterable.__class__)+"' object is not iterable")}
         var res = '',count=0
         for(var i=0;i<iterable.length;i++){
             var obj2 = iterable.__getitem__(i)
-            if(!isinstance(obj2,str)){$raise('TypeError',
+            if(!isinstance(obj2,str)){throw TypeError(
                 "sequence item "+count+": expected str instance, "+obj2.__class__+"found")}
             res += obj2+obj
             count++
@@ -399,7 +399,7 @@ function $re_escape(str)
 function $string_replace(obj){
     return function(old,_new,count){
         if(count!==undefined){
-            if(!isinstance(count,[int,float])){$raise('TypeError',
+            if(!isinstance(count,[int,float])){throw TypeError(
                 "'"+str(count.__class__)+"' object cannot be interpreted as an integer")}
             var re = new RegExp($re_escape(old),'g')
             
@@ -425,9 +425,9 @@ function $string_rfind(obj){
         var $ns=$MakeArgs("str.find",arguments,['sub'],
             {'start':0,'end':obj.length},null,null)
         var sub = $ns['sub'],start=$ns['start'],end=$ns['end']
-        if(!isinstance(sub,str)){$raise('TypeError',
+        if(!isinstance(sub,str)){throw TypeError(
             "Can't convert '"+str(sub.__class__)+"' object to str implicitly")}
-        if(!isinstance(start,int)||!isinstance(end,int)){$raise('TypeError',
+        if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
             "slice indices must be integers or None or have an __index__ method")}
         var s = obj.substring(start,end)
         var reversed = ''
@@ -444,7 +444,7 @@ function $string_rindex(obj){
         var args = []
         for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
         var res = $string_rfind(obj).apply(obj,args)
-        if(res==-1){$raise('ValueError',"substring not found")}
+        if(res==-1){throw ValueError("substring not found")}
         else{return res}
     }
 }

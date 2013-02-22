@@ -12,7 +12,7 @@ function $importer(){
     var fake_qs = '?foo='+Math.random().toString(36).substr(2,8)
     var timer = setTimeout( function() {
         $xmlhttp.abort()
-        $raise('NotFoundError',"No module named '"+module+"'")}, 5000)
+        throw ImportError("No module named '"+module+"'")}, 5000)
     return [$xmlhttp,fake_qs,timer]
 }
 
@@ -40,14 +40,14 @@ function $import_js(module,alias){
         eval(res)
         // check that module name is in namespace
         if(eval('$module')===undefined){
-            $raise('ImportError',"name '$module' is not defined in module")
+            throw ImportError("name '$module' is not defined in module")
         }
         if(alias===undefined){alias=module}
         eval(alias+'=$module')
         // add class and __str__
         eval(alias+'.__class__ = $type')
         eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
-    }catch(err){$raise('ImportError',err.message)}
+    }catch(err){throw ImportError(err.message)}
 }
 
 function $import_py(module,alias){
@@ -125,7 +125,7 @@ function $import_py(module,alias){
         eval(alias+'.__class__ = $type')
         eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
     }catch(err){
-        $raise(err.name,err.message)
+        eval('throw '+err.name+'(err.message)')
     }
 }
 
@@ -137,7 +137,7 @@ function $import_single(name,alias){
         catch(err){
             if(err.name==="NotFoundError"){
                 if(j==$import_funcs.length-1){
-                    $raise('ImportError',"no module named '"+name+"'")
+                    throw ImportError("no module named '"+name+"'")
                 }else{
                     continue
                 }

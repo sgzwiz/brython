@@ -2,7 +2,7 @@
 function abs(obj){
     if(isinstance(obj,int)){return int(Math.abs(obj))}
     else if(isinstance(obj,float)){return float(Math.abs(obj.value))}
-    else{$raise('TypeError',"Bad operand type for abs(): '"+str(obj.__class__)+"'")}
+    else{throw TypeError("Bad operand type for abs(): '"+str(obj.__class__)+"'")}
 }
 
 function $alert(src){alert(str(src))}
@@ -33,12 +33,12 @@ function assert_raises(){
     try{$ns['func'].apply(this,args)}
     catch(err){
         if(err.name!==$ns['exc']){
-            $raise('AssertionError',
+            throw AssertionError(
                 "exception raised '"+err.name+"', expected '"+$ns['exc']+"'")
         }
         return
     }
-    $raise('AssertionError',"no exception raised, expected '"+$ns['exc']+"'")
+    throw AssertionError("no exception raised, expected '"+$ns['exc']+"'")
 }
 
 function bool(obj){ // return true or false
@@ -108,7 +108,7 @@ $DictClass.prototype.toString = function(){
 
 $DictClass.prototype.__add__ = function(other){
     var msg = "unsupported operand types for +:'dict' and "
-    $raise('TypeError',msg+"'"+(str(other.__class__) || typeof other)+"'")
+    throw TypeError(msg+"'"+(str(other.__class__) || typeof other)+"'")
 }
 
 $DictClass.prototype.__class__ = dict
@@ -126,7 +126,7 @@ $DictClass.prototype.__delitem__ = function(arg){
             return
         }
     }
-    $raise('KeyError',str(arg))
+    throw KeyError(str(arg))
 }
 
 $DictClass.prototype.__eq__ = function(other){
@@ -156,7 +156,7 @@ $DictClass.prototype.__getitem__ = function(arg){
     for(var i=0;i<this.$keys.length;i++){
         if(arg.__eq__(this.$keys[i])){return this.$values[i]}
     }
-    $raise('KeyError',str(arg))
+    throw KeyError(str(arg))
 }
 
 $DictClass.prototype.__in__ = function(item){return item.__contains__(this)}
@@ -174,7 +174,7 @@ $DictClass.prototype.__next__ = function(){
         return this.$keys[this.iter-1]
     } else {
         this.iter = null
-        $raise('StopIteration')
+        throw StopIteration()
     }
 }
 
@@ -224,10 +224,10 @@ function enumerate(iterator){
 }
 
 function $eval(src){
-    if(src===""){$raise('SyntaxError',"unexpected EOF while parsing")}
+    if(src===""){throw SyntaxError("unexpected EOF while parsing")}
     try{return eval($py2js(src).to_js())}
     catch(err){
-        if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+        if(err.py_error===undefined){throw RuntimeError(err.message)}
         if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
         else{throw(err)}
     }
@@ -236,14 +236,14 @@ function $eval(src){
 function exec(src){
     try{eval($py2js(src).to_js())}
     catch(err){
-        if(err.py_error===undefined){$raise('ExecutionError',err.message)}
+        if(err.py_error===undefined){throw RuntimeError(err.message)}
         //else if(document.$stderr){document.$stderr.write(document.$stderr_buff)}
         throw err
     }
 }         
 
 function filter(){
-    if(arguments.length!=2){$raise('TypeError',
+    if(arguments.length!=2){throw TypeError(
             "filter expected 2 arguments, got "+arguments.length)}
     var func=arguments[0],iterable=arguments[1]
     var res=[]
@@ -260,7 +260,7 @@ function float(value){
         typeof value=="string" && !isNaN(value))){
         return new $FloatClass(parseFloat(value))
     }else if(isinstance(value,float)){return value}
-    else{$raise('ValueError',"Could not convert to float(): '"+str(value)+"'")}
+    else{throw ValueError("Could not convert to float(): '"+str(value)+"'")}
 }
 float.__class__ = $type
 float.__name__ = 'float'
@@ -283,12 +283,12 @@ $FloatClass.prototype.__bool__ = function(){return bool(this.value)}
     
 $FloatClass.prototype.__floordiv__ = function(other){
     if(isinstance(other,int)){
-        if(other===0){$raise('ZeroDivisionError','division by zero')}
+        if(other===0){throw ZeroDivisionError('division by zero')}
         else{return float(Math.floor(this.value/other))}
     }else if(isinstance(other,float)){
-        if(!other.value){$raise('ZeroDivisionError','division by zero')}
+        if(!other.value){throw ZeroDivisionError('division by zero')}
         else{return float(Math.floor(this.value/other.value))}
-    }else{$raise('TypeError',
+    }else{throw TypeError(
         "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
     }
 }
@@ -299,12 +299,12 @@ $FloatClass.prototype.__not_in__ = function(item){return !(item.__contains__(thi
 
 $FloatClass.prototype.__truediv__ = function(other){
     if(isinstance(other,int)){
-        if(other===0){$raise('ZeroDivisionError','division by zero')}
+        if(other===0){throw ZeroDivisionError('division by zero')}
         else{return float(this.value/other)}
     }else if(isinstance(other,float)){
-        if(!other.value){$raise('ZeroDivisionError','division by zero')}
+        if(!other.value){throw ZeroDivisionError('division by zero')}
         else{return float(this.value/other.value)}
-    }else{$raise('TypeError',
+    }else{throw TypeError(
         "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
     }
 }
@@ -313,7 +313,7 @@ $FloatClass.prototype.__truediv__ = function(other){
 var $op_func = function(other){
     if(isinstance(other,int)){return float(this.value-other)}
     else if(isinstance(other,float)){return float(this.value-other.value)}
-    else{$raise('TypeError',
+    else{throw TypeError(
         "unsupported operand type(s) for -: "+this.value+" (float) and '"+other.__class__+"'")
     }
 }
@@ -327,7 +327,7 @@ for($op in $ops){
 var $comp_func = function(other){
     if(isinstance(other,int)){return this.value > other.valueOf()}
     else if(isinstance(other,float)){return this.value > other.value}
-    else{$raise('TypeError',
+    else{throw TypeError(
         "unorderable types: "+this.__class__+'() > '+other.__class__+"()")
     }
 }
@@ -339,7 +339,7 @@ for($op in $comps){
 
 // unsupported operations
 var $notimplemented = function(other){
-    $raise('TypeError',
+    throw TypeError(
         "unsupported operand types for OPERATOR: '"+this.__class__+"' and '"+other.__class__+"'")
 }
 $notimplemented += '' // coerce to string
@@ -356,7 +356,7 @@ function getattr(obj,attr,_default){
             return obj.__getattr__(attr)
     }
     else if(_default !==undefined){return _default}
-    else{$raise('AttributeError',
+    else{throw AttributeError(
         "'"+str(obj.__class__)+"' object has no attribute '"+attr+"'")}
 }
 
@@ -380,7 +380,7 @@ function int(value){
         return parseInt(value)
     }else if(isinstance(value,float)){
         return parseInt(value.value)
-    }else{ $raise('ValueError',
+    }else{ throw ValueError(
         "Invalid literal for int() with base 10: '"+str(value)+"'"+value.__class__)
     }
 }
@@ -392,15 +392,15 @@ Number.prototype.__class__ = int
 
 Number.prototype.__floordiv__ = function(other){
     if(isinstance(other,int)){
-        if(other==0){$raise('ZeroDivisionError','division by zero')}
+        if(other==0){throw ZeroDivisionError('division by zero')}
         else{return Math.floor(this/other)}
     }else if(isinstance(other,float)){
-        if(!other.value){$raise('ZeroDivisionError','division by zero')}
+        if(!other.value){throw ZeroDivisionError('division by zero')}
         else{return float(Math.floor(this/other.value))}
     }else{$UnsupportedOpType("//","int",other.__class__)}
 }
 
-Number.prototype.__getattr__ = function(attr){$raise('AttributeError',
+Number.prototype.__getattr__ = function(attr){throw AttributeError(
     "'int' object has no attribute '"+attr+"'")}
 
 Number.prototype.__in__ = function(item){return item.__contains__(this)}
@@ -434,17 +434,17 @@ Number.prototype.__pow__ = function(other){
     else{$UnsupportedOpType("//",int,other.__class__)}
 }
 
-Number.prototype.__setattr__ = function(attr,value){$raise('AttributeError',
+Number.prototype.__setattr__ = function(attr,value){throw AttributeError(
     "'int' object has no attribute "+attr+"'")}
 
 Number.prototype.__str__ = function(){return this.toString()}
 
 Number.prototype.__truediv__ = function(other){
     if(isinstance(other,int)){
-        if(other==0){$raise('ZeroDivisionError','division by zero')}
+        if(other==0){throw ZeroDivisionError('division by zero')}
         else{return float(this/other)}
     }else if(isinstance(other,float)){
-        if(!other.value){$raise('ZeroDivisionError','division by zero')}
+        if(!other.value){throw ZeroDivisionError('division by zero')}
         else{return float(this/other.value)}
     }else{$UnsupportedOpType("//","int",other.__class__)}
 }
@@ -457,7 +457,7 @@ var $op_func = function(other){
         else{return float(res)}
     }
     else if(isinstance(other,float)){return float(this.valueOf()-other.value)}
-    else{$raise('TypeError',
+    else{throw TypeError(
         "unsupported operand type(s) for -: "+this.value+" (float) and '"+str(other.__class__)+"'")
     }
 }
@@ -471,7 +471,7 @@ for($op in $ops){
 var $comp_func = function(other){
     if(isinstance(other,int)){return this.valueOf() > other.valueOf()}
     else if(isinstance(other,float)){return this.valueOf() > other.value}
-    else{$raise('TypeError',
+    else{throw TypeError(
         "unorderable types: "+str(this.__class__)+'() > '+str(other.__class__)+"()")}
 }
 $comp_func += '' // source code
@@ -482,7 +482,7 @@ for($op in $comps){
 
 // unsupported operations
 var $notimplemented = function(other){
-    $raise('TypeError',
+    throw TypeError(
         "unsupported operand types for OPERATOR: '"+str(this.__class__)+"' and '"+str(other.__class__)+"'")
 }
 $notimplemented += '' // coerce to string
@@ -520,13 +520,13 @@ function iter(obj){
         obj.__counter__= 0 // reset iteration counter
         return obj
     }
-    $raise('TypeError',"'"+str(obj.__class__)+"' object is not iterable")
+    throw TypeError("'"+str(obj.__class__)+"' object is not iterable")
 }
 
 function $iterator(obj,info){
     this.__getattr__ = function(attr){
         var res = this[attr]
-        if(res===undefined){$raise('AttributeError',
+        if(res===undefined){throw AttributeError(
             "'"+info+"' object has no attribute '"+attr+"'")}
         else{return res}
     }
@@ -538,7 +538,7 @@ function $iterator(obj,info){
 
 function len(obj){
     try{return obj.__len__()}
-    catch(err){$raise('TypeError',"object of type "+obj.__class__+" has no len()")}
+    catch(err){throw TypeError("object of type "+obj.__class__+" has no len()")}
 }
 
 function map(){
@@ -560,7 +560,7 @@ function map(){
 function $extreme(args,op){ // used by min() and max()
     if(op==='__gt__'){var $op_name = "max"}
     else{var $op_name = "min"}
-    if(args.length==0){$raise('TypeError',$op_name+" expected 1 argument, got 0")}
+    if(args.length==0){throw TypeError($op_name+" expected 1 argument, got 0")}
     var last_arg = args[args.length-1]
     var last_i = args.length-1
     var has_key = false
@@ -569,7 +569,7 @@ function $extreme(args,op){ // used by min() and max()
             var func = last_arg.value
             has_key = true
             last_i--
-        }else{$raise('TypeError',$op_name+"() got an unexpected keyword argument")}
+        }else{throw TypeError($op_name+"() got an unexpected keyword argument")}
     }else{var func = function(x){return x}}
     if((has_key && args.length==2)||(!has_key && args.length==1)){
         var arg = args[0]
@@ -611,9 +611,9 @@ function next(obj){
         if(obj.__counter__===undefined){obj.__counter__=0}
         var res = obj.__item__(obj.__counter__)
         if(res!==undefined){obj.__counter__++;return res}
-        $raise('StopIteration')
+        throw StopIteration()
     }
-    $raise('TypeError',"'"+str(obj.__class__)+"' object is not iterable")
+    throw TypeError("'"+str(obj.__class__)+"' object is not iterable")
 }
 
 function $not(obj){return !bool(obj)}
@@ -623,7 +623,7 @@ function $ObjectClass(){
 }
 $ObjectClass.prototype.__getattr__ = function(attr){
     if(attr in this){return this[attr]}
-    else{$raise('AttributeError',"object has no attribute '"+attr+"'")}
+    else{throw AttributeError("object has no attribute '"+attr+"'")}
 }
 $ObjectClass.prototype.__delattr__ = function(attr){delete this[attr]}
 $ObjectClass.prototype.__setattr__ = function(attr,value){this[attr]=value}
@@ -658,7 +658,7 @@ function $prompt(text,fill){return prompt(text,fill || '')}
 function range(){
     var $ns=$MakeArgs('range',arguments,[],{},'args',null)
     var args = $ns['args']
-    if(args.length>3){$raise('TypeError',
+    if(args.length>3){throw TypeError(
         "range expected at most 3 arguments, got "+args.length)
     }
     var start=0
@@ -670,7 +670,7 @@ function range(){
         stop = args[1]
     }
     if(args.length>=3){step=args[2]}
-    if(step==0){$raise('ValueError',"range() arg 3 must not be zero")}
+    if(step==0){throw ValueError("range() arg 3 must not be zero")}
     var res=[]
     if(step>0){
         for(var i=start;i<stop;i+=step){res.push(i)}
@@ -690,16 +690,16 @@ function reversed(seq){
         var res=''
         for(var i=seq.length-1;i>=0;i--){res+=seq.charAt(i)}
         return res
-    }else{$raise('TypeError',
+    }else{throw TypeError(
         "argument to reversed() must be a sequence")}
 }
 
 function round(arg,n){
     if(!isinstance(arg,[int,float])){
-        $raise('TypeError',"type "+str(arg.__class__)+" doesn't define __round__ method")
+        throw TypeError("type "+str(arg.__class__)+" doesn't define __round__ method")
     }
     if(n===undefined){n=0}
-    if(!isinstance(n,int)){$raise('TypeError',
+    if(!isinstance(n,int)){throw TypeError(
         "'"+n.__class__+"' object cannot be interpreted as an integer")}
     var mult = Math.pow(10,n)
     return Number(Math.round(arg*mult)).__truediv__(mult)
@@ -719,10 +719,10 @@ function set(){
             }
             return obj
         }catch(err){
-            $raise('TypeError',"'"+arg.__class__.__name__+"' object is not iterable")
+            throw TypeError("'"+arg.__class__.__name__+"' object is not iterable")
         }
     } else {
-        $raise('TypeError',"set expected at most 1 argument, got "+arguments.length)
+        throw TypeError("set expected at most 1 argument, got "+arguments.length)
     }
 }
 set.__class__ = $type
@@ -796,7 +796,7 @@ $SetClass.prototype.add = function(item){
 }
 
 function setattr(obj,attr,value){
-    if(!isinstance(attr,str)){$raise('TypeError',"setattr(): attribute name must be string")}
+    if(!isinstance(attr,str)){throw TypeError("setattr(): attribute name must be string")}
     obj[attr]=value
 }
 
@@ -810,7 +810,7 @@ function $SliceClass(start,stop,step){
 function slice(){
     var $ns=$MakeArgs('slice',arguments,[],{},'args',null)
     var args = $ns['args']
-    if(args.length>3){$raise('TypeError',
+    if(args.length>3){throw TypeError(
         "slice expected at most 3 arguments, got "+args.length)
     }
     var start=0
@@ -822,7 +822,7 @@ function slice(){
         stop = args[1]
     }
     if(args.length>=3){step=args[2]}
-    if(step==0){$raise('ValueError',"slice step must not be zero")}
+    if(step==0){throw ValueError("slice step must not be zero")}
     return new $SliceClass(start,stop,step)
 }
 
@@ -893,3 +893,46 @@ function $NoneClass(){
     this.__str__ = function(){return 'None'}
 }
 None = new $NoneClass()
+
+// built-in exceptions
+
+Exception = function (msg){
+    var err = Error()
+
+    if(document.$debug && msg.split('\n').length==1){
+        var module = document.$line_info[1]
+        var line_num = document.$line_info[0]
+        var lines = document.$py_src[module].split('\n')
+        msg += "\nmodule '"+module+"' line "+line_num
+        msg += '\n'+lines[line_num-1]
+    }
+
+    err.message = msg
+
+    err.args = tuple(msg.split('\n')[0])
+    err.__str__ = function(){return this.args[0].__str__()}
+    err.__getattr__ = function(attr){return this[attr]}
+    err.__name__ = 'Exception'
+    err.__class__ = Exception
+    err.py_error = true
+    return err
+}
+
+Exception.__str__ = function(){return "<class 'Exception'>"}
+Exception.__class__ = $type
+
+function $make_exc(name){
+    var $exc = (Exception+'').replace(/Exception/g,name)
+    eval(name+'='+$exc)
+    eval(name+'.__str__ = function(){return "<class '+"'"+name+"'"+'>"}')
+    eval(name+'.__class__=$type')
+}
+
+var $errors = ['AssertionError','AttributeError','EOFError','FloatingPointError',
+    'GeneratorExit','ImportError','IndexError','KeyError','KeyboardInterrupt',
+    'NameError','NotImplementedError','OSError','OverflowError','ReferenceError',
+    'RuntimeError','StopIteration','SyntaxError','IndentationError','TabError',
+    'SystemError','SystemExit','TypeError','UnboundLocalError','ValueError',
+    'ZeroDivisionError','IOError']
+for(var i=0;i<$errors.length;i++){$make_exc($errors[i])}
+
