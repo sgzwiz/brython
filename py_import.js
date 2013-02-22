@@ -132,7 +132,6 @@ function $import_py(module,alias){
 $import_funcs = [$import_js,$import_py]
 
 function $import_single(name,alias){
-    console.log('import '+name)
     for(var j=0;j<$import_funcs.length;j++){
         try{$import_funcs[j](name,alias);return}
         catch(err){
@@ -145,11 +144,9 @@ function $import_single(name,alias){
             }else{throw(err)}
         }
     }
-    console.log('end of import '+module)
 }
 
 function $import_list(modules){ // list of objects with attributes name and alias
-    console.log('import modules '+modules)
     for(var i=0;i<modules.length;i++){
         var module = modules[i][0]
         $import_single(modules[i][0],modules[i][1])
