@@ -631,19 +631,19 @@ function $ExceptCtx(context){
     this.parent = context
     context.tree.push(this)
     this.tree = []
+    this.expect = 'id'
     this.toString = function(){return '(except) '}
     this.to_js = function(){
         // in method "transform" of $TryCtx instances, related
         // $ExceptCtx instances receive an attribute error_name
         if(this.tree.length===0){return 'else'}
         else{
-            var target=this.tree[0]
             var res ='else if(['
-            for(var i=0;i<target.tree.length;i++){
-                res+='"'+target.tree[i].value+'"'
-                if(i<target.tree.length-1){res+=','}
+            for(var i=0;i<this.tree.length;i++){
+                res+='"'+this.tree[i].name+'"'
+                if(i<this.tree.length-1){res+=','}
             }
-            res +='].indexOf('+this.error_name+'.name)>-1)'
+            res +='].indexOf('+this.error_name+'.__name__)>-1)'
             return res
         }
     }
@@ -813,14 +813,12 @@ function $ImportCtx(context){
     context.tree.push(this)
     this.expect = 'id'
     this.to_js = function(){
-        console.log('import '+this.tree+' '+$to_js(this.tree))
         return '$import_list(['+$to_js(this.tree)+'])'
     }
 }
 
-function $ImpModCtx(context,name){ // imported module
-    this.type = 'imported_module'
-    this.toString = function(){return ' (imp module) '+this.name}
+function $ImportedModuleCtx(context,name){
+    this.toString = function(){return ' (imported module) '+this.name}
     this.parent = context
     this.name = name
     this.alias = name
@@ -1092,6 +1090,17 @@ function $SubCtx(context){ // subscription or slicing
     }
 }
 
+function $TargetCtx(context,name){ // exception
+    this.toString = function(){return ' (target) '+this.name}
+    this.parent = context
+    this.name = name
+    this.alias = null
+    context.tree.push(this)
+    this.to_js = function(){
+        return '["'+this.name+'","'+this.alias+'"]'
+    }
+}
+
 function $TargetListCtx(context){
     this.type = 'target_list'
     this.parent = context
@@ -1153,7 +1162,15 @@ function $TryCtx(context){
             var ctx = node.parent.children[pos].context.tree[0]
             if(ctx.type==='except'||
                 (ctx.type==='single_kw' && ctx.token==='finally')){
-                node.parent.children[pos].context.tree[0].error_name = '$err'+$loop_num
+                ctx.error_name = '$err'+$loop_num
+                if(ctx.tree.length>0 && ctx.tree[0].alias!==null){
+                    // syntax "except ErrorName as Alias"
+                    var new_node = new $Node('expression')
+                    var js = 'var '+ctx.tree[0].alias+'='+ctx.tree[0].name
+                    js += '($err'+$loop_num+'.message)'
+                    new $NodeJSCtx(new_node,js)
+                    node.parent.children[pos].insert(0,new_node)
+                }
                 catch_node.insert(catch_node.children.length,
                     node.parent.children[pos])
                 if(ctx.type==='except' && ctx.tree.length===0){
@@ -1494,12 +1511,36 @@ function $transition(context,token){
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='except'){ 
-    
-        if(token==='id'){
-            return $transition(new $TargetListCtx(context),token,arguments[2])
-        }else if(token===':'){
+
+        if(token==='id' && context.expect==='id'){
+            new $TargetCtx(context,arguments[2])
+            context.expect='as'
+            return context
+        }else if(token==='as' && context.expect==='as'
+            && context.has_alias===undefined  // only one alias allowed
+            && context.tree.length===1){ // if aliased, must be the only exception
+            context.expect = 'alias'
+            context.has_alias = true
+            return context
+        }else if(token==='id' && context.expect==='alias'){
+            if(context.parenth!==undefined){context.expect = ','}
+            else{context.expect=':'}
+            context.tree[context.tree.length-1].alias = arguments[2]
+            return context
+        }else if(token===':' && ['id','as',':'].indexOf(context.expect)>-1){
             return context.parent
-        }else{$_SyntaxError(context,'token '+token+' after '+context)}
+        }else if(token==='(' && context.expect==='id' && context.tree.length===0){
+            context.parenth = true
+            return context
+        }else if(token===')' && [',','as'].indexOf(context.expect)>-1){
+            context.expect = ':'
+            return context
+        }else if(token===',' && context.parenth!==undefined &&
+            context.has_alias === undefined &&
+            ['as',','].indexOf(context.expect)>-1){
+                context.expect='id'
+                return context
+        }else{$_SyntaxError(context,'token '+token+' after '+context.expect)}
     
     }else if(context.type==='expr'){
 
@@ -1643,7 +1684,7 @@ function $transition(context,token){
     }else if(context.type==='import'){
     
         if(token==='id' && context.expect==='id'){
-            new $ImpModCtx(context,arguments[2])
+            new $ImportedModuleCtx(context,arguments[2])
             context.expect=','
             return context
         }else if(token===',' && context.expect===','){
