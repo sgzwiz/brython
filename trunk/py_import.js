@@ -16,7 +16,7 @@ function $importer(){
     return [$xmlhttp,fake_qs,timer]
 }
 
-function $import_js(module,alias){
+function $import_js(module,alias,names){
     // import JS modules in folder /libs
     var imp = $importer()
     var $xmlhttp = imp[0],fake_qs=imp[1],timer=imp[2],res=null
@@ -43,14 +43,27 @@ function $import_js(module,alias){
             throw ImportError("name '$module' is not defined in module")
         }
         if(alias===undefined){alias=module}
-        eval(alias+'=$module')
-        // add class and __str__
-        eval(alias+'.__class__ = $type')
-        eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
+       
+        if(names===undefined){
+            eval(alias+'=$module')
+            // add class and __str__
+            eval(alias+'.__class__ = $type')
+            eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
+        }else{
+            if(names.length===1 && names[0]==='*'){
+                for(var name in $module){
+                    eval(name+'=$module[name]')
+                }
+            }else{
+                for(var i=0;i<names.length;i++){
+                    eval(names[i]+'=$module[names[i]]')
+                }
+            }
+        }
     }catch(err){throw ImportError(err.message)}
 }
 
-function $import_py(module,alias){
+function $import_py(module,alias,names){
     // import Python modules, in the same folder as the HTML page with
     // the Brython script
     var imp = $importer()
@@ -82,29 +95,30 @@ function $import_py(module,alias){
     root.children = []
     // use the module pattern : module name returns the results of an anonymous function
     var mod_node = new $Node('expression')
-    new $NodeJSCtx(mod_node,alias+'= (function()')
+    if(names!==undefined){alias='$module'}
+    new $NodeJSCtx(mod_node,alias+'=(function()')
     root.insert(0,mod_node)
     mod_node.children = body
     // search for module-level names : functions, classes and variables
-    var names = []
+    var mod_names = []
     for(var i=1;i<mod_node.children.length;i++){
         var node = mod_node.children[i]
         var ctx = node.context.tree[0]
         if(ctx.type==='def'||ctx.type==='class'){
-            if(names.indexOf(ctx.name)===-1){names.push(ctx.name)}
+            if(mod_names.indexOf(ctx.name)===-1){mod_names.push(ctx.name)}
             
         }else if(ctx.type==='assign'){
             var left = ctx.tree[0]
             if(left.type==='expr'&&left.tree[0].type==='id'&&left.tree[0].tree.length===0){
                 var id_name = left.tree[0].value
-                if(names.indexOf(id_name)===-1){names.push(id_name)}
+                if(mod_names.indexOf(id_name)===-1){mod_names.push(id_name)}
             }
         }
     }
     // create the object that will be returned when the anonymous function is run
     var ret_code = 'return {'
-    for(var i=0;i<names.length;i++){
-        ret_code += names[i]+':'+names[i]+','
+    for(var i=0;i<mod_names.length;i++){
+        ret_code += mod_names[i]+':'+mod_names[i]+','
     }
     ret_code += '__getattr__:function(attr){return this[attr]},'
     ret_code += '__setattr__:function(attr,value){this[attr]=value}'
@@ -117,6 +131,23 @@ function $import_py(module,alias){
     var ex_node = new $Node('expression')
     new $NodeJSCtx(ex_node,')()')
     root.add(ex_node)
+    
+    if(names!==undefined){
+        if(names.length===1 && names[0]==='*'){
+            var new_node = new $Node('expression')
+            new $NodeJSCtx(new_node,'for(var $attr in $module)')
+            root.add(new_node)
+            var attr_node = new $Node('expression')
+            new $NodeJSCtx(attr_node,'eval($attr+"=$module[$attr]")')
+            new_node.add(attr_node)
+        }else{
+            for(var i=0;i<names.length;i++){
+                var new_node = new $Node('expression')
+                new $NodeJSCtx(new_node,names[i]+'=$module.'+names[i])
+                root.add(new_node)
+            }
+        }
+    }
     
     try{
         var js = root.to_js()
@@ -131,9 +162,9 @@ function $import_py(module,alias){
 
 $import_funcs = [$import_js,$import_py]
 
-function $import_single(name,alias){
+function $import_single(name,alias,names){
     for(var j=0;j<$import_funcs.length;j++){
-        try{$import_funcs[j](name,alias);return}
+        try{$import_funcs[j](name,alias,names);return}
         catch(err){
             if(err.name==="NotFoundError"){
                 if(j==$import_funcs.length-1){
@@ -154,5 +185,5 @@ function $import_list(modules){ // list of objects with attributes name and alia
 }
 
 function $import_from(module,names){
-    
+    $import_single(module,module,names)
 }
