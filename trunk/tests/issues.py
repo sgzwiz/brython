@@ -281,6 +281,13 @@ class NoCascade:
 nc = NoCascade()
 assert nc.a == 2
 
+# issue 72
+x=[1,2]
+try:
+    x[3]
+except IndexError as msg:
+    print(msg)
+    
 # issue 76
 def unpack(x,y):
     return (x,y)
