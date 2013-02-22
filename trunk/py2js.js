@@ -27,33 +27,16 @@ var $augmented_assigns = {
     "%=":"imod","^=":"ipow"
 }
 
-
 function $_SyntaxError(context,msg){
-    //console.log('syntax error\ncontext '+context+'\nmsg '+msg)
-    var ctx_node = context.parent
+    var ctx_node = context
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
     var tree_node = ctx_node.node
     var module = tree_node.module
-    $SyntaxError(module,msg,$pos)
-
-    var src = document.$py_src[tree_node.module]
-    var line_pos = {1:0}
-    var lnum=1
-    for(var i=0;i<src.length;i++){
-        if(src.charAt(i)=='\n'){lnum+=1;line_pos[lnum]=i}
-    }
-    
-    var lines = src.split('\n')
     var line_num = tree_node.line_num
-    var line = lines[line_num-1]
-    var err = new Error()
-    err.name = 'SyntaxError'
-    err.py_error = true
-    err.message = msg
-    throw err
-    
-    //throw Error('SyntaxError line '+tree_node.line_num+' : '+msg)
+    document.$line_info = [line_num,module]
+    throw SyntaxError(msg)
 }
+
 var $first_op_letter = {}
 for(op in $operators){$first_op_letter[op.charAt(0)]=0}
 
@@ -1134,11 +1117,11 @@ function $TryCtx(context){
     this.toString = function(){return '(try) '}
     this.transform = function(node,rank){
         if(node.parent.children.length===rank+1){
-            $_SyntaxError("missing clause after 'try' 1")
+            $_SyntaxError(context,"missing clause after 'try' 1")
         }else{
             var next_ctx = node.parent.children[rank+1].context.tree[0]
             if(['except','finally'].indexOf(next_ctx.type)===-1){
-                $_SyntaxError("missing clause after 'try' 2")
+                $_SyntaxError(context,"missing clause after 'try' 2")
             }
         }
         // transform node into Javascript 'try' (necessary if
