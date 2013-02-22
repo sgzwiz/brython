@@ -1022,6 +1022,7 @@ function $RaiseCtx(context){
     this.tree = []
     context.tree.push(this)
     this.to_js = function(){
+        if(this.tree.length===0){return 'throw Exception("")'}
         var exc = this.tree[0]
         if(exc.type==='id'){return 'throw '+exc.value+'("")'}
         else{return 'throw '+$to_js(this.tree)}
