@@ -27,32 +27,6 @@ var $augmented_assigns = {
     "%=":"imod","^=":"ipow"
 }
 
-function $list_comp1(){
-    var $env = arguments[0]
-    for(var $arg in $env){
-        eval("var "+$arg+'=$env["'+$arg+'"]')
-    }
-    var $res = 'res'+Math.random().toString(36).substr(2,8)
-    var $py = $res+"=[]\n"
-    var indent=0
-    for(var i=2;i<arguments.length;i++){
-        for(var j=0;j<indent;j++){$py += ' '}
-        $py += arguments[i]+':\n'
-        indent += 4
-    }
-    for(var j=0;j<indent;j++){$py += ' '}
-    $py += $res+'.append('+arguments[1]+')'
-    var $js = $py2js($py).to_js()
-    eval($js)
-    return eval($res)    
-}
-
-function $ternary(expr1,cond,expr2){
-    var res = 'var $res=expr1\n'
-    res += 'if(!cond){$res=expr2}\n'
-    eval(res)
-    return $res
-}
 
 function $_SyntaxError(context,msg){
     //console.log('syntax error\ncontext '+context+'\nmsg '+msg)
@@ -837,7 +811,23 @@ function $ImportCtx(context){
     this.parent = context
     this.tree = []
     context.tree.push(this)
-    this.to_js = function(){return '$import("'+$to_js(this.tree)+'")'}
+    this.expect = 'id'
+    this.to_js = function(){
+        console.log('import '+this.tree+' '+$to_js(this.tree))
+        return '$import_list(['+$to_js(this.tree)+'])'
+    }
+}
+
+function $ImpModCtx(context,name){ // imported module
+    this.type = 'imported_module'
+    this.toString = function(){return ' (imp module) '+this.name}
+    this.parent = context
+    this.name = name
+    this.alias = name
+    context.tree.push(this)
+    this.to_js = function(){
+        return '["'+this.name+'","'+this.alias+'"]'
+    }
 }
 
 function $IntCtx(context,value){
@@ -945,7 +935,7 @@ function $ListOrTupleCtx(context,real){
                 res += '"'+txt+'"'
                 if(i<this.intervals.length-1){res+=','}
             }
-            return '$list_comp1('+res+')'
+            return '$list_comp('+res+')'
         }else if(this.real==='tuple'){
             if(this.tree.length===1){return this.tree[0].to_js()}
             else{return 'tuple('+$to_js(this.tree)+')'}
@@ -1652,8 +1642,23 @@ function $transition(context,token){
 
     }else if(context.type==='import'){
     
-        if(token==='id'){return new $IdCtx(context,arguments[2])}
-        else{return $transition(context.parent,token)}
+        if(token==='id' && context.expect==='id'){
+            new $ImpModCtx(context,arguments[2])
+            context.expect=','
+            return context
+        }else if(token===',' && context.expect===','){
+            context.expect = 'id'
+            return context
+        }else if(token==='as' && context.expect===','){
+            context.expect = 'alias'
+            return context
+        }else if(token==='id' && context.expect==='alias'){
+            context.expect = ','
+            context.tree[context.tree.length-1].alias = arguments[2]
+            return context
+        }else if(token==='eol' && context.expect===','){
+            return $transition(context.parent,token)
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='int'||context.type==='float'){
     
