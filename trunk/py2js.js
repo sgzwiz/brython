@@ -55,6 +55,7 @@ function $ternary(expr1,cond,expr2){
 }
 
 function $_SyntaxError(context,msg){
+    //console.log('syntax error\ncontext '+context+'\nmsg '+msg)
     var ctx_node = context.parent
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
     var tree_node = ctx_node.node
@@ -287,26 +288,27 @@ function $AssignCtx(context){
             return '$Kw('+this.tree[0].to_js()+','+this.tree[1].to_js()+')'
         }else{ // assignment
             var left = this.tree[0]
-            if(left.type==='expr'){left=left.tree[0]}
+            if(left.type==='expr'){
+                left=left.tree[0]
+            }
             var right = this.tree[1]
-            if(left.type==='id'&&left.tree.length>0){ // assign to attribute or item ?
-                var last = left.tree[left.tree.length-1]
-                if(last.type==='attribute'){
-                    left.tree.pop() // temporarily remove attr
-                    var res = left.to_js()+'.__setattr__("'
-                    left.tree.push(last)
-                    return res+last.name+'",'+right.to_js()+')'
-                }else if(last.type==='sub'){
-                    left.tree.pop()
-                    var res = left.to_js()
-                    left.tree.push(last)
-                    last.func = 'setitem' // just for to_js()
-                    var last_str = last.to_js()
-                    last.func = 'getitem' // restore default function
-                    last_str = last_str.substr(0,last_str.length-1) // remove trailing )
-                    res += last_str+','+right.to_js()+')'
-                    return res
-                }
+            if(left.type==='attribute'){ // assign to attribute or item ?
+                left.func = 'setattr'
+                //left.tree.push(last)
+                var res = left.to_js()
+                left.func = 'getattr'
+                res = res.substr(0,res.length-1) // remove trailing )
+                res += ','+right.to_js()+')'
+                return res
+            }else if(left.type==='sub'){
+                left.func = 'setitem' // just for to_js()
+                var res = left.to_js()
+                res = res.substr(0,res.length-1) // remove trailing )
+                left.func = 'getitem' // restore default function
+                res += ','+right.to_js()+')'
+                //last_str = last_str.substr(0,last_str.length-1) // remove trailing )
+                //res += last_str+','+right.to_js()+')'
+                return res
             }
             var scope = $get_scope(this)
             if(scope===null){
@@ -329,16 +331,18 @@ function $AssignCtx(context){
 
 function $AttrCtx(context){
     this.type = 'attribute'
+    this.value = context.tree[0]
     this.parent = context
+    context.tree.pop()
+    context.tree.push(this)
     this.tree = []
     this.func = 'getattr' // becomes setattr for an assignment 
-    context.tree.push(this)
-    this.toString = function(){return '(attr) '+this.name}
+    this.toString = function(){return '(attr) '+this.value+'.'+this.name}
     this.to_js = function(){
         var name = this.name
         if(name.substr(0,2)==='$$'){name=name.substr(2)}
-        if(name.substr(0,2)!=='__'){name='__getattr__("'+name+'")'}
-        return '.'+name
+        if(name.substr(0,2)!=='__'){name='__'+this.func+'__("'+name+'")'}
+        return this.value.to_js()+'.'+name
     }
 }
 
@@ -354,11 +358,16 @@ function $CallArgCtx(context){
 
 function $CallCtx(context){
     this.type = 'call'
-    this.toString = function(){return 'call ('+this.tree+')'}
+
+    this.func = context.tree[0]
     this.parent = context
-    this.tree = []
+    context.tree.pop()
     context.tree.push(this)
-    this.to_js = function(){return '('+$to_js(this.tree)+')'}
+    this.tree = []
+
+    this.toString = function(){return '(call) '+this.func+'('+this.tree+')'}
+
+    this.to_js = function(){return this.func.to_js()+'('+$to_js(this.tree)+')'}
 }
 
 function $ClassCtx(context){
@@ -409,11 +418,9 @@ function $ComprehensionCtx(context){
     context.tree.push(this)
     this.toString = function(){return '(comprehension) '+this.tree}
     this.to_js = function(){
-        console.log('comprenhension to JS')
         var intervals = []
         for(var i=0;i<this.tree.length;i++){
             intervals.push(this.tree[i].start)
-            console.log('intervals '+intervals)
         }
         return intervals
     }
@@ -509,8 +516,8 @@ function $DefCtx(context){
                         env.push(arg.tree[0].tree[0].value)
                     }                        
                 }
-            }else if(arg.type==='star_arg'){other_args='"'+arg.name+'"'}
-            else if(arg.type==='double_star_arg'){other_kw='"'+arg.name+'"'}
+            }else if(arg.type==='func_star_arg'&&arg.op==='*'){other_args='"'+arg.name+'"'}
+            else if(arg.type==='func_star_arg'&&arg.op==='**'){other_kw='"'+arg.name+'"'}
         }
         this.env = env
         if(required.length>0){required=required.substr(0,required.length-1)}
@@ -585,16 +592,15 @@ function $DelCtx(context){
     this.toString = function(){return 'del '+this.tree}
     this.to_js = function(){
         var expr = this.tree[0]
-        if(expr.tree[0].type!=='id'){throw Error('SyntaxError, no id after del')}
+        if(expr.type!=='expr'){throw Error('SyntaxError, no expr after del')}
         var del_id = expr.tree[0]
-        if(del_id.tree.length===0||del_id.tree[del_id.tree.length-1].type!=='sub'){
+        if(del_id.type!=='sub'){
             throw Error('SyntaxError, no subscription for del')
         }
-        var last_item = del_id.tree.pop()
-        var item = last_item.tree[0].to_js()
+        del_id.func = 'delitem'
         var res = del_id.to_js()
-        del_id.tree.push(last_item)
-        return res+'.__delitem__('+item+')'
+        del_id.func = 'getitem'
+        return res
     }
 }
 
@@ -751,7 +757,6 @@ function $ForExpr(context){
         // set new loop children
         node.parent.children[rank+1].children = children
         $loop_num++
-        //console.log('AFTER FOR\n'+node.show())
     }
     this.to_js = function(){
         var iterable = this.tree.pop()
@@ -783,6 +788,14 @@ function $FuncArgIdCtx(context,name){
     this.toString = function(){return 'func arg id '+this.name +'='+this.tree}
     this.expect = '='
     this.to_js = function(){return this.name+$to_js(this.tree)}
+}
+
+function $FuncStarArgCtx(context,op){
+    this.type = 'func_star_arg'
+    this.op = op
+    this.parent = context
+    context.tree.push(this)
+    this.toString = function(){return '(func star arg '+this.op+') '+this.name}
 }
 
 function $GlobalCtx(context){
@@ -1068,11 +1081,13 @@ function $SubCtx(context){ // subscription or slicing
     this.type = 'sub'
     this.func = 'getitem' // set to 'setitem' if assignment
     this.toString = function(){return '(sub) '+this.tree}
+    this.value = context.tree[0]
+    context.tree.pop()
+    context.tree.push(this)
     this.parent = context
     this.tree = []
-    context.tree.push(this)
     this.to_js = function(){
-        var res = '.__'+this.func+'__('
+        var res = this.value.to_js()+'.__'+this.func+'__('
         if(this.tree.length===1){
             return res+this.tree[0].to_js()+')'
         }else{
@@ -1249,7 +1264,17 @@ function $get_ids(ctx){
         ctx.tree[0].type==='list_or_tuple' &&
         ctx.tree[0].real==='list_comp'){return []}
     if(ctx.type==='id'){res.push(ctx.value)}
-
+    else if(ctx.type==='attribute'||ctx.type==='sub'){
+        var res1 = $get_ids(ctx.value)
+        for(var i=0;i<res1.length;i++){
+            if(res.indexOf(res1[i])===-1){res.push(res1[i])}
+        }
+    }else if(ctx.type==='call'){
+        var res1 = $get_ids(ctx.func)
+        for(var i=0;i<res1.length;i++){
+            if(res.indexOf(res1[i])===-1){res.push(res1[i])}
+        }
+    }
     if(ctx.tree!==undefined){
         for(var i=0;i<ctx.tree.length;i++){
             var res1 = $get_ids(ctx.tree[i])
@@ -1357,8 +1382,8 @@ function $transition(context,token){
             return new $ExprCtx(new $KwArgCtx(context),'kw_value',false)
         }else if(token==='op' && context.expect==='id'){
             var op = arguments[2]
-            if(op==='*'){return new $StarArgCtx(context)}
-            else if(op==='**'){return new $DoubleStarArgCtx(context)}
+            if(op==='*'){context.expect=',';return new $StarArgCtx(context)}
+            else if(op==='**'){context.expect=',';return new $DoubleStarArgCtx(context)}
             else{$_SyntaxError(context,'token '+token+' after '+context)}
         }else if(token===')' && context.expect===','){
             return $transition(context.parent,token)
@@ -1427,7 +1452,7 @@ function $transition(context,token){
         if(context.closed){
             if(token==='['){return new $SubCtx(context)}
             else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
-            else if(token==='.'){return new $AttrCtx(context)}
+            //else if(token==='.'){return new $AttrCtx(context)}
             else if(token==='op'){
                 return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
             }else{return $transition(context.parent,token,arguments[2])}
@@ -1500,7 +1525,10 @@ function $transition(context,token){
                 context.expect = 'expr'
                 return context
             }else{return $transition(context.parent,token)}
-        }else if(token==='op'){
+        }else if(token==='.'){return new $AttrCtx(context)}
+        else if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
+        else if(token==='('){return new $CallCtx(context)}
+        else if(token==='op'){
             // handle operator precedence
             var op_parent=context.parent,op=arguments[2]
             var op1 = context.parent,repl=null
@@ -1583,9 +1611,16 @@ function $transition(context,token){
         }else if(token==='op'){
             var op = arguments[2]
             context.expect = ','
-            if(op=='*'){return new $StarArgCtx(context)}
-            else if(op=='**'){return new $DoubleStarArgCtx(context)}
+            if(op=='*'){return new $FuncStarArgCtx(context,'*')}
+            else if(op=='**'){return new $FuncStarArgCtx(context,'**')}
             else{$_SyntaxError(context,'token '+op+' after '+context)}
+        }else{$_SyntaxError(context,'token '+token+' after '+context)}
+
+    }else if(context.type==='func_star_arg'){
+    
+        if(token==='id' && context.name===undefined){
+            context.name = arguments[2]
+            return context.parent
         }else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='global'){
@@ -1604,10 +1639,9 @@ function $transition(context,token){
 
     }else if(context.type==='id'){
     
-        if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
-        else if(token==='('){return new $CallCtx(context)}
-        else if(token==='.'){return new $AttrCtx(context)}
-        else if(token==='='){
+        //if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
+        //else if(token==='.'){return new $AttrCtx(context)}
+        if(token==='='){
             if(context.parent.type==='expr' &&
                 context.parent.parent !== undefined &&
                 context.parent.parent.type ==='call_arg'){
@@ -1777,7 +1811,7 @@ function $transition(context,token){
 
         if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
         else if(token==='('){return new $CallCtx(context)}
-        else if(token==='.'){return new $AttrCtx(context)}
+        //else if(token==='.'){return new $AttrCtx(context)}
         else if(token=='str'){context.value += '+'+arguments[2];return context}
         else{return $transition(context.parent,token,arguments[2])}
 
@@ -2069,13 +2103,14 @@ function $tokenize(src,module){
                 // implicit line joining inside brackets
                 pos++;continue
             } else {
-                if(current.context.tree.length>0){ //}//console.log('empty tree line '+(lnum-1))}
+                if(current.context.tree.length>0){
                     $pos = pos
                     context = $transition(context,'eol')
                     indent=null
                     new_node = new $Node()
-                }else{console.log('empty LINE '+lnum)
-                    new_node.line_num = lnum}
+                }else{
+                    new_node.line_num = lnum
+                }
                 pos++;continue
             }
         }
