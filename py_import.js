@@ -50,7 +50,7 @@ function $import_js(module,alias){
     }catch(err){$raise('ImportError',err.message)}
 }
 
-function $import_py(module){
+function $import_py(module,alias){
     // import Python modules, in the same folder as the HTML page with
     // the Brython script
     var imp = $importer()
@@ -82,7 +82,7 @@ function $import_py(module){
     root.children = []
     // use the module pattern : module name returns the results of an anonymous function
     var mod_node = new $Node('expression')
-    new $NodeJSCtx(mod_node,module+'= (function()')
+    new $NodeJSCtx(mod_node,alias+'= (function()')
     root.insert(0,mod_node)
     mod_node.children = body
     // search for module-level names : functions, classes and variables
@@ -122,26 +122,37 @@ function $import_py(module){
         var js = root.to_js()
         eval(js)
         // add class and __str__
-        eval(module+'.__class__ = $type')
-        eval(module+'.__str__ = function(){return "<module \''+module+"'>\"}")
+        eval(alias+'.__class__ = $type')
+        eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
     }catch(err){
         $raise(err.name,err.message)
     }
 }
 
 $import_funcs = [$import_js,$import_py]
-function $import(module){
-    for(var i=0;i<$import_funcs.length;i++){
-        try{$import_funcs[i](module);return}
+
+function $import_single(name,alias){
+    console.log('import '+name)
+    for(var j=0;j<$import_funcs.length;j++){
+        try{$import_funcs[j](name,alias);return}
         catch(err){
             if(err.name==="NotFoundError"){
-                if(i==$import_funcs.length-1){
-                    $raise('ImportError',"no module named '"+module+"'")
+                if(j==$import_funcs.length-1){
+                    $raise('ImportError',"no module named '"+name+"'")
                 }else{
                     continue
                 }
             }else{throw(err)}
         }
+    }
+    console.log('end of import '+module)
+}
+
+function $import_list(modules){ // list of objects with attributes name and alias
+    console.log('import modules '+modules)
+    for(var i=0;i<modules.length;i++){
+        var module = modules[i][0]
+        $import_single(modules[i][0],modules[i][1])
     }
 }
 
