@@ -90,6 +90,16 @@ function $ternary(expr1,cond,expr2){
     return $res
 }
 
+function $lambda(args,body){
+    var $res = 'res'+Math.random().toString(36).substr(2,8)
+    var $py = 'def '+$res+'('+args+'):\n'
+    $py += '    return '+body
+    alert($py)
+    var $js = $py2js($py).to_js()
+    eval($js)
+    return eval($res)    
+}
+
 // transform native JS types into Brython types
 function $JS2Py(src){
     if(src===null){return None}
@@ -143,6 +153,7 @@ function $raise(name,msg) {
     err.name = name
     err.message = msg
     err.py_error = true
+    document.$exc_info = [name,msg,line_num-1,lines[line_num-1]]
     document.$stderr_buff = err.name+': '+err.message+'\n'
     if(name!=='ExecutionError'){throw err}
 }

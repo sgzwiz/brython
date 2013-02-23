@@ -852,6 +852,24 @@ function $KwArgCtx(context){
     }
 }
 
+function $LambdaCtx(context){
+    this.type = 'lambda'
+    this.toString = function(){return '(lambda) '+this.args_start+' '+this.body_start}
+    this.parent = context
+    context.tree.push(this)
+    this.to_js = function(){
+        var ctx_node = this
+        while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
+        var module = ctx_node.node.module
+        var src = document.$py_src[module]
+        var qesc = new RegExp('"',"g") // to escape double quotes in arguments
+
+        var args = src.substring(this.args_start,this.body_start).replace(qesc,'\\"')
+        var body = src.substring(this.body_start+1,this.body_end).replace(qesc,'\\"')
+        return '$lambda("'+args+'","'+body+'")'
+    }
+}
+
 function $ListOrTupleCtx(context,real){
     // the real type (list or tuple) is set inside $transition
     // as attribute 'real'
@@ -1317,7 +1335,7 @@ function $to_js(tree,sep){
 }
 
 // expression starters
-var $expr_starters = ['id','int','float','str','[','(','{','not']
+var $expr_starters = ['id','int','float','str','[','(','{','not','lambda']
 
 function $arbo(ctx){
     while(ctx.parent!=undefined){ctx=ctx.parent}
@@ -1325,7 +1343,7 @@ function $arbo(ctx){
 }
 function $transition(context,token){
     //console.log('arbo '+$arbo(context))
-    //console.log('transition '+context+' token '+token)
+    console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
@@ -1342,6 +1360,7 @@ function $transition(context,token){
         else if(token==='['){return new $ListOrTupleCtx(new $ExprCtx(context,'list',commas),'list')}
         else if(token==='{'){return new $DictOrSetCtx(new $ExprCtx(context,'dict_or_set',commas))}
         else if(token==='not'){return new $NotCtx(new $ExprCtx(context,'not',commas))}
+        else if(token==='lambda'){return new $LambdaCtx(new $ExprCtx(context,'lambda',commas))}
         else if(token==='op' && '+-'.search(arguments[2])){ // unary + or -
             return new $UnaryCtx(context,arguments[2])
         }else if(token==='='){$_SyntaxError(context,token)}
@@ -1748,6 +1767,21 @@ function $transition(context,token){
         else if(token===','){return new $CallArgCtx(context.parent)}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
+    }else if(context.type==="lambda"){
+    
+        console.log(context+' token '+token)
+        if(context.args_start===undefined){
+            context.args_start = $pos
+            return context
+        }else if(token===':'){
+            context.body_start = $pos
+            return context
+        }else if(token==='eol'){
+            console.log('end of line')
+            context.body_end = $pos
+            return $transition(context.parent,token)
+        }else{return context}
+
     }else if(context.type==='list_or_tuple'){ 
 
         if(context.closed){
@@ -1819,6 +1853,7 @@ function $transition(context,token){
         else if(token==='from'){return new $FromCtx(context)}
         else if(token==='import'){return new $ImportCtx(context)}
         else if(token==='global'){return new $GlobalCtx(context)}
+        else if(token==='lambda'){return new $LambdaCtx(context)}
         else if(token==='pass'){return new $PassCtx(context)}
         else if(token==='raise'){return new $RaiseCtx(context)}
         else if(token==='return'){
