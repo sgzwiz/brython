@@ -86,3 +86,12 @@ a.extend('ab')
 print(a)
 a.extend([1,2,33])
 print(a)
+
+# lambda
+g = lambda x,y=99: 2*x+y
+assert g(10,6)==26
+assert g(10)==119
+
+x = [lambda x:x*2,lambda y:y*3]
+assert x[0](5)==10
+assert x[1](10)==30
