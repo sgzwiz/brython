@@ -1,0 +1,26 @@
+== Problem ==
+----
+Use the basic HTML markup : bold, italic, headers...
+
+
+== Solution ==
+--------------
+{{{
+<html>
+<head>
+<script src="brython.js"></script>
+</head>
+<body>
+<script type="text/python">
+doc <= B("Hello world !")
+</script>
+</body>
+</html>
+}}}
+
+*B* is a built-in name matching the HTML tag `<B>` (bold)
+
+`B("text")` returns an object matching the HTML `<b>text</b>`
+
+The other HTML tags for text markup each have a built-in name in Brython :
+*I, H1, H2,...*
