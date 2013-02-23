@@ -22,12 +22,50 @@ assert n[0]=='A'
 assert x[n[0]]==1
 assert n[1]=='Z'
 assert x[n[1]]==26
+
 # issue 18
-try:
-    1/0
-    print('Fail')
-except:
-    print('OK')
+
+def test1(): 
+ try:
+  raise
+  print('Fail')
+ except:
+  pass
+
+
+def test2():
+ try:
+  1/0
+  print('Fail')
+ except:
+  pass
+
+def test3():
+ try:
+  raise Exception('test exception')
+  print('Fail')
+ except:
+  pass
+
+def test4():
+ try:
+  raise
+  print('Fail')
+ except Exception:
+  pass
+
+def test5():
+ try:
+  raise Exception('OK test5')
+  print('Fail')
+ except Exception as ex:
+  assert str(ex)=='OK test5'
+
+test1()
+test2()
+test3() 
+test4()
+test5()
 # issue 21
 assert True and False == False
 # issue 22
@@ -286,7 +324,7 @@ x=[1,2]
 try:
     x[3]
 except IndexError as msg:
-    print(msg)
+    assert str(msg)=='list index out of range'
     
 # issue 76
 def unpack(x,y):
@@ -308,3 +346,5 @@ def cards(cardin):
     assert 'n' in [cardinal for cardinal in '%s'%cardin]
     assert (0,'n') in [(index,cardinal) for index,cardinal in enumerate('%sw'%cardin)]
 cards('nes')
+
+print('All tests ok')
