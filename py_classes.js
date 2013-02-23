@@ -907,7 +907,7 @@ Exception = function (msg){
         msg += '\n'+lines[line_num-1]
     }
 
-    err.message = msg
+    err.message = 'Exception: '+msg
 
     err.args = tuple(msg.split('\n')[0])
     err.__str__ = function(){return this.args[0].__str__()}
