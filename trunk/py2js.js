@@ -1770,7 +1770,6 @@ function $transition(context,token){
 
     }else if(context.type==="lambda"){
     
-        console.log(context+' token '+token)
         if(context.args_start===undefined){
             context.args_start = $pos
             return context
