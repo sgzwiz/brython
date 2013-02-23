@@ -82,7 +82,7 @@ str.__getattr__ = function(attr){
             return $string_strip
         case 'upper':
             return $string_upper
-       default:
+        default:
             return this[attr]
     }
 }
