@@ -6,3 +6,10 @@
 HelloWorld
 
 MarkUp
+
+
+= Ajax =
+
+GetRequest
+
+PostRequest
