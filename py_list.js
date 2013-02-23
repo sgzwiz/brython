@@ -16,8 +16,34 @@ function list(){
     res.__init__(arguments[0])
     return res
 }
+
 list.__class__ = $type
 list.__name__ = 'list'
+
+list.__getattr__ = function(attr){
+    var obj=this
+    switch(attr){
+        case 'append':
+            return $list_append
+        case 'count':
+            return $list_count
+        case 'extend':
+            return $list_extend
+        case 'index':
+            return $list_index
+        case 'pop':
+            return $list_pop
+        case 'remove':
+            return $list_remove
+        case 'reverse':
+            return $list_reverse
+        case 'sort':
+            return $list_sort
+        default:
+            return this[attr]
+    }
+}
+
 list.__str__ = function(){return "<class 'list'>"}
 list.toString = list.__str__
 
@@ -98,29 +124,11 @@ Array.prototype.__eq__ = function(other){
 }
 
 Array.prototype.__getattr__ = function(attr){
-    var obj=this
-    switch(attr){
-        case 'append':
-            return function(other){
-                if(isinstance(other,list)){obj.push(list(other))}
-                else{obj.push(other)}
-            }
-        case 'count':
-            return $list_count(obj)
-        case 'extend':
-            return $list_extend(obj)
-        case 'index':
-            return $list_index(obj)
-        case 'pop':
-            return $list_pop(obj)
-        case 'remove':
-            return $list_remove(obj)
-        case 'reverse':
-            return function(){$list_reverse(obj)}
-        case 'sort':
-            return function(arg){$list_sort(obj,arg)}
-        default:
-            return this[attr]
+    var obj = this
+    return function(){
+        args = [obj]
+        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+        return list.__getattr__(attr).apply(obj,args)
     }
 }
 
@@ -238,66 +246,58 @@ Array.prototype.toString = function(){
     return res+']'
 }
 
-function $list_count(obj){
-    return function(elt){
-        var res = 0
-        for(var i=0;i<obj.length;i++){
-            if(obj[i].__eq__(elt)){res++}
+function $list_append(obj,other){obj.push(other)}
+
+function $list_count(obj,elt){
+    var res = 0
+    for(var i=0;i<obj.length;i++){
+        if(obj[i].__eq__(elt)){res++}
+    }
+    return res
+}
+
+function $list_extend(obj,other){
+    if(arguments.length!=2){throw TypeError(
+        "extend() takes exactly one argument ("+arguments.length+" given)")}
+    try{
+        for(var i=0;i<other.__len__();i++){
+            obj.push(other.__item__(i))
         }
-        return res
+    }catch(err){
+        throw TypeError("object is not iterable")
     }
 }
 
-function $list_extend(obj){
-    return function(other){
-        if(arguments.length!=1){throw TypeError(
-            "extend() takes exactly one argument ("+arguments.length+" given)")}
-        try{
-            for(var i=0;i<other.__len__();i++){
-                obj.push(other.__item__(i))
-            }
-        }catch(err){
-            throw TypeError("object is not iterable")
-        }
+function $list_index(obj,elt){
+    for(var i=0;i<obj.length;i++){
+        if(obj[i].__eq__(elt)){return i}
     }
+    throw ValueError(str(elt)+" is not in list")
 }
 
-function $list_index(obj){
-    return function(elt){
-        for(var i=0;i<obj.length;i++){
-            if(obj[i].__eq__(elt)){return i}
+function $list_remove(obj,elt){
+    for(var i=0;i<obj.length;i++){
+        if(obj[i].__eq__(elt)){
+            obj.splice(i,1)
+            return
         }
-        throw ValueError(str(elt)+" is not in list")
     }
+    throw ValueError(str(elt)+" is not in list")
 }
 
-function $list_remove(obj){
-    return function(elt){
-        for(var i=0;i<obj.length;i++){
-            if(obj[i].__eq__(elt)){
-                obj.splice(i,1)
-                return
-            }
+function $list_pop(obj,elt){
+    if(arguments.length===1){return obj.pop()}
+    else if(arguments.length==2){
+        var pos = arguments[1]
+        if(isinstance(pos,int)){
+            var res = obj[pos]
+            obj.splice(pos,1)
+            return res
+        }else{
+            throw TypeError(pos.__class__+" object cannot be interpreted as an integer")
         }
-        throw ValueError(str(elt)+" is not in list")
-    }
-}
-
-function $list_pop(obj){
-    return function(elt){
-        if(arguments.length==0){return obj.pop()}
-        else if(arguments.length==1){
-            var pos = arguments[0]
-            if(isinstance(pos,int)){
-                var res = obj[pos]
-                obj.splice(pos,1)
-                return res
-            }else{
-                throw TypeError(pos.__class__+" object cannot be interpreted as an integer")
-            }
-        }else{ 
-            throw TypeError("pop() takes at most 1 argument ("+arguments.length+' given)')
-        }
+    }else{ 
+        throw TypeError("pop() takes at most 1 argument ("+arguments.length+' given)')
     }
 }
 
@@ -342,10 +342,18 @@ function $qsort(arg,array, begin, end)
     }
 }
 
-function $list_sort(obj,arg){
-    if(!arg){arg=function(x){return x}}
-    else if(typeof arg==="string"){arg=function(x){return x.__getitem__(arg)}}
+function $list_sort(obj){
+    var func=function(x){return x}
+    var reverse = false
+    for(var i=1;i<arguments.length;i++){
+        var arg = arguments[i]
+        if(isinstance(arg,$Kw)){
+            if(arg.name==='key'){func=arg.value}
+            else if(arg.name==='reverse'){reverse=arg.value}
+        }
+    }
     if(obj.length==0){return}
-    $qsort(arg,obj,0,obj.length)
+    $qsort(func,obj,0,obj.length)
+    if(reverse){$list_reverse(obj)}
 }
 
