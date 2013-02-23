@@ -55,7 +55,7 @@ def sort_by_col(cell,numeric=False):
     else:
         func = k_int
 
-    rows.sort(func)
+    rows.sort(key=func)
 
     if ascending == 'down':
         rows.reverse()
