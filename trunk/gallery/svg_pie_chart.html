@@ -42,7 +42,7 @@ def pie_chart():
     paths = {}
     data = {}
     for i,cell in enumerate(cells):
-        data['Item %s' %(i+1)]=float(cell.value)
+        data['Item %s' %(i+1)]=float(cell.text)
     style={"fill-opacity": 1,"stroke":"black","stroke-width": 1}
     width = 3.8*ray
     height = 2.2*ray
@@ -84,12 +84,9 @@ def show_legend(key):
 def hide_legend():
     legend.text = ''
 
-def update(cell):
-    try:
-        float(cell.value)
-    except ValueError:
-        alert('Numeric value requested')
-        return
+def change(rank,offset):
+    x = int(cells[int(rank)].text)
+    cells[int(rank)].text = x+int(offset)
     pie_chart()
 
 nb_cols = 2
@@ -100,13 +97,15 @@ tb = TBODY()
 cells = []
 
 title_input = INPUT(value='Pie Chart',onchange="set_title()")
-tb <= TD('Title')+TD(title_input)
+tb <= TD('Title')+TD(title_input,colspan=3)
 
 for i in range(nb_lines):
     row = TR()
-    row <= TD('Item %s' %i)
-    cell = INPUT(value=values[i],onchange="update(this)")
+    row <= TD('Item %s' %(i+1))
+    row <= TD(BUTTON('<',onclick="change(%s,-1)" %i))
+    cell = SPAN(values[i])
     row <= TD(cell)
+    row <= TD(BUTTON('>',onclick="change(%s,1)" %i))
     cells.append(cell)
     tb <= row
 t <= tb
