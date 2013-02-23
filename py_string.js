@@ -35,45 +35,53 @@ String.prototype.__contains__ = function(item){
 String.prototype.__eq__ = function(other){return other===this.valueOf()}
 
 String.prototype.__getattr__ = function(attr){
-    obj=this
+    var obj = this
+    return function(){
+        args = [obj]
+        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+        return str.__getattr__(attr).apply(obj,args)
+    }
+}
+
+str.__getattr__ = function(attr){
     switch(attr){
         case 'capitalize':
-            return $string_capitalize(obj)
+            return $string_capitalize
         case 'center': 
-            return $string_center(obj)
+            return $string_center
         case 'count': 
-            return $string_count(obj)
+            return $string_count
         case 'endswith': 
-            return $string_endswith(obj)
+            return $string_endswith
         case 'find': 
-            return $string_find(obj)
+            return $string_find
         case 'index': 
-            return $string_index(obj)
+            return $string_index
         case 'join':
-            return $string_join(obj)
+            return $string_join
         case 'lower':
-            return $string_lower(obj)
+            return $string_lower
         case 'lstrip': 
-            return $string_lstrip(obj)
+            return $string_lstrip
         case 'replace': 
-            return $string_replace(obj)
+            return $string_replace
         case 'rfind': 
-            return $string_rfind(obj)
+            return $string_rfind
         case 'rindex': 
-            return $string_rindex(obj)
+            return $string_rindex
         case 'rstrip': 
-            return $string_rstrip(obj)
+            return $string_rstrip
         case 'split':
         case 'splitfields':
-            return $string_split(obj)
+            return $string_split
         case 'splitlines':
-            return $string_split(obj,'\n')
+            return $string_splitlines
         case 'startswith': 
-            return $string_startswith(obj)
+            return $string_startswith
         case 'strip':
-            return $string_strip(obj)
+            return $string_strip
         case 'upper':
-            return $string_upper(obj)
+            return $string_upper
        default:
             return this[attr]
     }
@@ -267,32 +275,28 @@ function $string_capitalize(obj){
     return obj.charAt(0).toUpperCase()+obj.substr(1).toLowerCase()
 }
 
-function $string_center(obj){
-    return function(width,fillchar){
-        if(fillchar===undefined){fillchar=' '}else{fillchar=fillchar}
-        if(width<=obj.length){return obj}
-        else{
-            var pad = parseInt((width-obj.length)/2)
-            res = ''
-            for(var i=0;i<pad;i++){res+=fillchar}
-            res += obj
-            for(var i=0;i<pad;i++){res+=fillchar}
-            if(res.length<width){res += fillchar}
-            return res
-        }
+function $string_center(obj,width,fillchar){
+    if(fillchar===undefined){fillchar=' '}else{fillchar=fillchar}
+    if(width<=obj.length){return obj}
+    else{
+        var pad = parseInt((width-obj.length)/2)
+        res = ''
+        for(var i=0;i<pad;i++){res+=fillchar}
+        res += obj
+        for(var i=0;i<pad;i++){res+=fillchar}
+        if(res.length<width){res += fillchar}
+        return res
     }
 }
 
-function $string_count(obj){
-    return function(elt){
-        if(!(typeof elt==="string")){throw TypeError(
-            "Can't convert '"+str(elt.__class__)+"' object to str implicitly")}
-        var res = 0
-        for(var i=0;i<obj.length-elt.length+1;i++){
-            if(obj.substr(i,elt.length)===elt){res++}
-        }
-        return res
+function $string_count(obj,elt){
+    if(!(typeof elt==="string")){throw TypeError(
+        "Can't convert '"+str(elt.__class__)+"' object to str implicitly")}
+    var res = 0
+    for(var i=0;i<obj.length-elt.length+1;i++){
+        if(obj.substr(i,elt.length)===elt){res++}
     }
+    return res
 }
 
 function $string_endswith(obj){
@@ -300,21 +304,21 @@ function $string_endswith(obj){
     // return False. suffix can also be a tuple of suffixes to look for. 
     // With optional start, test beginning at that position. With optional 
     // end, stop comparing at that position.
-    return function(){
-        var $ns=$MakeArgs("str.endswith",arguments,['suffix'],
-            {'start':null,'end':null},null,null)
-        var suffixes = $ns['suffix']
-        if(!isinstance(suffixes,tuple)){suffixes=[suffixes]}
-        var start = $ns['start'] || 0
-        var end = $ns['end'] || obj.length-1
-        var s = obj.substr(start,end+1)
-        for(var i=0;i<suffixes.length;i++){
-            suffix = suffixes[i]
-            if(suffix.length<=s.length &&
-                s.substr(s.length-suffix.length)==suffix){return True}
-        }
-        return False
+    var args = []
+    for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+    var $ns=$MakeArgs("str.endswith",args,['suffix'],
+        {'start':null,'end':null},null,null)
+    var suffixes = $ns['suffix']
+    if(!isinstance(suffixes,tuple)){suffixes=[suffixes]}
+    var start = $ns['start'] || 0
+    var end = $ns['end'] || obj.length-1
+    var s = obj.substr(start,end+1)
+    for(var i=0;i<suffixes.length;i++){
+        suffix = suffixes[i]
+        if(suffix.length<=s.length &&
+            s.substr(s.length-suffix.length)==suffix){return True}
     }
+    return False
 }
 
 function $string_find(obj){
@@ -322,68 +326,60 @@ function $string_find(obj){
     // such that sub is contained in the slice s[start:end]. Optional 
     // arguments start and end are interpreted as in slice notation. 
     // Return -1 if sub is not found.
-    return function(){
-        var $ns=$MakeArgs("str.find",arguments,['sub'],
-            {'start':0,'end':obj.length},null,null)
-        var sub = $ns['sub'],start=$ns['start'],end=$ns['end']
-        if(!isinstance(sub,str)){throw TypeError(
-            "Can't convert '"+str(sub.__class__)+"' object to str implicitly")}
-        if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
-            "slice indices must be integers or None or have an __index__ method")}
-        var s = obj.substring(start,end)
-        var escaped = list('*.[]()')
-        var esc_sub = ''
-        for(var i=0;i<sub.length;i++){
-            if(escaped.indexOf(sub.charAt(i))>-1){esc_sub += '\\'}
-            esc_sub += sub.charAt(i)
-        }
-        var res = s.search(esc_sub)
-        if(res==-1){return -1}
-        else{return start+res}
+    var args = []
+    for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+    var $ns=$MakeArgs("str.find",args,['sub'],
+        {'start':0,'end':obj.length},null,null)
+    var sub = $ns['sub'],start=$ns['start'],end=$ns['end']
+    if(!isinstance(sub,str)){throw TypeError(
+        "Can't convert '"+str(sub.__class__)+"' object to str implicitly")}
+    if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
+        "slice indices must be integers or None or have an __index__ method")}
+    var s = obj.substring(start,end)
+    var escaped = list("[.*+?|()$^")
+    var esc_sub = ''
+    for(var i=0;i<sub.length;i++){
+        if(escaped.indexOf(sub.charAt(i))>-1){esc_sub += '\\'}
+        esc_sub += sub.charAt(i)
     }
+    var res = s.search(esc_sub)
+    if(res==-1){return -1}
+    else{return start+res}
 }
 
 function $string_index(obj){
     // Like find(), but raise ValueError when the substring is not found.
-    return function(){
-        var args = []
-        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-        var res = $string_find(obj).apply(obj,args)
-        if(res===-1){throw ValueError("substring not found")}
-        else{return res}
-    }
+    var args = []
+    for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+    var res = $string_find.apply(obj,args)
+    if(res===-1){throw ValueError("substring not found")}
+    else{return res}
 }
 
-function $string_join(obj){
-    return function(iterable){
-        if(!'__item__' in iterable){throw TypeError(
-             "'"+str(iterable.__class__)+"' object is not iterable")}
-        var res = '',count=0
-        for(var i=0;i<iterable.length;i++){
-            var obj2 = iterable.__getitem__(i)
-            if(!isinstance(obj2,str)){throw TypeError(
-                "sequence item "+count+": expected str instance, "+obj2.__class__+"found")}
-            res += obj2+obj
-            count++
-        }
-        if(count==0){return ''}
-        res = res.substr(0,res.length-obj.length)
-        return res
+function $string_join(obj,iterable){
+    if(!'__item__' in iterable){throw TypeError(
+         "'"+str(iterable.__class__)+"' object is not iterable")}
+    var res = '',count=0
+    for(var i=0;i<iterable.length;i++){
+        var obj2 = iterable.__getitem__(i)
+        if(!isinstance(obj2,str)){throw TypeError(
+            "sequence item "+count+": expected str instance, "+obj2.__class__+"found")}
+        res += obj2+obj
+        count++
     }
+    if(count==0){return ''}
+    res = res.substr(0,res.length-obj.length)
+    return res
 }
 
-function $string_lower(obj){
-    return function(){return obj.toLowerCase()}
-}
+function $string_lower(obj){return obj.toLowerCase()}
 
-function $string_lstrip(obj){
-    return function(x){
-        var pattern = null
-        if(x==undefined){pattern="\\s*"}
-        else{pattern = "["+x+"]*"}
-        var sp = new RegExp("^"+pattern)
-        return obj.replace(sp,"")
-    }
+function $string_lstrip(obj,x){
+    var pattern = null
+    if(x==undefined){pattern="\\s*"}
+    else{pattern = "["+x+"]*"}
+    var sp = new RegExp("^"+pattern)
+    return obj.replace(sp,"")
 }
 
 function $re_escape(str)
@@ -396,24 +392,22 @@ function $re_escape(str)
   return str
 }
 
-function $string_replace(obj){
-    return function(old,_new,count){
-        if(count!==undefined){
-            if(!isinstance(count,[int,float])){throw TypeError(
-                "'"+str(count.__class__)+"' object cannot be interpreted as an integer")}
-            var re = new RegExp($re_escape(old),'g')
-            
-            var res = obj.valueOf()
-            while(count>0){
-                if(obj.search(re)==-1){return res}
-                res = res.replace(re,_new)
-                count--
-            }
-            return res
-        }else{
-            var re = new RegExp($re_escape(old),"g")
-            return obj.replace(re,_new)
+function $string_replace(obj,old,_new,count){
+    if(count!==undefined){
+        if(!isinstance(count,[int,float])){throw TypeError(
+            "'"+str(count.__class__)+"' object cannot be interpreted as an integer")}
+        var re = new RegExp($re_escape(old),'g')
+        
+        var res = obj.valueOf()
+        while(count>0){
+            if(obj.search(re)==-1){return res}
+            res = res.replace(re,_new)
+            count--
         }
+        return res
+    }else{
+        var re = new RegExp($re_escape(old),"g")
+        return obj.replace(re,_new)
     }
 }
 
@@ -421,90 +415,87 @@ function $string_rfind(obj){
     // Return the highest index in the string where substring sub is found, 
     // such that sub is contained within s[start:end]. Optional arguments 
     // start and end are interpreted as in slice notation. Return -1 on failure.
-    return function(){
-        var $ns=$MakeArgs("str.find",arguments,['sub'],
-            {'start':0,'end':obj.length},null,null)
-        var sub = $ns['sub'],start=$ns['start'],end=$ns['end']
-        if(!isinstance(sub,str)){throw TypeError(
-            "Can't convert '"+str(sub.__class__)+"' object to str implicitly")}
-        if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
-            "slice indices must be integers or None or have an __index__ method")}
-        var s = obj.substring(start,end)
-        var reversed = ''
-        for(var i=s.length-1;i>=0;i--){reversed += s.charAt(i)}
-        var res = reversed.search(sub)
-        if(res==-1){return -1}
-        else{return start+s.length-1-res}
-    }
+    var args = []
+    for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+    var $ns=$MakeArgs("str.find",args,['sub'],
+        {'start':0,'end':obj.length},null,null)
+    var sub = $ns['sub'],start=$ns['start'],end=$ns['end']
+    if(!isinstance(sub,str)){throw TypeError(
+        "Can't convert '"+str(sub.__class__)+"' object to str implicitly")}
+    if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
+        "slice indices must be integers or None or have an __index__ method")}
+    var s = obj.substring(start,end)
+    var reversed = ''
+    for(var i=s.length-1;i>=0;i--){reversed += s.charAt(i)}
+    var res = reversed.search(sub)
+    if(res==-1){return -1}
+    else{return start+s.length-1-res}
 }
 
 function $string_rindex(obj){
     // Like rfind() but raises ValueError when the substring sub is not found
-    return function(){
-        var args = []
-        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-        var res = $string_rfind(obj).apply(obj,args)
-        if(res==-1){throw ValueError("substring not found")}
-        else{return res}
-    }
+    var args = []
+    for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+    var res = $string_rfind.apply(obj,arguments)
+    if(res==-1){throw ValueError("substring not found")}
+    else{return res}
 }
 
-function $string_rstrip(x){
+function $string_rstrip(obj,x){
     if(x==undefined){pattern="\\s*"}
-    else{pattern = "["+x.value+"]*"}
+    else{pattern = "["+x+"]*"}
     sp = new RegExp(pattern+'$')
-    return str(this.value.replace(sp,""))
+    return str(obj.replace(sp,""))
 }
 
 function $string_split(obj){
-    return function(){
-        var $ns=$MakeArgs("str.split",arguments,[],{},'args','kw')
-        var sep=null,maxsplit=-1
-        if($ns['args'].length>=1){sep=$ns['args'][0]}
-        if($ns['args'].length==2){maxsplit=$ns['args'][1]}
-        if(sep===null){var re=/\s/}
-        else{
-            var escaped = list('*.[]()|$^')
-            var esc_sep = ''
-            for(var i=0;i<sep.length;i++){
-                if(escaped.indexOf(sep.charAt(i))>-1){esc_sep += '\\'}
-                esc_sep += sep.charAt(i)
-            }
-            var re = new RegExp(esc_sep)
+    var args = []
+    for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+    var $ns=$MakeArgs("str.split",args,[],{},'args','kw')
+    var sep=null,maxsplit=-1
+    if($ns['args'].length>=1){sep=$ns['args'][0]}
+    if($ns['args'].length==2){maxsplit=$ns['args'][1]}
+    if(sep===null){var re=/\s/}
+    else{
+        var escaped = list('*.[]()|$^')
+        var esc_sep = ''
+        for(var i=0;i<sep.length;i++){
+            if(escaped.indexOf(sep.charAt(i))>-1){esc_sep += '\\'}
+            esc_sep += sep.charAt(i)
         }
-        return obj.split(re,maxsplit)
+        var re = new RegExp(esc_sep)
     }
+    return obj.split(re,maxsplit)
 }
+
+function $string_splitlines(obj){return $string_split(obj,'\n')}
 
 function $string_startswith(obj){
     // Return True if string starts with the prefix, otherwise return False. 
     // prefix can also be a tuple of prefixes to look for. With optional 
     // start, test string beginning at that position. With optional end, 
     // stop comparing string at that position.
-    return function(){
-        $ns=$MakeArgs("str.startswith",arguments,['prefix'],
-            {'start':null,'end':null},null,null)
-        var prefixes = $ns['prefix']
-        if(!isinstance(prefixes,tuple)){prefixes=[prefixes]}
-        var start = $ns['start'] || 0
-        var end = $ns['end'] || obj.length-1
-        var s = obj.substr(start,end+1)
-        for(var i=0;i<prefixes.length;i++){
-            prefix = prefixes[i]
-            if(prefix.length<=s.length &&
-                s.substr(0,prefix.length)==prefix){return True}
-        }
-        return False
+    var args = []
+    for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+    $ns=$MakeArgs("str.startswith",args,['prefix'],
+        {'start':null,'end':null},null,null)
+    var prefixes = $ns['prefix']
+    if(!isinstance(prefixes,tuple)){prefixes=[prefixes]}
+    var start = $ns['start'] || 0
+    var end = $ns['end'] || obj.length-1
+    var s = obj.substr(start,end+1)
+    for(var i=0;i<prefixes.length;i++){
+        prefix = prefixes[i]
+        if(prefix.length<=s.length &&
+            s.substr(0,prefix.length)==prefix){return True}
     }
+    return False
 }
 
-function $string_strip(obj){
-    return function(x){
-        if(x==undefined){x = "\\s"}
-        pattern = "["+x+"]"
-        sp = new RegExp("^"+pattern+"+|"+pattern+"+$","g")
-        return obj.replace(sp,"")
-    }
+function $string_strip(obj,x){
+    if(x==undefined){x = "\\s"}
+    pattern = "["+x+"]"
+    return $string_rstrip($string_lstrip(obj,x),x)
 }
 
-function $string_upper(obj){return function(){return obj.toUpperCase()}}
+function $string_upper(obj){return obj.toUpperCase()}
