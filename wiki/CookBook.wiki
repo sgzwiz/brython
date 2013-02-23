@@ -12,3 +12,5 @@ AccessElements
 = Ajax =
 
 GetRequest
+
+LoadFile
