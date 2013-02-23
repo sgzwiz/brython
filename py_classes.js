@@ -236,8 +236,11 @@ function $eval(src){
 function exec(src){
     try{eval($py2js(src).to_js())}
     catch(err){
-        if(err.py_error===undefined){throw RuntimeError(err.message)}
-        //else if(document.$stderr){document.$stderr.write(document.$stderr_buff)}
+        if(err.py_error===undefined){err = RuntimeError(err.message)}
+        var err = $last(document.$exc_stack)
+        var trace = err.__name__+': '+err.message+err.info
+        if(document.$stderr){document.$stderr.write(trace)}
+        else{console.log(trace)}
         throw err
     }
 }         
@@ -898,23 +901,26 @@ None = new $NoneClass()
 
 Exception = function (msg){
     var err = Error()
+    err.info = ''
 
     if(document.$debug && msg.split('\n').length==1){
         var module = document.$line_info[1]
         var line_num = document.$line_info[0]
         var lines = document.$py_src[module].split('\n')
-        msg += "\nmodule '"+module+"' line "+line_num
-        msg += '\n'+lines[line_num-1]
+        err.info += "\nmodule '"+module+"' line "+line_num
+        err.info += '\n'+lines[line_num-1]
     }
 
-    err.message = 'Exception: '+msg
+    err.message = msg
 
     err.args = tuple(msg.split('\n')[0])
-    err.__str__ = function(){return this.args[0].__str__()}
+    err.__str__ = function(){return msg}
+    err.toString = err.__str__
     err.__getattr__ = function(attr){return this[attr]}
     err.__name__ = 'Exception'
     err.__class__ = Exception
     err.py_error = true
+    document.$exc_stack.push(err)
     return err
 }
 
