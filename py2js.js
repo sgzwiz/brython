@@ -857,6 +857,7 @@ function $LambdaCtx(context){
     this.toString = function(){return '(lambda) '+this.args_start+' '+this.body_start}
     this.parent = context
     context.tree.push(this)
+    this.tree = []
     this.to_js = function(){
         var ctx_node = this
         while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
@@ -1773,14 +1774,15 @@ function $transition(context,token){
         if(context.args_start===undefined){
             context.args_start = $pos
             return context
-        }else if(token===':'){
+        }else if(token===':' && context.tree.length===0){
             context.body_start = $pos
-            return context
-        }else if(token==='eol'){
-            console.log('end of line')
+            return new $AbstractExprCtx(context,false)
+        }else if(context.tree.length>0){ // returning from expression
             context.body_end = $pos
             return $transition(context.parent,token)
-        }else{return context}
+        }else if(context.tree.length===0){return context}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
+        
 
     }else if(context.type==='list_or_tuple'){ 
 
@@ -2060,7 +2062,6 @@ function $tokenize(src,module){
 
     var lnum = 1
     while(pos<src.length){
-        //document.line_num = pos2line[pos]
         var flag = false
         var car = src.charAt(pos)
         // build tree structure from indentation
@@ -2160,10 +2161,7 @@ function $tokenize(src,module){
                     end++
                 }
             }
-            if(!found){
-                document.line_num = pos2line[pos]
-                $SyntaxError(module,"String end not found",pos)
-            }
+            if(!found){$_SyntaxError(context,"String end not found")}
             continue
         }
         // identifier ?
@@ -2179,8 +2177,7 @@ function $tokenize(src,module){
             } else{
                 if(kwdict.indexOf(name)>-1){
                     if(unsupported.indexOf(name)>-1){
-                        document.line_num = pos2line[pos]
-                        $SyntaxError(module,"Unsupported Python keyword '"+name+"'",pos)                    
+                        $_SyntaxError(context,"Unsupported Python keyword '"+name+"'")                    
                     }
                     $pos = pos-name.length
                     context = $transition(context,name)
