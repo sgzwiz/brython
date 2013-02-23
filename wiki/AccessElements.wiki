@@ -1,0 +1,27 @@
+== Problem ==
+----
+Access elements in the HTML document
+
+
+== Solution ==
+--------------
+{{{
+<html>
+<head>
+<script src="brython.js"></script>
+</head>
+<body>
+
+<div id="zone">this is a DIV element</div>
+
+<script type="text/python">
+elt = doc["zone"]
+elt.text = "new text"
+</script>
+</body>
+</html>
+}}}
+
+An element can be accessed by its attribute `id` with the Python dictionary syntax `doc[elt_id]`
+
+Elements such as DIV have attributes `text` and `html` representing its inner text and inner HTML code. These attributes can be set as shown in the code above to change the element inner text
