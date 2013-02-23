@@ -237,7 +237,6 @@ function exec(src){
     try{eval($py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){err = RuntimeError(err.message)}
-        var err = $last(document.$exc_stack)
         var trace = err.__name__+': '+err.message+err.info
         if(document.$stderr){document.$stderr.write(trace)}
         else{console.log(trace)}

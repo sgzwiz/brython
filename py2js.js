@@ -154,7 +154,7 @@ function $AssertCtx(context){
         not_ctx.tree = this.tree
         node.context = new_ctx
         var new_node = new $Node('expression')
-        new $NodeJSCtx(new_node,'$raise("AssertionError")')
+        new $NodeJSCtx(new_node,'throw AssertionError("")')
         node.add(new_node)
     }
 }
@@ -1041,7 +1041,7 @@ function $RaiseCtx(context){
     this.tree = []
     context.tree.push(this)
     this.to_js = function(){
-        if(this.tree.length===0){return 'throw Exception("")'}
+        if(this.tree.length===0){return '$raise()'}
         var exc = this.tree[0]
         if(exc.type==='id'){return 'throw '+exc.value+'("")'}
         else{return 'throw '+$to_js(this.tree)}
@@ -2312,6 +2312,7 @@ function $tokenize(src,module){
 function brython(debug){
     document.$py_src = {}
     document.$debug = debug
+    document.$exc_stack = []
     var elts = document.getElementsByTagName("script")
     
     for(var $i=0;$i<elts.length;$i++){
