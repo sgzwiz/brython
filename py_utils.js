@@ -94,7 +94,6 @@ function $lambda(args,body){
     var $res = 'res'+Math.random().toString(36).substr(2,8)
     var $py = 'def '+$res+'('+args+'):\n'
     $py += '    return '+body
-    alert($py)
     var $js = $py2js($py).to_js()
     eval($js)
     return eval($res)    

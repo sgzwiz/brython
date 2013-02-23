@@ -1343,7 +1343,7 @@ function $arbo(ctx){
 }
 function $transition(context,token){
     //console.log('arbo '+$arbo(context))
-    console.log('transition '+context+' token '+token)
+    //console.log('transition '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
