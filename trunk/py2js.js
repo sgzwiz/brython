@@ -2041,7 +2041,23 @@ function $tokenize(src,module){
     // from https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Reserved_Words
     var forbidden = ['case','catch','debugger','default','delete',
         'do','function','instanceof','new','switch','this','throw',
-        'typeof','var','void','with','enum','export','extends','super']
+        'typeof','var','void','with','enum','export','extends','super',
+        'Anchor','Area','arguments','Array','assign','blur','Boolean','Button',
+        'callee','caller','captureEvents','Checkbox','clearInterval','clearTimeout',
+        'close','closed','constructor','Date','defaultStatus','document','Document',
+        'Element','escape','FileUpload','find','focus','Form','Frame','Frames','Function',
+        'getClass','Hidden','history','History','home','Image','Infinity','InnerHeight',
+        'InnerWidth','isFinite','isNan','java','JavaArray','JavaClass','JavaObject',
+        'JavaPackage','length','Link','location','Location','locationbar','Math','menubar',
+        'MimeType','moveBy','moveTo','name','NaN','navigate','navigator','Navigator','netscape',
+        'Number','Object','onBlur','onError','onFocus','onLoad','onUnload','open','opener',
+        'Option','outerHeight','OuterWidth','Packages','pageXoffset','pageYoffset',
+        'parent','parseFloat','parseInt','Password','personalbar','Plugin','prototype',
+        'Radio','ref','RegExp','releaseEvents','Reset','resizeBy','resizeTo','routeEvent',
+        'scroll','scrollbars','scrollBy','scrollTo','Select','self','setInterval','setTimeout',
+        'status','statusbar','stop','String','Submit','sun','taint','Text','Textarea','toolbar',
+        'top','toString','unescape','untaint','unwatch','valueOf','watch','window','Window'
+        ]
 
     var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
@@ -2295,7 +2311,7 @@ function $tokenize(src,module){
         if(car=='\\' && src.charAt(pos+1)=='\n'){
             lnum++;pos+=2;continue
         }
-        if(car!=' '&&car!=='\t'){$SyntaxError(module,'unknown token ['+car+']',pos)}
+        if(car!=' '&&car!=='\t'){$pos=pos;$_SyntaxError(context,'unknown token ['+car+']')}
         pos += 1
     }
 
