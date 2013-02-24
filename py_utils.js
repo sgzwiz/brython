@@ -138,23 +138,11 @@ function $bind(func, thisValue) {
 }
 
 // exceptions
-function $raise(name,msg) {
-    // raises exception with specified name and message
-    if(msg===undefined){msg=''}
-    if(document.$debug && msg.split('\n').length==1){
-        var module = document.$line_info[1]
-        var line_num = document.$line_info[0]
-        var lines = document.$py_src[module].split('\n')
-        msg += "\nmodule '"+module+"' line "+line_num
-        msg += '\n'+lines[line_num-1]
-    }
-    err = new Error()
-    err.name = name
-    err.message = msg
-    err.py_error = true
-    document.$exc_info = [name,msg,line_num-1,lines[line_num-1]]
-    document.$stderr_buff = err.name+': '+err.message+'\n'
-    if(name!=='ExecutionError'){throw err}
+function $raise(){
+    // used for "raise" without specifying an exception
+    // if there is an exception in the stack, use it, else throw a simple Exception
+    if(document.$exc_stack.length>0){throw $last(document.$exc_stack)}
+    else{throw Error('Exception')}
 }
 
 function $src_error(name,module,msg,pos) {
@@ -169,14 +157,16 @@ function $src_error(name,module,msg,pos) {
     }
     var line_num = pos2line[pos]
     var lines = src.split('\n')
-    msg = msg+"\nmodule '"+module+"' line "+line_num
-    msg += '\n'+lines[line_num-1]+'\n'
+    info = "\nmodule '"+module+"' line "+line_num
+    info += '\n'+lines[line_num-1]+'\n'
     var lpos = pos-line_pos[line_num]
-    for(var i=0;i<lpos-1;i++){msg+=' '}
-    msg += '^'
+    for(var i=0;i<lpos;i++){info+=' '}
+    info += '^'
     err = new Error()
     err.name = name
+    err.__name__ = name
     err.message = msg
+    err.info = info
     err.py_error = true
     if(document.$stderr!==null){document.$stderr_buff = err.message}
     throw err
