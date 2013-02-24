@@ -1,0 +1,33 @@
+<html>
+<head>
+<meta charset="iso-8859-1">
+<title>Brython</title>
+<link rel="stylesheet" href="../doc_brython.css">
+</head>
+<body>
+<a name="test"><h3>Test et débogage</h3>
+
+
+<h3>Test interactif</h3>
+
+Le site Brython, ou son miroir disponible en téléchargement, comporte une console dans laquelle vous pouvez tester du code Python
+<p>A noter que l'espace de noms n'est pas mis à jour quand on clique sur le bouton "run", pour le réinitialiser il faut recharger la page
+<p>Pour le développement et le test de Brython, un certain nombre de scripts de tests sont regroupés dans le répertoire <code>tests</code> ; on peut y accéder en cliquant sur le lien "Pages de test" depuis la console, puis cliquer sur les boutons correspondant aux différents tests et les exécuter
+
+<h3>Débogage des scripts</h3>
+
+Quel que soit le niveau de débogage, les erreurs de syntaxe sont signalées dans la console du navigateur (ou à l'endroit défini par <code>sys.stderr</code>)
+<p>Par exemple, le code
+<blockquote><pre>x = $a
+</pre></blockquote>
+<p>génère le message
+<blockquote><pre>SyntaxError: unknown token [$]
+module '__main__' line 1
+x = $a
+    ^
+</pre></blockquote>
+
+<p>En mettant le niveau de débogage à 1 dans l'appel de la fonction <code>brython(<i>debug_mode</i>)</code>, les exceptions levées à l'exécution et non interceptées par un <code>except</code> produisent également un message d'erreur, aussi proche que possible de celui généré par Python
+
+</body>
+</html>
