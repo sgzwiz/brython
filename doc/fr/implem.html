@@ -110,7 +110,7 @@ y =$temp[1]
 }
 window.foo=foo 
 </td>
-<td>Pour être cohérent avec la gestion de l'espace de noms Python, la variable <tt>x</tt> est locale, déclarée par le mot-clé <em>var</em><p>La dernière ligne ajoute le nom de la fonction dans l'espace de noms du navigateur ; elle n'est présente que si la fonction au niveau du module, pas à l'intérieur d'une autre fonction</td></tr>
+<td>Pour être cohérent avec la gestion de l'espace de noms Python, la variable <tt>x</tt> est locale, déclarée par le mot-clé <em>var</em><p>La dernière ligne ajoute le nom de la fonction dans l'espace de noms du navigateur ; elle n'est présente que si la fonction est au niveau du module, pas à l'intérieur d'une autre fonction ou d'une classe</td></tr>
 
 <tr>
 <td><pre>def foo():
@@ -144,7 +144,7 @@ window.foo=foo
 </pre></td>
 <td><pre>foo(x,$Kw("y",1))
 </td>
-<td>les arguments passés sous forme de mots-clés sont convertis en objets créés par la fonction <em>$Kw</em>
+<td>les arguments passés sous forme de mots-clés sont convertis en objets créés par la fonction <tt>$Kw()</tt>
 </tr>
 
 <tr>
@@ -152,23 +152,25 @@ window.foo=foo
 try:
     x[2]='a'
 except TypeError:
-    log('erreur')
+    print('erreur')
 except:
-    log('autre erreur')
+    print('autre erreur')
 </pre></td>
-<td><pre>x ='brython' 
+<td><pre>
+x='brython'
 try{
     x.__setitem__(Number(2),'a')
 }
 catch($err0){
-    if(false){void(0)} 
-    else if($err0.name=="TypeError"){
-        log('erreur')
+    if(false){void(0)}
+    else if(["TypeError"].indexOf($err0.__name__)>-1){
+        $print('erreur')
     }
     else{
-        log('autre erreur')
+        $print('autre erreur')
     }
 }
+
 </pre>
 </td>
 <td>les lignes
@@ -181,6 +183,8 @@ sont ajoutées avant toutes les clauses <code>except</code>, qui sont traduites e
 </table>
 
 <p>
+
+<h3>Traduction de quelques fonctions Javascript courantes</h3>
 <table border=1>
 <tr>
 <th>Javascript</th>

@@ -6,12 +6,65 @@
 </head>
 <body>
 <a name="modele"><h3>Compilation et exécution</h3>
-</ol>
+
+
+<h4>Vue d'ensemble</h4>
+<table border=1 cellpadding =5>
+<tr><td>Etape</td><td>réalisée par</td></tr>
+<tr>
+    <td>Lecture du code source Python</td>
+    <td>fonction <code>brython(<i>debug_mode</i>)</code> dans <b>py2js.js</b>
+        <p>Si le code est dans un fichier externe, il est récupéré par un appel Ajax
+        <p>Cette fonction crée les variables d'environnement (attributs de <i>document</i>)) suivantes :
+        <ul>
+         <li><code>document.$py_src</code> : objet indexé par les noms de module, contenant le code source du module
+         <li><code>document.$debug</code> : le niveau de débogage
+         <li><code>document.$exc_stack</code> : une liste avec les erreurs générées en cours d'analyse ou d'exécution
+        </ul>
+        
+    </td>
+
+</tr>
+
+<tr>
+    
+    <td>création de l'arbre représentant le code Javascript</td>
+    <td>fonction <code>$py2js(<i>source,module</i>)</code> dans <b>py2js.js</b>
+        <p>Cette fonction appelle :
+        <ul>
+         <li><code>$tokenize(<i>source</i>)</code> : analyse syntaxique des jetons dans le code source Python et contruction d'un arbre ;
+             renvoie la racine de l'arbre
+         <li><code>transform(<i>root</i>)</code> : transforme l'arbre pour préparer la conversion en Javascript (cf ci-dessous)
+         <li><code>$add_line_num()</code> pour ajouter les numéros de ligne si le mode de débogage est supérieur à 0
+        </ul>
+        <p>La fonction <code>$py2js</code> renvoie la racine de l'arbre
+    </td>
+</tr>
+
+<tr>
+    
+    <td>génération du code Javascript</td>
+    <td>méthode <code>to_js()</code> de l'arbre renvoyé par <code>$py2js</code>
+        <p>Cette fonction appelle la méthode de même nom sur tous les éléments de syntaxe rencontrés dans l'arbre. Elle renvoie la chaine de caractères contenant le code Javascript. Si le mode de débogage vaut 2, cette chaine est affichée dans la console du navigateur
+    </td>
+</tr>
+
+<tr>
+    
+    <td>exécution du code Javascript</td>
+    <td>évaluation par la fonction <code>eval()</code>
+    
+    </td>
+</tr>
+
+</table>
+
+<p>
+<h4>Fichiers utilisés</h4>
+
 Le fichier <b>brython.js</b> est généré par compilation de plusieurs scripts :
 <ul>
-<li><b>py_tokenizer.js</b> : découpe le code source Python en jetons (tokens) : identifiants, littéraux, opérateurs, délimiteurs, etc
-<li><b>py2js.js</b> : opère la conversion entre les jetons et le code Javascript
-<li><b>py_tokens.js</b> : classes pour manipuler les jetons
+<li><b>py2js.js</b> : opère la conversion entre le code Python et le code Javascript
 <li><b>py_utils.js</b> : fonctions utilitaires (conversion de types entre Javascript et Python)
 <li><b>py_string.js</b> : implémentation de la classe str de Python à partir de l'objet Javascript String
 <li><b>py_list.js</b> : implémentation de la classe list de Python à partir de l'objet Javascript Array
@@ -23,27 +76,33 @@ Le fichier <b>brython.js</b> est généré par compilation de plusieurs scripts :
 <li><b>py_svg.py</b> : support de SVG (dessin vectoriel)
 </ul>
 
-La traduction et l'exécution d'un script Brython passent par les phases suivantes :
+
+<p>
+<h4>Compléments sur la traduction et l'exécution</h4>
+
+La traduction et l'exécution d'un script Brython par <b>py2js.js</b> passent par les phases suivantes :
 <ol>
-<li>découpage du code source en jetons (tokens)
-<p>Fonction réalisée par le script <tt>py_tokenizer.js</tt>. Les jetons générés sont des listes Javascript à 3 éléments [<em>type,valeur,position</em>]. <em>position</em> est le rang du premier caractère du jeton dans le code source Python. Leus deux autres éléments peuvent prendre les valeurs suivantes :
+<li>analyse syntaxique et construction d'un arbre
+<p>Cette étape repose sur un automate dont l'état évolue en fonction des jetons rencontrés dans le code source
+<p>Le code Python est découpé en jetons qui peuvent avoir les types suivants : 
 <ul>
-<li><tt>["indent",<em>indentation</em>]</tt> : toujours présent au début de chaque ligne. <em>indentation</em> est un nombre
-<li><tt>["newline","\n"]</tt> : saut de ligne
-<li><tt>["str",<em>string</em>]</tt> : littéral de type chaine de caractères
-<li><tt>["int",<em>number</em>]</tt> : littéral de type entier
-<li><tt>["float",<em>number</em>]</tt> : littéral de type réel
-<li><tt>["id",<em>string</em>]</tt> : identifiant de variable (chaine de caractères)
-<li><tt>["qualifier",<em>string</em>]</tt> : nom suivant un point, comme <tt>bar</tt> dans <tt>foo.bar</tt>
-<li><tt>["keyword",<em>string</em>]</tt> : mot-clé Python (chaine de caractères)
-<li><tt>["bracket",<em>string</em>]</tt> : parenthèse, crochet ou accolade ouvrante ou fermante. La valeur peut être <em>()[]{}</em>
-<li><tt>["point","."]</tt> : le point
-<li><tt>["delimiter",<em>string</em>]</tt> : un délimiteur, valeur <em>:</em>, <em>,</em> ou <em>=</em> à l'intérieur d'une parenthèse (syntaxe <tt>foo(x=0)</tt>
-<li><tt>["assign",<em>string</em>]</tt> : le signe = quand il n'est pas à l'intérieur d'une parenthèse, et les opérateurs d'assignation augmentée : +=, *= etc.
-<li><tt>["operator",<em>string</em>]</tt> : un opérateur
+<li>mot-clé
+<li>identifiant
+<li>littéral (chaine de caractères, entier, réel)
+<li>opérateur
+<li>point
+<li>deux points (:)
+<li>parenthèse / crochet / accolade ouvrant ou fermant
+<li>affectation (signe =)
+<li>fin de ligne
 </ul>
+
+<p>Pour chaque jeton, un appel est réalisé à la fonction <tt>$transition()</tt> qui renvoie un nouvel état en fonction de l'état courant et du jeton
+<p>A chaque ligne de code source correspond un noeud dans l'arbre (instance de la classe <tt>$Node</tt>)
+<p>A chaque élément de syntaxe (identifiant, appel de fonction, expression, opérateur...) correspond une classe décrivant le contexte de cet élément. Les classes sont définies à partir de <code>function $AbstractExprCtx</code> jusqu'à <code>$UnaryCtx</code>
 <p>Dans cette étape, des erreurs peuvent être signalées : 
 <ul>
+<li>erreur de syntaxe
 <li>erreur d'indentation
 <li>chaine de caractères non terminée
 <li>parenthèses non équilibrées
@@ -51,34 +110,11 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 <li>mot clé Python non géré par Brython
 </ul>
 <p>
-<li>Traduction des jetons en code Javascript
-<p>Elle est réalisée par les scripts <tt>py2js.js, py_tokens.js</tt> et <tt>py_utils.js</tt>, dans l'ordre suivant :
-<ol>
-<li>si le niveau de débogage est supérieur à 0, on ajoute avant chaque ligne du code source Python une ligne de la forme
-<p><tt>document.$line_info = [ <i>nom_module, numero_ligne</i> ]</tt>
-<p>où <i>nom_module</i> vaut __main__ pour le script principal et le nom du module s'il est importé
-<p>Cette ligne sert à identifier l'origine des exceptions levées pendant l'exécution. Elle n'est pas ajoutée si l'insertion provoque une erreur de syntaxe, par exemple juste avant un <tt>except</tt> ou un <tt>else</tt>)
-<p>
-<li>remplacement de la séquence <tt>not in</tt> par l'opérateur <tt>__not_in__</tt>
-<li>conversion des listes en extansion (list comprehensions)
-<li>transformation des parenthèses, crochets et accolades en tuples, listes et dictionnaires
-<li>marquage différent des fonctions et des méthodes de classes pour traitement ultérieur
-<li>conversion des arguments dans la définition des fonctions (<tt>def foo(x,y=1,*args,**kw)</tt>)
-<li>conversion des arguments sous forme de mots-clés dans les appels de fonctions (<tt>foo(b=1)</tt>)
-<li>résolution des suites de + et de - (++ devient +, -+- devient -, etc.) et des opérateurs unaires - et +
-<li>remplacement de <tt>import foo</tt> par <tt>$import(foo)</tt>
-<li>traduction des suites <tt>try / except / finally / else</tt>
-<li>traduction de <tt>assert</tt>
-<li>conversion de l'opérateur ternaire
-<li>traduction de l'indentation en accolades pour les blocs commençant par <tt>if, else, elif, class, def, for, try, finally</tt>. Dans cette phase, des transformations spécifiques à chaque type de bloc sont réalisées (génération du code pour la définition des classes par exemple)
-<li>remplacement de <tt>not x</tt> par <tt>$not(x)</tt>
-<li>remplacement des assignations augmentées (<tt>x += 1</tt>) par des assignations et opérations simples (<tt>x = x+1</tt>)
-<li>remplacement des opérateurs par les fonctions équivalentes : <tt>x+y</tt> devient <tt>x.__add__(y)</tt>
-<li>traitement des conditions combinées par <tt>and</tt> et <tt>or</tt>
-<li>affectations en chaine (<tt>x=y=0</tt>), simples (<tt>x=y</tt>) et multiples (<tt>x,y=a,b</tt>)
-<li>accès (<tt>a=foo[x]</tt>) ou affectation (<tt>foo[x] = 0</tt>) aux clés ou aux tranches (slices)
-<li>accès (<tt>a=foo.x</tt>) et affectation (<tt>foo.x = 0</tt>) aux attributs
-</ol>
+<li>Transformation de l'arbre
+<p>Pour certains éléments de la syntaxe Python, il est nécessaire de modifier l'arbre représentant le code source (ajouter des branches) avant de passer à la traduction en Javascript. Ceci est réalisé en appelant récursivement la méthode <code>transform</code> depuis le sommet de l'arbre, et en appliquant la méthode de même nom sur les contextes de chaque noeud
+<p>Par exemple, pour le code Python <code>assert <i>condition</i></code> qui produit une branche de l'arbre, cette étape la transforme en une branche <code>if not <i>condition</i></code> et une branche "fille" de celle-ci correspondant à <code>raise AssertionError</code>
+<p>Les éléments concernés sont : <code>assert</code>, l'assignation en chaine (<code>x=y=0</code>) et multiple (<code>x,y=1,2</code>), <code>class, def, except, for, try</code>. Cette étape sert aussi à mémoriser les variables déclarées par <code>global</code>
+
 <p>
 <li>Exécution du code Javascript généré
 <p>Le script généré peut faire appel en cours d'exécution :
@@ -94,10 +130,10 @@ La traduction et l'exécution d'un script Brython passent par les phases suivante
 </ul>
 <li><tt>$MakeArgs</tt> appelée au début de l'exécution de chaque fonction dont la signature comporte au moins un argument. Elle construit un espace de noms à partir des arguments passés à la fonction, en appelant notamment la fonction $JS2py sur tous les arguments
 <li><tt>$list_comp</tt> est appelée pour chaque liste en extansion
-<li><tt>$raise</tt> est appelée pour lever des exceptions
+<li><tt>$lambda</tt> est appelée pour les fonctions anonymes définies par <code>lambda</code>
 <li><tt>$test_expr</tt> et <tt>$test_item</tt> sont utilisés dans l'évaluation de conditions combinées par <code>and</code> ou <code>or</code>
 </ul>
-<li>au fonctions définies dans le script <tt>py_import.js</tt> pour la gestion des imports
+<li>aux fonctions définies dans le script <tt>py_import.js</tt> pour la gestion des imports
 </ul>
 
 <p>En cas d'erreur d'exécution, une trace aussi proche que possible de celle générée par Python est imprimée dans la console du navigateur, ou vers un autre élément défini par <code>sys.stderr</code>

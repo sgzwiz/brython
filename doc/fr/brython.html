@@ -11,7 +11,7 @@
 Brython est conforme à la syntaxe de Python 3
 <ul>
 <li>blocs délimités par l'indentation
-<li>définition de listes par <code>[]</code> ou <code>list()</code>, de tuples par <code>()</code> ou <code>tuple()</code>, de dictionnaires par <code>{}</code> ou <code>dict()</code>, d'ensembles par <code>set()</code>
+<li>définition de listes par <code>[]</code> ou <code>list()</code>, de tuples par <code>()</code> ou <code>tuple()</code>, de dictionnaires par <code>{}</code> ou <code>dict()</code>, d'ensembles par <code>{}</code> ou <code>set()</code> 
 <li>listes en extansion : <code>[ expr for item in iterable if condition ]</code>
 <li>opérateur ternaire : <code>x = r1 if condition else r2</code>
 <li>la définition des fonctions peut comporter des valeurs par défaut et des arguments et mot-clés optionnels : <br><code>def foo(x,y=0,*args,**kw):</code>
@@ -53,6 +53,7 @@ Enfin, certains mots clés et fonctions intégrées adaptés au fonctionnement dans 
 <li>le mot clé <code>local_storage</code> représente le stockage local spécifié dans HTML5
 <li>le mot clé <code>win</code> représente la fenêtre (objet <em>window</em> en JS) et <code>doc</code> représente le document HTML (<em>document</em> en JS)
 <li>les fonctions intégrées <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : chacune correspond à la balise HTML de même nom
+<li><code>SVG</code> pour les graphiques SVG : ce mot intégré a pour attributs les balises utilisables dans un graphique (<code>SVG.line, SVG.text</code>, etc.)
 </ul>
 <hr>
 <a name="htmldocs"><h3>Manipulation de documents HTML</h3>
