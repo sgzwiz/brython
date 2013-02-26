@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130222-225049
+// version 1.1.20130226-143446
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -199,7 +199,10 @@ else{throw(err)}
 function exec(src){
 try{eval($py2js(src).to_js())}
 catch(err){
-if(err.py_error===undefined){throw RuntimeError(err.message)}
+if(err.py_error===undefined){err=RuntimeError(err.message)}
+var trace=err.__name__+': '+err.message+err.info
+if(document.$stderr){document.$stderr.write(trace)}
+else{console.log(trace)}
 throw err
 }
 }
@@ -768,20 +771,23 @@ this.__str__=function(){return 'None'}
 None=new $NoneClass()
 Exception=function(msg){
 var err=Error()
+err.info=''
 if(document.$debug && msg.split('\n').length==1){
 var module=document.$line_info[1]
 var line_num=document.$line_info[0]
 var lines=document.$py_src[module].split('\n')
-msg +="\nmodule '"+module+"' line "+line_num
-msg +='\n'+lines[line_num-1]
+err.info +="\nmodule '"+module+"' line "+line_num
+err.info +='\n'+lines[line_num-1]
 }
 err.message=msg
 err.args=tuple(msg.split('\n')[0])
-err.__str__=function(){return this.args[0].__str__()}
+err.__str__=function(){return msg}
+err.toString=err.__str__
 err.__getattr__=function(attr){return this[attr]}
 err.__name__='Exception'
 err.__class__=Exception
 err.py_error=true
+document.$exc_stack.push(err)
 return err
 }
 Exception.__str__=function(){return "<class 'Exception'>"}
@@ -815,6 +821,29 @@ return res
 }
 list.__class__=$type
 list.__name__='list'
+list.__getattr__=function(attr){
+var obj=this
+switch(attr){
+case 'append':
+return $list_append
+case 'count':
+return $list_count
+case 'extend':
+return $list_extend
+case 'index':
+return $list_index
+case 'pop':
+return $list_pop
+case 'remove':
+return $list_remove
+case 'reverse':
+return $list_reverse
+case 'sort':
+return $list_sort
+default:
+return this[attr]
+}
+}
 list.__str__=function(){return "<class 'list'>"}
 list.toString=list.__str__
 function $ListClass(items){
@@ -885,28 +914,10 @@ return False
 }
 Array.prototype.__getattr__=function(attr){
 var obj=this
-switch(attr){
-case 'append':
-return function(other){
-if(isinstance(other,list)){obj.push(list(other))}
-else{obj.push(other)}
-}
-case 'count':
-return $list_count(obj)
-case 'extend':
-return $list_extend(obj)
-case 'index':
-return $list_index(obj)
-case 'pop':
-return $list_pop(obj)
-case 'remove':
-return $list_remove(obj)
-case 'reverse':
-return function(){$list_reverse(obj)}
-case 'sort':
-return function(arg){$list_sort(obj,arg)}
-default:
-return this[attr]
+return function(){
+args=[obj]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return list.__getattr__(attr).apply(obj,args)
 }
 }
 Array.prototype.__getitem__=function(arg){
@@ -1011,18 +1022,16 @@ if(i<items.length-1){res +=','}
 }
 return res+']'
 }
-function $list_count(obj){
-return function(elt){
+function $list_append(obj,other){obj.push(other)}
+function $list_count(obj,elt){
 var res=0
 for(var i=0;i<obj.length;i++){
 if(obj[i].__eq__(elt)){res++}
 }
 return res
 }
-}
-function $list_extend(obj){
-return function(other){
-if(arguments.length!=1){throw TypeError(
+function $list_extend(obj,other){
+if(arguments.length!=2){throw TypeError(
 "extend() takes exactly one argument ("+arguments.length+" given)")}
 try{
 for(var i=0;i<other.__len__();i++){
@@ -1032,17 +1041,13 @@ obj.push(other.__item__(i))
 throw TypeError("object is not iterable")
 }
 }
-}
-function $list_index(obj){
-return function(elt){
+function $list_index(obj,elt){
 for(var i=0;i<obj.length;i++){
 if(obj[i].__eq__(elt)){return i}
 }
 throw ValueError(str(elt)+" is not in list")
 }
-}
-function $list_remove(obj){
-return function(elt){
+function $list_remove(obj,elt){
 for(var i=0;i<obj.length;i++){
 if(obj[i].__eq__(elt)){
 obj.splice(i,1)
@@ -1051,12 +1056,10 @@ return
 }
 throw ValueError(str(elt)+" is not in list")
 }
-}
-function $list_pop(obj){
-return function(elt){
-if(arguments.length==0){return obj.pop()}
-else if(arguments.length==1){
-var pos=arguments[0]
+function $list_pop(obj,elt){
+if(arguments.length===1){return obj.pop()}
+else if(arguments.length==2){
+var pos=arguments[1]
 if(isinstance(pos,int)){
 var res=obj[pos]
 obj.splice(pos,1)
@@ -1066,7 +1069,6 @@ throw TypeError(pos.__class__+" object cannot be interpreted as an integer")
 }
 }else{
 throw TypeError("pop() takes at most 1 argument ("+arguments.length+' given)')
-}
 }
 }
 function $list_reverse(obj){
@@ -1105,11 +1107,19 @@ $qsort(arg,array, begin, pivot)
 $qsort(arg,array, pivot+1, end)
 }
 }
-function $list_sort(obj,arg){
-if(!arg){arg=function(x){return x}}
-else if(typeof arg==="string"){arg=function(x){return x.__getitem__(arg)}}
+function $list_sort(obj){
+var func=function(x){return x}
+var reverse=false
+for(var i=1;i<arguments.length;i++){
+var arg=arguments[i]
+if(isinstance(arg,$Kw)){
+if(arg.name==='key'){func=arg.value}
+else if(arg.name==='reverse'){reverse=arg.value}
+}
+}
 if(obj.length==0){return}
-$qsort(arg,obj,0,obj.length)
+$qsort(func,obj,0,obj.length)
+if(reverse){$list_reverse(obj)}
 }
 function str(arg){
 if(arg===undefined){return '<undefined>'}
@@ -1141,45 +1151,52 @@ return False
 }
 String.prototype.__eq__=function(other){return other===this.valueOf()}
 String.prototype.__getattr__=function(attr){
-obj=this
+var obj=this
+return function(){
+args=[obj]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return str.__getattr__(attr).apply(obj,args)
+}
+}
+str.__getattr__=function(attr){
 switch(attr){
 case 'capitalize':
-return $string_capitalize(obj)
+return $string_capitalize
 case 'center': 
-return $string_center(obj)
+return $string_center
 case 'count': 
-return $string_count(obj)
+return $string_count
 case 'endswith': 
-return $string_endswith(obj)
+return $string_endswith
 case 'find': 
-return $string_find(obj)
+return $string_find
 case 'index': 
-return $string_index(obj)
+return $string_index
 case 'join':
-return $string_join(obj)
+return $string_join
 case 'lower':
-return $string_lower(obj)
+return $string_lower
 case 'lstrip': 
-return $string_lstrip(obj)
+return $string_lstrip
 case 'replace': 
-return $string_replace(obj)
+return $string_replace
 case 'rfind': 
-return $string_rfind(obj)
+return $string_rfind
 case 'rindex': 
-return $string_rindex(obj)
+return $string_rindex
 case 'rstrip': 
-return $string_rstrip(obj)
+return $string_rstrip
 case 'split':
 case 'splitfields':
-return $string_split(obj)
+return $string_split
 case 'splitlines':
-return $string_split(obj,'\n')
+return $string_splitlines
 case 'startswith': 
-return $string_startswith(obj)
+return $string_startswith
 case 'strip':
-return $string_strip(obj)
+return $string_strip
 case 'upper':
-return $string_upper(obj)
+return $string_upper
 default:
 return this[attr]
 }
@@ -1350,8 +1367,7 @@ function $string_capitalize(obj){
 if(obj.length==0){return ''}
 return obj.charAt(0).toUpperCase()+obj.substr(1).toLowerCase()
 }
-function $string_center(obj){
-return function(width,fillchar){
+function $string_center(obj,width,fillchar){
 if(fillchar===undefined){fillchar=' '}else{fillchar=fillchar}
 if(width<=obj.length){return obj}
 else{
@@ -1364,9 +1380,7 @@ if(res.length<width){res +=fillchar}
 return res
 }
 }
-}
-function $string_count(obj){
-return function(elt){
+function $string_count(obj,elt){
 if(!(typeof elt==="string")){throw TypeError(
 "Can't convert '"+str(elt.__class__)+"' object to str implicitly")}
 var res=0
@@ -1375,10 +1389,10 @@ if(obj.substr(i,elt.length)===elt){res++}
 }
 return res
 }
-}
 function $string_endswith(obj){
-return function(){
-var $ns=$MakeArgs("str.endswith",arguments,['suffix'],
+var args=[]
+for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+var $ns=$MakeArgs("str.endswith",args,['suffix'],
 {'start':null,'end':null},null,null)
 var suffixes=$ns['suffix']
 if(!isinstance(suffixes,tuple)){suffixes=[suffixes]}
@@ -1392,10 +1406,10 @@ s.substr(s.length-suffix.length)==suffix){return True}
 }
 return False
 }
-}
 function $string_find(obj){
-return function(){
-var $ns=$MakeArgs("str.find",arguments,['sub'],
+var args=[]
+for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+var $ns=$MakeArgs("str.find",args,['sub'],
 {'start':0,'end':obj.length},null,null)
 var sub=$ns['sub'],start=$ns['start'],end=$ns['end']
 if(!isinstance(sub,str)){throw TypeError(
@@ -1403,7 +1417,7 @@ if(!isinstance(sub,str)){throw TypeError(
 if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
 "slice indices must be integers or None or have an __index__ method")}
 var s=obj.substring(start,end)
-var escaped=list('*.[]()')
+var escaped=list("[.*+?|()$^")
 var esc_sub=''
 for(var i=0;i<sub.length;i++){
 if(escaped.indexOf(sub.charAt(i))>-1){esc_sub +='\\'}
@@ -1413,18 +1427,14 @@ var res=s.search(esc_sub)
 if(res==-1){return -1}
 else{return start+res}
 }
-}
 function $string_index(obj){
-return function(){
 var args=[]
 for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-var res=$string_find(obj).apply(obj,args)
+var res=$string_find.apply(obj,args)
 if(res===-1){throw ValueError("substring not found")}
 else{return res}
 }
-}
-function $string_join(obj){
-return function(iterable){
+function $string_join(obj,iterable){
 if(!'__item__' in iterable){throw TypeError(
 "'"+str(iterable.__class__)+"' object is not iterable")}
 var res='',count=0
@@ -1439,18 +1449,13 @@ if(count==0){return ''}
 res=res.substr(0,res.length-obj.length)
 return res
 }
-}
-function $string_lower(obj){
-return function(){return obj.toLowerCase()}
-}
-function $string_lstrip(obj){
-return function(x){
+function $string_lower(obj){return obj.toLowerCase()}
+function $string_lstrip(obj,x){
 var pattern=null
 if(x==undefined){pattern="\\s*"}
 else{pattern="["+x+"]*"}
 var sp=new RegExp("^"+pattern)
 return obj.replace(sp,"")
-}
 }
 function $re_escape(str)
 {
@@ -1461,8 +1466,7 @@ str=str.replace(re, "\\"+specials.charAt(i))
 }
 return str
 }
-function $string_replace(obj){
-return function(old,_new,count){
+function $string_replace(obj,old,_new,count){
 if(count!==undefined){
 if(!isinstance(count,[int,float])){throw TypeError(
 "'"+str(count.__class__)+"' object cannot be interpreted as an integer")}
@@ -1479,10 +1483,10 @@ var re=new RegExp($re_escape(old),"g")
 return obj.replace(re,_new)
 }
 }
-}
 function $string_rfind(obj){
-return function(){
-var $ns=$MakeArgs("str.find",arguments,['sub'],
+var args=[]
+for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+var $ns=$MakeArgs("str.find",args,['sub'],
 {'start':0,'end':obj.length},null,null)
 var sub=$ns['sub'],start=$ns['start'],end=$ns['end']
 if(!isinstance(sub,str)){throw TypeError(
@@ -1496,25 +1500,23 @@ var res=reversed.search(sub)
 if(res==-1){return -1}
 else{return start+s.length-1-res}
 }
-}
 function $string_rindex(obj){
-return function(){
 var args=[]
 for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-var res=$string_rfind(obj).apply(obj,args)
+var res=$string_rfind.apply(obj,arguments)
 if(res==-1){throw ValueError("substring not found")}
 else{return res}
 }
-}
-function $string_rstrip(x){
+function $string_rstrip(obj,x){
 if(x==undefined){pattern="\\s*"}
-else{pattern="["+x.value+"]*"}
+else{pattern="["+x+"]*"}
 sp=new RegExp(pattern+'$')
-return str(this.value.replace(sp,""))
+return str(obj.replace(sp,""))
 }
 function $string_split(obj){
-return function(){
-var $ns=$MakeArgs("str.split",arguments,[],{},'args','kw')
+var args=[]
+for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+var $ns=$MakeArgs("str.split",args,[],{},'args','kw')
 var sep=null,maxsplit=-1
 if($ns['args'].length>=1){sep=$ns['args'][0]}
 if($ns['args'].length==2){maxsplit=$ns['args'][1]}
@@ -1530,10 +1532,11 @@ var re=new RegExp(esc_sep)
 }
 return obj.split(re,maxsplit)
 }
-}
+function $string_splitlines(obj){return $string_split(obj,'\n')}
 function $string_startswith(obj){
-return function(){
-$ns=$MakeArgs("str.startswith",arguments,['prefix'],
+var args=[]
+for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
+$ns=$MakeArgs("str.startswith",args,['prefix'],
 {'start':null,'end':null},null,null)
 var prefixes=$ns['prefix']
 if(!isinstance(prefixes,tuple)){prefixes=[prefixes]}
@@ -1547,16 +1550,12 @@ s.substr(0,prefix.length)==prefix){return True}
 }
 return False
 }
-}
-function $string_strip(obj){
-return function(x){
+function $string_strip(obj,x){
 if(x==undefined){x="\\s"}
 pattern="["+x+"]"
-sp=new RegExp("^"+pattern+"+|"+pattern+"+$","g")
-return obj.replace(sp,"")
+return $string_rstrip($string_lstrip(obj,x),x)
 }
-}
-function $string_upper(obj){return function(){return obj.toUpperCase()}}
+function $string_upper(obj){return obj.toUpperCase()}
 function $importer(){
 if(window.XMLHttpRequest){
 var $xmlhttp=new XMLHttpRequest()
@@ -1860,7 +1859,7 @@ var not_ctx=new $NotCtx(new_ctx)
 not_ctx.tree=this.tree
 node.context=new_ctx
 var new_node=new $Node('expression')
-new $NodeJSCtx(new_node,'$raise("AssertionError")')
+new $NodeJSCtx(new_node,'throw AssertionError("")')
 node.add(new_node)
 }
 }
@@ -2480,6 +2479,23 @@ res +=$to_js(this.tree.slice(1,this.tree.length))+')'
 return res
 }
 }
+function $LambdaCtx(context){
+this.type='lambda'
+this.toString=function(){return '(lambda) '+this.args_start+' '+this.body_start}
+this.parent=context
+context.tree.push(this)
+this.tree=[]
+this.to_js=function(){
+var ctx_node=this
+while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
+var module=ctx_node.node.module
+var src=document.$py_src[module]
+var qesc=new RegExp('"',"g")
+var args=src.substring(this.args_start,this.body_start).replace(qesc,'\\"')
+var body=src.substring(this.body_start+1,this.body_end).replace(qesc,'\\"')
+return '$lambda("'+args+'","'+body+'")'
+}
+}
 function $ListOrTupleCtx(context,real){
 this.type='list_or_tuple'
 this.start=$pos
@@ -2638,6 +2654,7 @@ this.parent=context
 this.tree=[]
 context.tree.push(this)
 this.to_js=function(){
+if(this.tree.length===0){return '$raise()'}
 var exc=this.tree[0]
 if(exc.type==='id'){return 'throw '+exc.value+'("")'}
 else{return 'throw '+$to_js(this.tree)}
@@ -2897,7 +2914,7 @@ if(i<tree.length-1){res+=sep}
 }
 return res
 }
-var $expr_starters=['id','int','float','str','[','(','{','not']
+var $expr_starters=['id','int','float','str','[','(','{','not','lambda']
 function $arbo(ctx){
 while(ctx.parent!=undefined){ctx=ctx.parent}
 return ctx
@@ -2917,6 +2934,7 @@ else if(token==='('){return new $ListOrTupleCtx(new $ExprCtx(context,'tuple',com
 else if(token==='['){return new $ListOrTupleCtx(new $ExprCtx(context,'list',commas),'list')}
 else if(token==='{'){return new $DictOrSetCtx(new $ExprCtx(context,'dict_or_set',commas))}
 else if(token==='not'){return new $NotCtx(new $ExprCtx(context,'not',commas))}
+else if(token==='lambda'){return new $LambdaCtx(new $ExprCtx(context,'lambda',commas))}
 else if(token==='op' && '+-'.search(arguments[2])){
 return new $UnaryCtx(context,arguments[2])
 }else if(token==='='){$_SyntaxError(context,token)}
@@ -3261,6 +3279,18 @@ $_SyntaxError(context,'token '+token+' after '+context)
 if(token===')'){return $transition(context.parent,token)}
 else if(token===','){return new $CallArgCtx(context.parent)}
 else{$_SyntaxError(context,'token '+token+' after '+context)}
+}else if(context.type==="lambda"){
+if(context.args_start===undefined){
+context.args_start=$pos
+return context
+}else if(token===':' && context.tree.length===0){
+context.body_start=$pos
+return new $AbstractExprCtx(context,false)
+}else if(context.tree.length>0){
+context.body_end=$pos
+return $transition(context.parent,token)
+}else if(context.tree.length===0){return context}
+else{$_SyntaxError(context,'token '+token+' after '+context)}
 }else if(context.type==='list_or_tuple'){
 if(context.closed){
 if(token==='['){return new $SubCtx(context)}
@@ -3326,6 +3356,7 @@ else if(token==='assert'){return new $AssertCtx(context)}
 else if(token==='from'){return new $FromCtx(context)}
 else if(token==='import'){return new $ImportCtx(context)}
 else if(token==='global'){return new $GlobalCtx(context)}
+else if(token==='lambda'){return new $LambdaCtx(context)}
 else if(token==='pass'){return new $PassCtx(context)}
 else if(token==='raise'){return new $RaiseCtx(context)}
 else if(token==='return'){
@@ -3474,7 +3505,23 @@ var unsupported=["is","nonlocal","with","yield"]
 var $indented=['class','def','for','condition','single_kw','try','except']
 var forbidden=['case','catch','debugger','default','delete',
 'do','function','instanceof','new','switch','this','throw',
-'typeof','var','void','with','enum','export','extends','super']
+'typeof','var','void','with','enum','export','extends','super',
+'Anchor','Area','arguments','Array','assign','blur','Boolean','Button',
+'callee','caller','captureEvents','Checkbox','clearInterval','clearTimeout',
+'close','closed','constructor','Date','defaultStatus','document','Document',
+'Element','escape','FileUpload','find','focus','Form','Frame','Frames','Function',
+'getClass','Hidden','history','History','home','Image','Infinity','InnerHeight',
+'InnerWidth','isFinite','isNan','java','JavaArray','JavaClass','JavaObject',
+'JavaPackage','length','Link','location','Location','locationbar','Math','menubar',
+'MimeType','moveBy','moveTo','name','NaN','navigate','navigator','Navigator','netscape',
+'Number','Object','onBlur','onError','onFocus','onLoad','onUnload','open','opener',
+'Option','outerHeight','OuterWidth','Packages','pageXoffset','pageYoffset',
+'parent','parseFloat','parseInt','Password','personalbar','Plugin','prototype',
+'Radio','ref','RegExp','releaseEvents','Reset','resizeBy','resizeTo','routeEvent',
+'scroll','scrollbars','scrollBy','scrollTo','Select','self','setInterval','setTimeout',
+'status','statusbar','stop','String','Submit','sun','taint','Text','Textarea','toolbar',
+'top','toString','unescape','untaint','unwatch','valueOf','watch','window','Window'
+]
 var punctuation={',':0,':':0}
 var int_pattern=new RegExp("^\\d+")
 var float_pattern=new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
@@ -3579,10 +3626,7 @@ if(src.charAt(end)=='\n'){lnum++}
 end++
 }
 }
-if(!found){
-document.line_num=pos2line[pos]
-$SyntaxError(module,"String end not found",pos)
-}
+if(!found){$_SyntaxError(context,"String end not found")}
 continue
 }
 if(name==""){
@@ -3597,8 +3641,7 @@ pos++;continue
 }else{
 if(kwdict.indexOf(name)>-1){
 if(unsupported.indexOf(name)>-1){
-document.line_num=pos2line[pos]
-$SyntaxError(module,"Unsupported Python keyword '"+name+"'",pos)
+$_SyntaxError(context,"Unsupported Python keyword '"+name+"'")
 }
 $pos=pos-name.length
 context=$transition(context,name)
@@ -3655,17 +3698,16 @@ pos++;continue
 }
 if(car in br_open){
 br_stack +=car
-br_pos[br_stack.length-1]=pos
+br_pos[br_stack.length-1]=[context,pos]
 $pos=pos
 context=$transition(context,car)
 pos++;continue
 }
 if(car in br_close){
 if(br_stack==""){
-$SyntaxError(module,"Unexpected closing bracket",pos)
+$SyntaxError(context,"Unexpected closing bracket")
 }else if(br_close[car]!=$last(br_stack)){
-document.line_num=pos2line[pos]
-$SyntaxError(module,"Unbalanced bracket",pos)
+$SyntaxError(context,"Unbalanced bracket",pos)
 }else{
 br_stack=br_stack.substr(0,br_stack.length-1)
 $pos=pos
@@ -3711,19 +3753,20 @@ continue
 if(car=='\\' && src.charAt(pos+1)=='\n'){
 lnum++;pos+=2;continue
 }
-if(car!=' '&&car!=='\t'){$SyntaxError(module,'unknown token ['+car+']',pos)}
+if(car!=' '&&car!=='\t'){$pos=pos;$_SyntaxError(context,'unknown token ['+car+']')}
 pos +=1
 }
 if(br_stack.length!=0){
-pos=br_pos.pop()
-document.line_num=pos2line[pos]
-throw Error("Unbalanced bracket "+br_stack.charAt(br_stack.length-1),pos)
+var br_err=br_pos[0]
+$pos=br_err[1]
+$_SyntaxError(br_err[0],"Unbalanced bracket "+br_stack.charAt(br_stack.length-1))
 }
 return root
 }
 function brython(debug){
 document.$py_src={}
 document.$debug=debug
+document.$exc_stack=[]
 var elts=document.getElementsByTagName("script")
 for(var $i=0;$i<elts.length;$i++){
 var elt=elts[$i]
@@ -3845,6 +3888,14 @@ res +='if(!cond){$res=expr2}\n'
 eval(res)
 return $res
 }
+function $lambda(args,body){
+var $res='res'+Math.random().toString(36).substr(2,8)
+var $py='def '+$res+'('+args+'):\n'
+$py +='    return '+body
+var $js=$py2js($py).to_js()
+eval($js)
+return eval($res)
+}
 function $JS2Py(src){
 if(src===null){return None}
 if(typeof src==='number'){
@@ -3874,22 +3925,9 @@ return $JS2Py(res)
 function $bind(func, thisValue){
 return function(){return func.apply(thisValue, arguments)}
 }
-function $raise(name,msg){
-if(msg===undefined){msg=''}
-if(document.$debug && msg.split('\n').length==1){
-var module=document.$line_info[1]
-var line_num=document.$line_info[0]
-var lines=document.$py_src[module].split('\n')
-msg +="\nmodule '"+module+"' line "+line_num
-msg +='\n'+lines[line_num-1]
-}
-err=new Error()
-err.name=name
-err.message=msg
-err.py_error=true
-document.$exc_info=[name,msg,line_num-1,lines[line_num-1]]
-document.$stderr_buff=err.name+': '+err.message+'\n'
-if(name!=='ExecutionError'){throw err}
+function $raise(){
+if(document.$exc_stack.length>0){throw $last(document.$exc_stack)}
+else{throw Error('Exception')}
 }
 function $src_error(name,module,msg,pos){
 var pos2line={}
@@ -3902,14 +3940,16 @@ if(src.charAt(i)=='\n'){lnum+=1;line_pos[lnum]=i}
 }
 var line_num=pos2line[pos]
 var lines=src.split('\n')
-msg=msg+"\nmodule '"+module+"' line "+line_num
-msg +='\n'+lines[line_num-1]+'\n'
+info="\nmodule '"+module+"' line "+line_num
+info +='\n'+lines[line_num-1]+'\n'
 var lpos=pos-line_pos[line_num]
-for(var i=0;i<lpos-1;i++){msg+=' '}
-msg +='^'
+for(var i=0;i<lpos;i++){info+=' '}
+info +='^'
 err=new Error()
 err.name=name
+err.__name__=name
 err.message=msg
+err.info=info
 err.py_error=true
 if(document.$stderr!==null){document.$stderr_buff=err.message}
 throw err
