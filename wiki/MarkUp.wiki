@@ -12,16 +12,23 @@ Use the basic HTML markup : bold, italic, headers...
 </head>
 <body>
 <script type="text/python">
-from html import B
-doc <= B("Hello world !")
+import html
+doc <= html.B("Hello world !")
 </script>
 </body>
 </html>
 }}}
 
-*B* is a built-in name matching the HTML tag `<B>` (bold)
+*B* is a function defined in the module `html`, matching the HTML tag `<B>` (bold)
 
 `B("text")` returns an object matching the HTML `<b>text</b>`
 
-The other HTML tags for text markup each have a built-in name in Brython :
-*I, H1, H2,...*
+All HTML tags have their own function : *I, H1, H2,...*
+
+To save you some typing, you can import all the names by
+
+{{{
+from html import *
+}}}
+
+but do it only if you are sure not to have conflicts with variable names in other modules
