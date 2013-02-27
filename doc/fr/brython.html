@@ -52,25 +52,29 @@ Enfin, certains mots clés et fonctions intégrées adaptés au fonctionnement dans 
 <li>la fonction intégrée <code>ajax</code> permet l'exécution de requêtes HTTP en mode Ajax
 <li>le mot clé <code>local_storage</code> représente le stockage local spécifié dans HTML5
 <li>le mot clé <code>win</code> représente la fenêtre (objet <em>window</em> en JS) et <code>doc</code> représente le document HTML (<em>document</em> en JS)
-<li>les fonctions intégrées <code>A ABBR ACRONYM ADDRESS APPLET AREA ARTICLE ASIDE AUDIO B BASE BASEFONT BDO BIG BLOCKQUOTE BODY BR BUTTON CANVAS CAPTION CENTER CITE CODE COL COLGROUP COMMAND DATALIST DD DEL DETAILS DFN DIR DIV DL DT EM FIELDSET FIGURE FONT FOOTER FORM FRAME FRAMESET H1 H2 H3 H4 H5 H6 HEAD HEADER HGROUP HR HTML I IFRAME IMG INPUT INS ISINDEX KBD LABEL LEGEND LI LINK MAP MARK MENU META METER NAV NOFRAMES NOSCRIPT OBJECT OL OPTGROUP OPTION OUTPUT P PARAM PRE PROGRESS Q RP RT RUBY S SAMP SCRIPT SECTION SELECT SMALL SPAN STRIKE STRONG STYLE SUB SUP TABLE TBODY TD TEXTAREA TFOOT TH THEAD TIME TITLE TR TT U UL VAR VIDEO</code> : chacune correspond à la balise HTML de même nom
-<li><code>SVG</code> pour les graphiques SVG : ce mot intégré a pour attributs les balises utilisables dans un graphique (<code>SVG.line, SVG.text</code>, etc.)
 </ul>
 <hr>
 <a name="htmldocs"><h3>Manipulation de documents HTML</h3>
 
 Une page HTML est considérée comme un arbre, dont le sommet est représenté par le mot-clé <code>doc</code> et les noeuds sont soit des objets intégrés Python (chaines de caractères, entiers...) soit des objets créés par les fonctions correspondant aux balises HTML
+<p>Ces fonctions se trouvent dans le module intégré <code>html</code>, qu'il faut importer au début du script. Le nom de la balise est en majuscules. Comme pour tous les modules Python, on peut 
+<ul>
+<li>soit importer seulement le nom du module : <code>import html</code>, puis faire référence aux balises par <code>html.DIV</code>
+<li>soit importer les noms dont on a besoin : <code>from html import A,B,DIV</code>, ou si on ne craint pas les conflits de nom : <code>from html import *</code>
+</ul>
 <p>La syntaxe pour créer un objet (par exemple un lien hypertexte) est :
 <blockquote><dl><dt><code>A(<i>[content,[attributes]]</i>)</code>
 <dd><em>content</em> est le noeud "fils" de l'objet ; <em>attributes</em> est une suite de mots-clés correspondant aux attributs de la balise HTML. Ces attributs doivent être fournis avec la syntaxe Javascript, pas CSS : <em>backgroundColor</em> et pas <em>background-color</em>
 </dl></blockquote>
 Exemple :
-<blockquote><pre>link1 = A('Brython',href='http://www.brython.info')
-link2 = A(B('Python'),href='http://www.python.org')
+<blockquote><pre>import html
+link1 = html.A('Brython',href='http://www.brython.info')
+link2 = html.A(html.B('Python'),href='http://www.python.org')
 </pre></blockquote>
 <p>Pour l'attribut <em>style</em>, la valeur doit être un dictionnaire :
-<blockquote><pre>d = DIV('Brython',style={'height':100,'width':200})</pre></blockquote>
+<blockquote><pre>d = html.DIV('Brython',style={'height':100,'width':200})</pre></blockquote>
 <p>Pour éviter les conflits avec des mots-clés de Python, des attributs comme "class" ou "id" doivent être écrits avec une majuscule :
-<blockquote><pre>d = DIV('Brython',Id="zone",Class="container")</pre></blockquote>
+<blockquote><pre>d = html.DIV('Brython',Id="zone",Class="container")</pre></blockquote>
 
 <p>On peut aussi créer un objet sans argument, puis le compléter :
 <ul>
@@ -78,28 +82,28 @@ link2 = A(B('Python'),href='http://www.python.org')
 <li>pour ajouter des attributs, utiliser la syntaxe Python classique : <pre style="display:inline">objet.attribut = valeur</pre>
 </ul>
 <p>par exemple :
-<p><pre>link = A()
-link <= B('connexion')
+<p><pre>link = html.A()
+link <= html.B('connexion')
 link.href = 'http://exemple.com'
 </pre>
 <p>On peut aussi créer plusieurs éléments de même niveau par addition :
-<p><pre>row = TR(TH('Nom')+TH('Prénom'))</pre>
+<p><pre>row = html.TR(html.TH('Nom')+html.TH('Prénom'))</pre>
 <p>En combinant ces opérateurs et la syntaxe Python, voici comment créer une boite de sélection à partir d'une liste :
 <p><pre>items = ['un','deux','trois']
-sel = SELECT()
+sel = html.SELECT()
 for i,elt in enumerate(items):
-    sel <= OPTION(elt,value=i)
+    sel <= html.OPTION(elt,value=i)
 doc <= sel
 </pre>
 <p>A noter que la création d'une instance d'une classe HTML entraine la création d'un unique objet DOM. Si on affecte l'instance à une variable, on ne peut pas l'utiliser à plusieurs endroits. Par exemple avec ce code :
-<p><pre>link = A('Python',href='http://www.python.org')
+<p><pre>link = html.A('Python',href='http://www.python.org')
 doc <= 'Site officiel de Python : '+link
-doc <= P()+'Je répète : le site est '+link
+doc <= html.P()+'Je répète : le site est '+link
 </pre>
 le lien ne sera montré que dans la deuxième ligne. Une solution est de cloner l'objet initial :
-<p><pre>link = A('Python',href='http://www.python.org')
+<p><pre>link = html.A('Python',href='http://www.python.org')
 doc <= 'Site officiel de Python : '+link
-doc <= P()+'Je répète : le site est '+link.clone()
+doc <= html.P()+'Je répète : le site est '+link.clone()
 </pre>
 
 <p>Les instances des classes HTML ont des attributs de même nom que les objets DOM correspondants. On peut donc par exemple récupérer l'option sélectionnée par l'attribut <tt>selectedIndex</tt> de l'objet SELECT. Mais Brython ajoute quelques "sucres syntaxiques" pour rendre la manipulation plus conforme aux habitudes des codeurs Python
@@ -158,6 +162,59 @@ passer la souris ici</textarea>
 </pre>
 </td>
 </tr>
+</table>
+
+<p><hr>
+<a name="svg"><h3>Graphiques SVG</h3>
+
+Pour créer des graphiques au format SVG, supporté par la plupart des navigateurs, on utilise le module intégré <code>svg</code>, qui contient les noms des éléments disponibles pour tracer des formes ou écrire du texte
+
+<p>Par exemple, si le document HTML possède une zone de graphique SVG définie par 
+
+<pre>
+&lt;svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+    width="140" height="200" style="border-style:solid;border-width:1;border-color:#000;"&gt;
+  &lt;g id="panel"&gt;
+  &lt;/g&gt;
+&lt;/svg&gt;
+</pre>
+
+on peut intégrer des tracés et des textes par :
+<table>
+<tr>
+<td>
+<pre>import svg
+titre = svg.text('Titre',x=70,y=25,font_size=22,text_anchor="middle")
+cercle = svg.circle(cx="70",cy="120",r="40",stroke="black",stroke_width="2",fill="red")
+
+panel = doc['panel']
+panel <= titre
+panel <= cercle
+</pre>
+<button onclick="run_svg()">clic !</button>
+</td>
+
+<td>
+<script type="text/python">
+def run_svg():
+    import svg
+    titre = svg.text('Titre',x=70,y=25,font_size=22,text_anchor="middle")
+    cercle = svg.circle(cx=70,cy=120,r=40,stroke="black",stroke_width=2,fill="red")
+    
+    panel = doc['panel']
+    panel <= titre
+    panel <= cercle
+
+</script>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+    width="140" height="200" style="border-style:solid;border-width:1;border-color:#000;">
+  <g id="panel">
+  </g>
+</svg>
+</td>
+
+</tr>
+
 </table>
 
 <p><hr>
