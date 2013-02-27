@@ -13,7 +13,7 @@ An element can be accessed by its attribute `id` with the Python dictionary synt
 <head>
 <script src="brython.js"></script>
 </head>
-<body>
+<body onload="brython()">
 
 <div id="zone">this is a DIV element</div>
 
