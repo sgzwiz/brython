@@ -258,26 +258,6 @@ function $Location(){ // used because of Firefox bug #814622
 
 win =  new $JSObject(window)
 
-$events = $List2Dict('onabort','onactivate','onafterprint','onafterupdate',
-'onbeforeactivate','onbeforecopy','onbeforecut','onbeforedeactivate',
-'onbeforeeditfocus','onbeforepaste','onbeforeprint','onbeforeunload',
-'onbeforeupdate','onblur','onbounce','oncellchange','onchange','onclick',
-'oncontextmenu','oncontrolselect','oncopy','oncut','ondataavailable',
-'ondatasetchanged','ondatasetcomplete','ondblclick','ondeactivate','ondrag',
-'ondragend','ondragenter','ondragleave','ondragover','ondragstart','ondrop',
-'onerror','onerrorupdate','onfilterchange','onfinish','onfocus','onfocusin',
-'onfocusout','onhashchange','onhelp','oninput','onkeydown','onkeypress',
-'onkeyup','onload','onlosecapture','onmessage','onmousedown','onmouseenter',
-'onmouseleave','onmousemove','onmouseout','onmouseover','onmouseup',
-'onmousewheel','onmove','onmoveend','onmovestart','onoffline','ononline',
-'onpaste','onpropertychange','onreadystatechange','onreset','onresize',
-'onresizeend','onresizestart','onrowenter','onrowexit','onrowsdelete',
-'onrowsinserted','onscroll','onsearch','onselect','onselectionchange',
-'onselectstart','onstart','onstop','onsubmit','onunload',
-// for smartphones
-'ontouchstart','ontouchmove','ontouchend'
-)
-
 function DOMNode(){} // define a Node object
 function $DOMNode(elt){ 
     // returns the element, enriched with an attribute $brython_id for 
@@ -475,8 +455,10 @@ DOMNode.prototype.get_get = function(){
 DOMNode.prototype.get_clone = function(){
     res = $DOMNode(this.cloneNode(true))
     // copy events - may not work since there is no getEventListener()
-    for(var evt in $events){    
-        if(this[evt]){res[evt]=this[evt]}
+    for(var attr in this){ 
+        if(attr.substr(0,2)=='on' && this[attr]!==undefined){
+            res[attr]=this[attr]
+        }
     }
     var func = function(){return res}
     return func
