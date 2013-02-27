@@ -315,6 +315,10 @@ $FloatClass.prototype.__truediv__ = function(other){
 var $op_func = function(other){
     if(isinstance(other,int)){return float(this.value-other)}
     else if(isinstance(other,float)){return float(this.value-other.value)}
+    else if(isinstance(other,bool)){ 
+         var bool_value=0; 
+         if (other.valueOf()) bool_value=1;
+         return float(this.value-bool_value)}
     else{throw TypeError(
         "unsupported operand type(s) for -: "+this.value+" (float) and '"+other.__class__+"'")
     }
@@ -413,6 +417,10 @@ Number.prototype.__mul__ = function(other){
     var val = this.valueOf()
     if(isinstance(other,int)){return this*other}
     else if(isinstance(other,float)){return float(this*other.value)}
+    else if(isinstance(other,bool)){
+         var bool_value=0
+         if (other.valueOf()) bool_value=1
+         return this*bool_value}
     else if(typeof other==="string") {
         var res = ''
         for(var i=0;i<val;i++){res+=other}
@@ -459,6 +467,10 @@ var $op_func = function(other){
         else{return float(res)}
     }
     else if(isinstance(other,float)){return float(this.valueOf()-other.value)}
+    else if(isinstance(other,bool)){
+         var bool_value=0;
+         if(other.valueOf()) bool_value=1;
+         return this.valueOf()-bool_value}
     else{throw TypeError(
         "unsupported operand type(s) for -: "+this.value+" (float) and '"+str(other.__class__)+"'")
     }
@@ -881,6 +893,16 @@ False = false
 Boolean.prototype.__class__ = bool
 Boolean.prototype.__eq__ = function(other){
     if(this.valueOf()){return !!other}else{return !other}
+}
+
+Boolean.prototype.__mul__ = function(other){
+    if(this.valueOf()) return other;
+    return 0;
+}
+
+Boolean.prototype.__add__ = function(other){
+    if(this.valueOf()) return other + 1;
+    return other;
 }
 
 Boolean.prototype.toString = function(){

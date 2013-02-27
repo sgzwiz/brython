@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130226-143446
+// version 1.1.20130227-173637
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -266,6 +266,10 @@ else{return float(this.value/other.value)}
 var $op_func=function(other){
 if(isinstance(other,int)){return float(this.value-other)}
 else if(isinstance(other,float)){return float(this.value-other.value)}
+else if(isinstance(other,bool)){
+var bool_value=0 
+if(other.valueOf())bool_value=1
+return float(this.value-bool_value)}
 else{throw TypeError(
 "unsupported operand type(s) for -: "+this.value+" (float) and '"+other.__class__+"'")
 }
@@ -348,6 +352,10 @@ Number.prototype.__mul__=function(other){
 var val=this.valueOf()
 if(isinstance(other,int)){return this*other}
 else if(isinstance(other,float)){return float(this*other.value)}
+else if(isinstance(other,bool)){
+var bool_value=0
+if(other.valueOf())bool_value=1
+return this*bool_value}
 else if(typeof other==="string"){
 var res=''
 for(var i=0;i<val;i++){res+=other}
@@ -386,6 +394,10 @@ if(isinstance(res,int)){return res}
 else{return float(res)}
 }
 else if(isinstance(other,float)){return float(this.valueOf()-other.value)}
+else if(isinstance(other,bool)){
+var bool_value=0
+if(other.valueOf())bool_value=1
+return this.valueOf()-bool_value}
 else{throw TypeError(
 "unsupported operand type(s) for -: "+this.value+" (float) and '"+str(other.__class__)+"'")
 }
@@ -757,6 +769,14 @@ False=false
 Boolean.prototype.__class__=bool
 Boolean.prototype.__eq__=function(other){
 if(this.valueOf()){return !!other}else{return !other}
+}
+Boolean.prototype.__mul__=function(other){
+if(this.valueOf())return other
+return 0
+}
+Boolean.prototype.__add__=function(other){
+if(this.valueOf())return other + 1
+return other
 }
 Boolean.prototype.toString=function(){
 if(this.valueOf()){return "True"}else{return "False"}
@@ -1598,8 +1618,10 @@ eval(alias+'.__class__ = $type')
 eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
 }else{
 if(names.length===1 && names[0]==='*'){
+console.log('import all names')
 for(var name in $module){
-eval(name+'=$module[name]')
+if(name.substr(0,1)==='_'){continue}
+eval(name+'=$module["'+name+'"]')
 }
 }else{
 for(var i=0;i<names.length;i++){
@@ -1670,7 +1692,7 @@ var new_node=new $Node('expression')
 new $NodeJSCtx(new_node,'for(var $attr in $module)')
 root.add(new_node)
 var attr_node=new $Node('expression')
-new $NodeJSCtx(attr_node,'eval($attr+"=$module[$attr]")')
+new $NodeJSCtx(attr_node,'if($attr.charAt(0)!=="_"){eval($attr+"=$module[$attr]")}')
 new_node.add(attr_node)
 }else{
 for(var i=0;i<names.length;i++){
@@ -1887,6 +1909,8 @@ var left_items=left.tree
 var left_items=left.tree[0].tree
 }else if(left.type==='target_list'){
 var left_items=left.tree
+}else if(left.type==='list_or_tuple'){
+var left_items=left.tree
 }
 if(left_items===null){return}
 var right=this.tree[1]
@@ -1902,6 +1926,9 @@ throw Error('ValueError : too many values to unpack (expected '+left_items.lengt
 throw Error('ValueError : need more than '+right_items.length+' to unpack')
 }
 var new_nodes=[]
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,'void(0)')
+new_nodes.push(new_node)
 var new_node=new $Node('expression')
 new $NodeJSCtx(new_node,'var $temp'+$loop_num+'=[]')
 new_nodes.push(new_node)
@@ -1925,13 +1952,15 @@ node.parent.insert(rank,new_nodes[i])
 }
 $loop_num++
 }else{
-var new_nodes=[]
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,'$right='+right.to_js())
+var new_nodes=[new_node]
 for(var i=0;i<left_items.length;i++){
 var new_node=new $Node('expression')
 var context=new $NodeCtx(new_node)
 left_items[i].parent=context
 var assign=new $AssignCtx(left_items[i])
-assign.tree[1]=new $JSCode(right.to_js()+'.__item__('+i+')')
+assign.tree[1]=new $JSCode('$right.__item__('+i+')')
 new_nodes.push(new_node)
 }
 node.parent.children.splice(rank,1)
@@ -2979,7 +3008,10 @@ return $transition(expr,token,arguments[2])
 return new $ExprCtx(new $KwArgCtx(context),'kw_value',false)
 }else if(token==='op' && context.expect==='id'){
 var op=arguments[2]
-if(op==='*'){context.expect=',';return new $StarArgCtx(context)}
+context.expect=','
+if(op==='+'||op==='-'){
+return $transition(new $AbstractExprCtx(context,false),token,op)
+}else if(op==='*'){context.expect=',';return new $StarArgCtx(context)}
 else if(op==='**'){context.expect=',';return new $DoubleStarArgCtx(context)}
 else{$_SyntaxError(context,'token '+token+' after '+context)}
 }else if(token===')' && context.expect===','){
@@ -4357,24 +4389,6 @@ obj.toString=function(){return window.location.toString()}
 return obj
 }
 win=new $JSObject(window)
-$events=$List2Dict('onabort','onactivate','onafterprint','onafterupdate',
-'onbeforeactivate','onbeforecopy','onbeforecut','onbeforedeactivate',
-'onbeforeeditfocus','onbeforepaste','onbeforeprint','onbeforeunload',
-'onbeforeupdate','onblur','onbounce','oncellchange','onchange','onclick',
-'oncontextmenu','oncontrolselect','oncopy','oncut','ondataavailable',
-'ondatasetchanged','ondatasetcomplete','ondblclick','ondeactivate','ondrag',
-'ondragend','ondragenter','ondragleave','ondragover','ondragstart','ondrop',
-'onerror','onerrorupdate','onfilterchange','onfinish','onfocus','onfocusin',
-'onfocusout','onhashchange','onhelp','oninput','onkeydown','onkeypress',
-'onkeyup','onload','onlosecapture','onmessage','onmousedown','onmouseenter',
-'onmouseleave','onmousemove','onmouseout','onmouseover','onmouseup',
-'onmousewheel','onmove','onmoveend','onmovestart','onoffline','ononline',
-'onpaste','onpropertychange','onreadystatechange','onreset','onresize',
-'onresizeend','onresizestart','onrowenter','onrowexit','onrowsdelete',
-'onrowsinserted','onscroll','onsearch','onselect','onselectionchange',
-'onselectstart','onstart','onstop','onsubmit','onunload',
-'ontouchstart','ontouchmove','ontouchend'
-)
 function DOMNode(){}
 function $DOMNode(elt){
 if(!('$brython_id' in elt)){
@@ -4492,9 +4506,9 @@ DOMNode.prototype.get_get=function(){
 if(this.getElementsByName!==undefined){
 return function(){
 var $ns=$MakeArgs('get',arguments,[],{},null,'kw')
-if('name'.__in__($ns['kw'])){
+if('$$name'.__in__($ns['kw'])){
 var res=[]
-var node_list=document.getElementsByName($ns['kw'].__getitem__('name'))
+var node_list=document.getElementsByName($ns['kw'].__getitem__('$$name'))
 if(node_list.length===0){return[]}
 for(var i=0;i<node_list.length;i++){
 res.push($DOMNode(node_list[i]))
@@ -4502,8 +4516,7 @@ res.push($DOMNode(node_list[i]))
 }
 if('id'.__in__($ns['kw'])){
 var id_res=document.getElementById($ns['kw'].__getitem__('id'))
-alert(id_res)
-if(!id_res){alert('empty');return[]}
+if(!id_res){return[]}
 else{
 var elt=$DOMNode(id_res)
 if(res===undefined){res=[elt]}
@@ -4544,8 +4557,10 @@ return res
 }
 DOMNode.prototype.get_clone=function(){
 res=$DOMNode(this.cloneNode(true))
-for(var evt in $events){
-if(this[evt]){res[evt]=this[evt]}
+for(var attr in this){
+if(attr.substr(0,2)=='on' && this[attr]!==undefined){
+res[attr]=this[attr]
+}
 }
 var func=function(){return res}
 return func
