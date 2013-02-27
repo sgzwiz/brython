@@ -401,9 +401,11 @@ DOMNode.prototype.get_get = function(){
     if(this.getElementsByName!==undefined){
         return function(){
             var $ns=$MakeArgs('get',arguments,[],{},null,'kw')
-            if('name'.__in__($ns['kw'])){
+            console.log($ns['kw'])
+            if('$$name'.__in__($ns['kw'])){ // "name" is aliased to "$$name"
                 var res = []
-                var node_list = document.getElementsByName($ns['kw'].__getitem__('name'))
+                console.log($ns['kw'].__getitem__('$$name'))
+                var node_list = document.getElementsByName($ns['kw'].__getitem__('$$name'))
                 if(node_list.length===0){return []}
                 for(var i=0;i<node_list.length;i++){
                     res.push($DOMNode(node_list[i]))
@@ -412,7 +414,7 @@ DOMNode.prototype.get_get = function(){
             if('id'.__in__($ns['kw'])){
                 var id_res = document.getElementById($ns['kw'].__getitem__('id'))
                 alert(id_res)
-                if(!id_res){alert('empty');return []}
+                if(!id_res){return []}
                 else{
                     var elt=$DOMNode(id_res)
                     if(res===undefined){res=[elt]}
