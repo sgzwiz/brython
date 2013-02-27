@@ -10,7 +10,7 @@ Make the browser display "Hello world !"
 <head>
 <script src="brython.js"></script>
 </head>
-<body>
+<body onload="brython()">
 <script type="text/python">
 doc <= "Hello world !"
 </script>
