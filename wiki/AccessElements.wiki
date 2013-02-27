@@ -5,6 +5,9 @@ Access elements in the HTML document
 
 == Solution ==
 --------------
+
+An element can be accessed by its attribute `id` with the Python dictionary syntax `doc[elt_id]`
+
 {{{
 <html>
 <head>
@@ -16,12 +19,19 @@ Access elements in the HTML document
 
 <script type="text/python">
 elt = doc["zone"]
-elt.text = "new text"
 </script>
 </body>
 </html>
 }}}
 
-An element can be accessed by its attribute `id` with the Python dictionary syntax `doc[elt_id]`
+To get all the tags of the same name in the document, use the syntax `doc[`_`TAG`_`]` where _`TAG`_ is the function defined in the module `html` for this tag. For instance, to get all the anchors (tag `A`) :
+
+{{{
+<script type="text/python">
+import html
+elts = doc[html.A]
+</script>
+}}}
+
 
 Elements such as DIV have attributes `text` and `html` representing its inner text and inner HTML code. These attributes can be set as shown in the code above to change the element inner text
