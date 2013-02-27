@@ -14,7 +14,7 @@ DOM elements have 2 attributes that can be used to handle their text or HTML con
 <head>
 <script src="brython.js"></script>
 </head>
-<body>
+<body onload="brython()">
 
 <div id="zone">this is a DIV element</div>
 
