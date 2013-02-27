@@ -146,6 +146,7 @@
 
             # ----------------------------------------------------------
             import time
+            import html
             
             DB = {
                 "REVISION" : 0
@@ -212,46 +213,46 @@
                 update_step_counters()
 
             def draw_step(step, parent_node, width):
-                step_node = DIV(id=step.id, Class="step")
+                step_node = html.DIV(id=step.id, Class="step")
                 step_node.style.width = percent(width)
                 step_node.style.backgroundColor = DB["STEPS_COLORS"][step.color]
                 parent_node <= step_node
 
-                step_header = DIV(Class="step_header")
+                step_header = html.DIV(Class="step_header")
                 step_node <= step_header
 
-                step_title = PRE(step.desc, Class="step_title")
+                step_title = html.PRE(step.desc, Class="step_title")
                 step_header <= step_title
 
-                step_count = PRE(0, id="step count %s" % step.id, Class="step_count")
+                step_count = html.PRE(0, id="step count %s" % step.id, Class="step_count")
                 step_header <= step_count
 
                 setattrs( step_node, ondrop = drag_drop, drop_id = step.id, ondragover = drag_over )
                 setattrs( step_title, onclick = task_create, step = step, step_node = step_node )
 
             def draw_task(task, parent_node):
-                task_node = DIV(Class="task", id=task.id, draggable=True)
+                task_node = html.DIV(Class="task", id=task.id, draggable=True)
                 task_node.style.backgroundColor = DB["TASKS_COLORS"][task.color]
                 parent_node <= task_node
 
-                task_progress = DIV(Class="task_progress")
+                task_progress = html.DIV(Class="task_progress")
 
-                task_progress_text = P("%d" % task.progress + "%", Class="task_progress_text")
+                task_progress_text = html.P("%d" % task.progress + "%", Class="task_progress_text")
                 task_progress <= task_progress_text
 
-                task_progress_bar = DIV(Class="task_progress_bar")
+                task_progress_bar = html.DIV(Class="task_progress_bar")
                 task_progress_bar.style.width = percent(task.progress)
                 task_progress <= task_progress_bar
 
-                task_command_delete = DIV("X", Class="task_command_delete")
+                task_command_delete = html.DIV("X", Class="task_command_delete")
 
-                task_command = TABLE(
-                    TR( TD(task_progress, Class="task_command") + TD(task_command_delete) )
+                task_command = html.TABLE(
+                    html.TR( html.TD(task_progress, Class="task_command") + html.TD(task_command_delete) )
                     , Class="task_command"
                     )
                 task_node <= task_command
 
-                task_desc = P(Class="task_desc")
+                task_desc = html.P(Class="task_desc")
                 task_node <= task_desc
 
                 setattrs_all( task_node
@@ -346,7 +347,7 @@
             def task_set_text(node, task):
                 task_desc = node.task_desc
                 clear_node(task_desc)
-                task_desc.innerHTML = task.desc
+                task_desc.html = task.desc
                 setattrs_all(task_desc, onclick = task_edit, task_desc = task_desc, task = task)
 
             # ----------------------------------------------------------
