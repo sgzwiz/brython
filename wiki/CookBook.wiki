@@ -5,14 +5,14 @@
 
 HelloWorld
 
-MarkUp
+[MarkUp Use HTML markup]
 
 [AccessElements Access DOM elements]
 
-ModifyText
+[ModifyText Modify text of DOM elements]
 
 = Ajax =
 
-GetRequest
+[GetRequest Send a GET request]
 
-LoadFile
+[LoadFile Load a file content]
