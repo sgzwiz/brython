@@ -12,6 +12,7 @@ Use the basic HTML markup : bold, italic, headers...
 </head>
 <body>
 <script type="text/python">
+from html import B
 doc <= B("Hello world !")
 </script>
 </body>
