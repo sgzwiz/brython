@@ -10,7 +10,7 @@ Use the basic HTML markup : bold, italic, headers...
 <head>
 <script src="brython.js"></script>
 </head>
-<body>
+<body onload="brython()">
 <script type="text/python">
 import html
 doc <= html.B("Hello world !")
