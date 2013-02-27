@@ -7,7 +7,9 @@ HelloWorld
 
 MarkUp
 
-AccessElements
+[AccessElements Access DOM elements]
+
+ModifyText
 
 = Ajax =
 
