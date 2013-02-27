@@ -10,7 +10,7 @@ Load the content of a file using an Ajax GET request
 <head>
 <script src="brython.js"></script>
 </head>
-<body>
+<body onload="brython()">
 <div id="result">(empty)</div>
 
 <script type="text/python">
