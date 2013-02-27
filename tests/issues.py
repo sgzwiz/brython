@@ -337,6 +337,13 @@ class Un:
 assert Un().unpack(*(1,2))==(1,2)
 assert Un().unpack(**{'x':1, 'y':2})==(1,2)
 
+# issue 77
+YES = True
+assert (YES * 1 + YES) == 2 
+assert (1 + YES) == 2 
+assert (1 * YES) == 1
+assert (YES * 1 - YES) == 0
+
 # issue 81
 assert 'n' in [cardinal for cardinal in 'nesw']
 

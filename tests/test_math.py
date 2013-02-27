@@ -48,13 +48,11 @@ assert math.ceil(1.0) == 1
 assert math.ceil(1.5) == 2
 assert math.ceil(-0.5) == 0
 
-print("skip test... problem with float('inf')")
+#print("skip test... problem with float('inf')")
 #assert math.ldexp(float("inf"), -10**20) == float("inf")
 
-print("skip test...  problem with second argument being a negative number")
+#print("skip test... issues with math.log1p")
 #assert almost_equal(math.log1p(1/math.e-1), -1)
-
-print("skip test... issues with math.log1p")
 #assert almost_equal(math.log1p(0), 0)
 #assert almost_equal(math.log1p(math.e-1), 1)
 #assert almost_equal(math.log1p(1), math.log(2))
@@ -62,23 +60,23 @@ print("skip test... issues with math.log1p")
 assert almost_equal(math.acosh(1), 0)
 assert almost_equal(math.acosh(2), 1.3169578969248168)
 
-print("skip test.. problem with float('inf')")
+#print("skip test.. problem with float('inf')")
 #assert math.isinf(math.asinh(float("inf")))
 
 assert almost_equal(math.asinh(0), 0)
 assert almost_equal(math.asinh(1), 0.88137358701954305)
 
-print("skip test... problem with float('inf')")
-#assert almost_equal(math.asinh(-1), -0.88137358701954305)
-print("skip test... problem with float('inf')")
+assert almost_equal(math.asinh(-1), -0.88137358701954305)
+
+#print("skip test... problem with float('inf')")
 #assert math.isinf(math.asinh(float("inf")))
 
 assert almost_equal(math.atanh(0), 0)
 assert almost_equal(math.atanh(0.5), 0.54930614433405489)
 
-print("skip test..  issue with negative second argument")
-#assert almost_equal(math.atanh(-0.5), -0.54930614433405489)
-print("skip test... float('nan') issue")
+assert almost_equal(math.atanh(-0.5), -0.54930614433405489)
+
+#print("skip test... float('nan') issue")
 #assert math.isnan(math.atanh(float("nan")))
 
 assert math.trunc(1.9) == 1.0
@@ -89,20 +87,19 @@ class foo(object):
         
 assert math.trunc(foo()) == "truncated"
 
-print("skip test...  2nd argument negative issue")
-#assert math.copysign(1.0, -5) == -1.0
+assert math.copysign(1.0, -5) == -1.0
 assert math.copysign(-1.0, 5) == 1.0
 
-print("skip test ...  keyword 'is' is not supported yet")
+#print("skip test ...  keyword 'is' is not supported yet")
 #assert type(math.ceil(0.4)) is int
+
 assert almost_equal(math.ceil(0.5), 1)
 assert almost_equal(math.ceil(1.0), 1)
 assert almost_equal(math.ceil(1.5), 2)
 assert almost_equal(math.ceil(-0.5), 0)
 
-print("skip test...  same 2nd negative argument error")
-#assert almost_equal(math.ceil(-1.0), -1)
-#assert almost_equal(math.ceil(-1.5), -1)
+assert almost_equal(math.ceil(-1.0), -1)
+assert almost_equal(math.ceil(-1.5), -1)
 
 class TestCeil:
   def __ceil__(self):
