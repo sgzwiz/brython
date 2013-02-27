@@ -1416,7 +1416,10 @@ function $transition(context,token){
             return new $ExprCtx(new $KwArgCtx(context),'kw_value',false)
         }else if(token==='op' && context.expect==='id'){
             var op = arguments[2]
-            if(op==='*'){context.expect=',';return new $StarArgCtx(context)}
+            context.expect = ','
+            if(op==='+'||op==='-'){
+                return $transition(new $AbstractExprCtx(context,false),token,op)
+            }else if(op==='*'){context.expect=',';return new $StarArgCtx(context)}
             else if(op==='**'){context.expect=',';return new $DoubleStarArgCtx(context)}
             else{$_SyntaxError(context,'token '+token+' after '+context)}
         }else if(token===')' && context.expect===','){
