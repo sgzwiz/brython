@@ -24,12 +24,30 @@ elt = doc["zone"]
 </html>
 }}}
 
-To get all the tags of the same name in the document, use the syntax `doc[`_`TAG`_`]` where _`TAG`_ is the function defined in the module `html` for this tag. For instance, to get all the anchors (tag `A`) :
+To get all the instances of a given tag in the document, use the syntax `doc[`_`TAG`_] where _`TAG`_ is the function defined in the module `html` for this tag. For instance, to get all the anchors (tag `A`) :
 
 {{{
 <script type="text/python">
 import html
 elts = doc[html.A]
+</script>
+}}}
+
+To get all the elements by the value of their attribute `name`, use the method `doc.get(name=`_value_`)`
+
+{{{
+<script type="text/python">
+import html
+elts = doc.get(name="foo")
+</script>
+}}}
+
+For browsers that support the method `querySelectorAll` on the document, use the method `doc.get(selector=`_arg_`)`
+
+{{{
+<script type="text/python">
+import html
+elts = doc.get(selector="div.foo")
 </script>
 }}}
 
