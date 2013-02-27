@@ -30,17 +30,17 @@ $module = {
         // inspired from 
         // http://stackoverflow.com/questions/457408/is-there-an-easily-available-implementation-of-erf-for-python
 
-	var t = 1.0 / (1.0 + 0.5 * Math.abs(x))
+    var t = 1.0 / (1.0 + 0.5 * Math.abs(x))
         var ans = 1 - t * Math.exp( -x*x - 1.26551223 +
-        			 t * ( 1.00002368 +
-        			 t * ( 0.37409196 + 
-        			 t * ( 0.09678418 + 
-        			 t * (-0.18628806 + 
-        			 t * ( 0.27886807 + 
-        			 t * (-1.13520398 + 
-        			 t * ( 1.48851587 + 
-        			 t * (-0.82215223 + 
-        			 t * 0.17087277)))))))))
+                     t * ( 1.00002368 +
+                     t * ( 0.37409196 + 
+                     t * ( 0.09678418 + 
+                     t * (-0.18628806 + 
+                     t * ( 0.27886807 + 
+                     t * (-1.13520398 + 
+                     t * ( 1.48851587 + 
+                     t * (-0.82215223 + 
+                     t * 0.17087277)))))))))
         if (x >= 0.0) return ans
 
         return -ans
@@ -50,17 +50,17 @@ $module = {
         // inspired from 
         // http://stackoverflow.com/questions/457408/is-there-an-easily-available-implementation-of-erf-for-python
 
-	var t = 1.0 / (1.0 + 0.5 * Math.abs(x))
+    var t = 1.0 / (1.0 + 0.5 * Math.abs(x))
         var ans = 1 - t * Math.exp( -x*x - 1.26551223 +
-        			 t * ( 1.00002368 +
-        			 t * ( 0.37409196 + 
-        			 t * ( 0.09678418 + 
-        			 t * (-0.18628806 + 
-        			 t * ( 0.27886807 + 
-        			 t * (-1.13520398 + 
-        			 t * ( 1.48851587 + 
-        			 t * (-0.82215223 + 
-        			 t * 0.17087277)))))))))
+                     t * ( 1.00002368 +
+                     t * ( 0.37409196 + 
+                     t * ( 0.09678418 + 
+                     t * (-0.18628806 + 
+                     t * ( 0.27886807 + 
+                     t * (-1.13520398 + 
+                     t * ( 1.48851587 + 
+                     t * (-0.82215223 + 
+                     t * 0.17087277)))))))))
         if (x >= 0.0) return 1-ans
         return 1+ans
     },
@@ -188,7 +188,7 @@ $module = {
        var i=float(Math.floor(x));
        return new Array(i, float(x-i));
     },
-    pi : Math.PI,
+    pi : float(Math.PI),
     pow: function(x,y) {return Math.pow(x,y)},
     radians: function(x){return x * Math.PI/180},
     sin : function(x){return float(Math.sin(x))},
