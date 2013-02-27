@@ -13,11 +13,13 @@ a.sort_link{margin-left:10px;text-decoration:none}
 <script src="../py_string.js"></script>
 <script src="../py_dom.js"></script>
 <script src="../py_ajax.js"></script>
+<script src="../py_import.js"></script>
 
 </head>
 <body onLoad="brython(1)">
 
         <script type="text/python">
+        from html import *
         items = ['unan','daou','tri','pevar','pemp']
         
         def swap(src,dest):

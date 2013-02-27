@@ -1,3 +1,5 @@
+from html import *
+
 # globals #########################
 refr = False
 geo = win.navigator.geolocation

@@ -20,13 +20,14 @@ a.sort_link{margin-left:10px;text-decoration:none}
 </head>
 <body onLoad="brython(1)">
 <script id="ascript" type="text/python">
+import html
 import time
 
 t0 = time.time()
 
 orders = {}
 
-doc <= IMG(src="../../brython.png")
+doc <= html.IMG(src="../../brython.png")
 
 def sort_by_col(cell,numeric=False):
     th_elt = cell.parent # TH cell
@@ -91,27 +92,27 @@ lines = ['Allemagne','Berlin',357026,81.8,
 'Slovénie','Ljubljana',20273,2.05,
 'Suède','Stockholm',441369,9.41]
 
-doc <= H2("Pays d'Europe")
+doc <= html.H2("Pays d'Europe")
 
-table = TABLE()
-t = TBODY()
-title = TR()
-link = BUTTON('\u2191\u2193',onClick="sort_by_col(this)")
-link_num = BUTTON('\u2191\u2193',onClick="sort_by_col(this,true)")
+table = html.TABLE()
+t = html.TBODY()
+title = html.TR()
+link = html.BUTTON('\u2191\u2193',onClick="sort_by_col(this)")
+link_num = html.BUTTON('\u2191\u2193',onClick="sort_by_col(this,true)")
 link1 = link.clone()
-title <= TH('Pays'+link)
-title <= TH('Capitale'+link.clone())
-title <= TH('Superficie'+link_num)
-title <= TH('Population'+link_num.clone())
+title <= html.TH('Pays'+link)
+title <= html.TH('Capitale'+link.clone())
+title <= html.TH('Superficie'+link_num)
+title <= html.TH('Population'+link_num.clone())
 t <= title
 
 rows = []
 for i in range(len(lines)/4):
-    row = TR()
+    row = html.TR()
     for j in range(2):
-        row <= TD(lines[4*i+j])
+        row <= html.TD(lines[4*i+j])
     for j in range(2,4):
-        row <= TD(lines[4*i+j],align="right")
+        row <= html.TD(lines[4*i+j],align="right")
     rows.append(row)
 
 for row in rows:
@@ -120,7 +121,7 @@ for row in rows:
 table <= t
 doc <= table
 
-foot = P()+I('Ecrit en '+A('Brython',href="http://www.brython.info"))
+foot = html.P()+html.I('Ecrit en '+html.A('Brython',href="http://www.brython.info"))
 
 doc <= foot
 
