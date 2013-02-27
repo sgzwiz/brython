@@ -186,6 +186,8 @@ function $AssignCtx(context){
             var left_items = left.tree[0].tree
         }else if(left.type==='target_list'){
             var left_items = left.tree
+        }else if(left.type==='list_or_tuple'){
+            var left_items = left.tree
         }
         if(left_items===null){return} // no transformation
         var right = this.tree[1]
@@ -201,6 +203,12 @@ function $AssignCtx(context){
                 throw Error('ValueError : need more than '+right_items.length+' to unpack')
             }
             var new_nodes = []
+            // replace original line by dummy line : the next one might also
+            // be a multiple assignment
+            var new_node = new $Node('expression')
+            new $NodeJSCtx(new_node,'void(0)')
+            new_nodes.push(new_node)
+            
             var new_node = new $Node('expression')
             new $NodeJSCtx(new_node,'var $temp'+$loop_num+'=[]')
             new_nodes.push(new_node)
@@ -225,13 +233,16 @@ function $AssignCtx(context){
             }
             $loop_num++
         }else{ // form x,y=a
-            var new_nodes = []
+            // evaluate right argument (it might be a function call)
+            var new_node = new $Node('expression')
+            new $NodeJSCtx(new_node,'$right='+right.to_js())
+            var new_nodes = [new_node]
             for(var i=0;i<left_items.length;i++){
                 var new_node = new $Node('expression')
                 var context = new $NodeCtx(new_node) // create ordinary node
                 left_items[i].parent = context
                 var assign = new $AssignCtx(left_items[i]) // assignment to left operand
-                assign.tree[1] = new $JSCode(right.to_js()+'.__item__('+i+')')
+                assign.tree[1] = new $JSCode('$right.__item__('+i+')')
                 new_nodes.push(new_node)
             }
             node.parent.children.splice(rank,1) // remove original line
