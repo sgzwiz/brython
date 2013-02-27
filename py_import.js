@@ -51,8 +51,10 @@ function $import_js(module,alias,names){
             eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
         }else{
             if(names.length===1 && names[0]==='*'){
+                console.log('import all names')
                 for(var name in $module){
-                    eval(name+'=$module[name]')
+                    if(name.substr(0,1)==='_'){continue}
+                    eval(name+'=$module["'+name+'"]')
                 }
             }else{
                 for(var i=0;i<names.length;i++){
@@ -138,7 +140,7 @@ function $import_py(module,alias,names){
             new $NodeJSCtx(new_node,'for(var $attr in $module)')
             root.add(new_node)
             var attr_node = new $Node('expression')
-            new $NodeJSCtx(attr_node,'eval($attr+"=$module[$attr]")')
+            new $NodeJSCtx(attr_node,'if($attr.charAt(0)!=="_"){eval($attr+"=$module[$attr]")}')
             new_node.add(attr_node)
         }else{
             for(var i=0;i<names.length;i++){
