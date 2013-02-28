@@ -52,10 +52,10 @@ assert math.ceil(-0.5) == 0
 #assert math.ldexp(float("inf"), -10**20) == float("inf")
 
 #print("skip test... issues with math.log1p")
-#assert almost_equal(math.log1p(1/math.e-1), -1)
-#assert almost_equal(math.log1p(0), 0)
-#assert almost_equal(math.log1p(math.e-1), 1)
-#assert almost_equal(math.log1p(1), math.log(2))
+assert almost_equal(math.log1p(1/math.e-1), -1)
+assert almost_equal(math.log1p(0), 0)
+assert almost_equal(math.log1p(math.e-1), 1)
+assert almost_equal(math.log1p(1), math.log(2))
 
 assert almost_equal(math.acosh(1), 0)
 assert almost_equal(math.acosh(2), 1.3169578969248168)
