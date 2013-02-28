@@ -58,7 +58,9 @@ function $ListClass(items){
 // add Brython attributes to Javascript Array
 
 Array.prototype.__add__ = function(other){
-    return this.valueOf().concat(other.valueOf())
+    var res = this.valueOf().concat(other.valueOf())
+    if(isinstance(this,tuple)){res = tuple.apply(this,res)}
+    return res
 }
 
 Array.prototype.__class__ = list
@@ -112,7 +114,7 @@ Array.prototype.__delitem__ = function(arg){
 }
 
 Array.prototype.__eq__ = function(other){
-    if(isinstance(other,list)){
+    if(isinstance(other,this.__class__)){
         if(other.length==this.length){
             for(var i=0;i<this.length;i++){
                 if(!this[i].__eq__(other[i])){return False}
@@ -191,7 +193,12 @@ Array.prototype.__item__ = function(i){return this[i]}
 Array.prototype.__in__ = function(item){return item.__contains__(this)}
 
 Array.prototype.__len__ = function(){return this.length}
-    
+
+Array.prototype.__mul__ = function(other){
+    if(isinstance(other,int)){return other.__mul__(this)}
+    else{throw TypeError("can't multiply sequence by non-int of type '"+other.__name+"'")}
+}
+     
 Array.prototype.__ne__ = function(other){return !this.__eq__(other)}
     
 Array.prototype.__next__ = function(){

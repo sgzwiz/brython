@@ -426,11 +426,12 @@ Number.prototype.__mul__ = function(other){
         var res = ''
         for(var i=0;i<val;i++){res+=other}
         return res
-    }else if(isinstance(other,list)){
+    }else if(isinstance(other,[list,tuple])){
         var res = []
         // make temporary copy of list
         var $temp = other.slice(0,other.length)
-        for(var i=0;i<val-1;i++){res=res.concat($temp)}
+        for(var i=0;i<val;i++){res=res.concat($temp)}
+        if(isinstance(other,tuple)){res=tuple.apply(this,res)}
         return res
     }else{$UnsupportedOpType("*",int,other)}
 }
@@ -859,7 +860,9 @@ function tuple(){
     obj.__class__ = tuple
     obj.toString = function(){
         var res = args.toString()
-        return '('+res.substr(1,res.length-2)+')'
+        res = '('+res.substr(1,res.length-2)
+        if(obj.length===1){res+=','}
+        return res+')'
     }
     return obj
 }
