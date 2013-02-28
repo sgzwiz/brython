@@ -804,7 +804,7 @@ function $IdCtx(context,value,minus){
     context.tree.push(this)
     this.to_js = function(){
         var val = this.value
-        if(['print','alert','eval'].indexOf(this.value)>-1){val = '$'+val}
+        if(['print','alert','eval','open'].indexOf(this.value)>-1){val = '$'+val}
         return val+$to_js(this.tree,'')
     }
 }
@@ -2083,7 +2083,7 @@ function $tokenize(src,module){
         'InnerWidth','isFinite','isNan','java','JavaArray','JavaClass','JavaObject',
         'JavaPackage','length','Link','location','Location','locationbar','Math','menubar',
         'MimeType','moveBy','moveTo','name','NaN','navigate','navigator','Navigator','netscape',
-        'Number','Object','onBlur','onError','onFocus','onLoad','onUnload','open','opener',
+        'Number','Object','onBlur','onError','onFocus','onLoad','onUnload','opener',
         'Option','outerHeight','OuterWidth','Packages','pageXoffset','pageYoffset',
         'parent','parseFloat','parseInt','Password','personalbar','Plugin','prototype',
         'Radio','ref','RegExp','releaseEvents','Reset','resizeBy','resizeTo','routeEvent',

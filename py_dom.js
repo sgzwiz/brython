@@ -115,6 +115,7 @@ function $DOMEvent(ev){
         if(attr=="x"){return $mouseCoords(ev).x}
         if(attr=="y"){return $mouseCoords(ev).y}
         if(attr=="data"){return new $Clipboard(ev.dataTransfer)}
+        if(attr=="target"){return new $EventTarget(ev.target||ev.srcElement)}
         return $getattr(ev,attr)
     }
     if(ev.preventDefault===undefined){ev.preventDefault = function(){ev.returnValue=false}}
@@ -137,6 +138,67 @@ $Clipboard.prototype.__setitem__ = function(name,value){
 $Clipboard.prototype.__setattr__ = function(attr,value){
     eval("this.data."+attr+"=value")
 }
+
+function $EventTarget(ev){
+    this.event = ev
+    this.__getattr__ = function(attr){return this[attr]}
+    if(ev.files!==undefined){
+        this.files = (function(obj){
+            var flist = obj.event.files, res=[]
+            for(var i=0;i<flist.length;i++){res.push(new $File(flist.item(i)))}
+            return res})(this)
+    }
+    if(ev.result!==undefined){this.result=this.event.result}
+}
+
+function $File(dom_file){
+    this.dom_file = dom_file
+    this.__class__ = dom.File
+    this.__getattr__ = function(attr){
+        if(this['get_'+attr]!==undefined){return this['get_'+attr]}
+        return this.dom_file[attr]
+    }
+    this.__str__ = function(){return "<object 'FileObject' "+dom_file.name+">"}
+    this.toString = this.__str__
+}
+
+function $OpenFile(file,mode,encoding){
+    this.reader = new FileReader()
+    if(mode==='r'){this.reader.readAsText(file.dom_file,encoding)}
+    else if(mode==='rb'){this.reader.readAsBinaryString(file.dom_file)}
+    
+    this.file = file
+    this.__class__ = dom.FileReader
+    this.__getattr__ = function(attr){
+        if(this['get_'+attr]!==undefined){return this['get_'+attr]}
+        return this.reader[attr]
+    }
+    this.__setattr__ = (function(obj){
+        return function(attr,value){
+            if(attr.substr(0,2)=='on'){ // event
+                // value is a function taking an event as argument
+                if(window.addEventListener){
+                    var callback = function(ev){return value($DOMEvent(ev))}
+                    obj.addEventListener(attr.substr(2),callback)
+                }else if(window.attachEvent){
+                    var callback = function(ev){return value($DOMEvent(window.event))}
+                    obj.attachEvent(attr,callback)
+                }
+            }else if('set_'+attr in obj){return obj['set_'+attr](value)}
+            else if(attr in obj){obj[attr]=value}
+            else{setattr(obj,attr,value)}
+        }
+    })(this.reader)
+}
+
+
+dom = { File : function(){},
+    FileReader : function(){}
+    }
+dom.File.__class__ = $type
+dom.File.__str__ = function(){return "<class 'File'>"}
+dom.FileReader.__class__ = $type
+dom.FileReader.__str__ = function(){return "<class 'FileReader'>"}
 
 function $OptionsClass(parent){ 
     // class for collection "options" of a SELECT tag
@@ -211,7 +273,7 @@ JSObject.toString = JSObject.__str__
 function $JSObject(js){
     this.js = js
     this.__class__ = JSObject
-    this.__str__ = function(){return "<object 'JSObject'>"}
+    this.__str__ = function(){return "<object 'JSObject' around "+this.js+">"}
     this.toString = this.__str__
 }
 
