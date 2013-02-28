@@ -3,6 +3,11 @@ var float_check=function(x) {
     return x;
 }
 
+var isinf=function(x) {
+         var x1=float_check(x);
+         return x1 == -Infinity || x1 == Infinity || x1 == Number.POSITIVE_INFINITY || x1 == Number.NEGATIVE_INFINITY;
+}
+
 $module = {
     __getattr__ : function(attr){
         var res = this[attr]
@@ -11,14 +16,20 @@ $module = {
     },
     acos: function(x) {return float(Math.acos(float_check(x)))},
     acosh: function(x) { 
+        if (isinf(x)) return float('inf');
         var y = float_check(x);
         return Math.log(y + Math.sqrt(y*y-1));
     },
     asin: function(x) {return float(Math.asin(float_check(x)))},
     asinh: function(x) {
+        if (isinf(x)) return float('inf');
         var y = float_check(x);
-        return Math.log(y + Math.sqrt(y*y+1))},
-    atan: function(x) {return float(Math.atan(float_check(x)))},
+        
+        return Math.log(y + Math.sqrt(y*y+1))
+    },
+    atan: function(x) {
+        if (isinf(x)) return float(Math.PI/2);
+        return float(Math.atan(float_check(x)))},
     atan2: function(y,x) {return float(Math.atan2(y,x))},
     atanh: function(x) { 
        var y=float_check(x);
@@ -178,10 +189,7 @@ $module = {
        var y1=float_check(y);
        return Math.sqrt(x1*x1 + y1*y1)},
     isfinite:function(x) {return isFinite(float_check(x))},
-    isinf:function(x) {
-         var x1=float_check(x);
-         return x1 == Number.POSITIVE_INFINITY || x1 == Number.NEGATIVE_INFINITY;
-    },
+    isinf:function(x) { return isinf(x);},
     isnan:function(x) {return isNan(float_check(x))},
     ldexp:function(x,i) {return float_check(x) * Math.pow(2,float_check(i))},
     lgamma:function(x) {
