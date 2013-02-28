@@ -261,6 +261,7 @@ function float(value){
     if(typeof value=="number" || (
         typeof value=="string" && !isNaN(value))){
         return new $FloatClass(parseFloat(value))
+    }else if (value == 'inf') {return new $FloatClass(Infinity);
     }else if(isinstance(value,float)){return value}
     else{throw ValueError("Could not convert to float(): '"+str(value)+"'")}
 }

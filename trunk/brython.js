@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130227-194418
+// version 1.1.20130227-202035
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -222,6 +222,7 @@ function float(value){
 if(typeof value=="number" ||(
 typeof value=="string" && !isNaN(value))){
 return new $FloatClass(parseFloat(value))
+}else if(value=='inf'){return new $FloatClass(Infinity)
 }else if(isinstance(value,float)){return value}
 else{throw ValueError("Could not convert to float(): '"+str(value)+"'")}
 }

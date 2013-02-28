@@ -48,10 +48,8 @@ assert math.ceil(1.0) == 1
 assert math.ceil(1.5) == 2
 assert math.ceil(-0.5) == 0
 
-#print("skip test... problem with float('inf')")
-#assert math.ldexp(float("inf"), -10**20) == float("inf")
+assert math.ldexp(float("inf"), -10**20) == float("inf")
 
-#print("skip test... issues with math.log1p")
 assert almost_equal(math.log1p(1/math.e-1), -1)
 assert almost_equal(math.log1p(0), 0)
 assert almost_equal(math.log1p(math.e-1), 1)
@@ -60,16 +58,12 @@ assert almost_equal(math.log1p(1), math.log(2))
 assert almost_equal(math.acosh(1), 0)
 assert almost_equal(math.acosh(2), 1.3169578969248168)
 
-#print("skip test.. problem with float('inf')")
-#assert math.isinf(math.asinh(float("inf")))
+assert math.isinf(math.asinh(float("inf")))
 
 assert almost_equal(math.asinh(0), 0)
 assert almost_equal(math.asinh(1), 0.88137358701954305)
 
 assert almost_equal(math.asinh(-1), -0.88137358701954305)
-
-#print("skip test... problem with float('inf')")
-#assert math.isinf(math.asinh(float("inf")))
 
 assert almost_equal(math.atanh(0), 0)
 assert almost_equal(math.atanh(0.5), 0.54930614433405489)
