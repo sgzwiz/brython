@@ -49,12 +49,12 @@ function $import_js(module,alias,names){
             // add class and __str__
             eval(alias+'.__class__ = $type')
             eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
+            eval(alias+'.__file__ = "' +document.$brython_path+'libs/'+ module + '.js"')
         }else{
             if(names.length===1 && names[0]==='*'){
-                console.log('import all names')
                 for(var name in $module){
                     if(name.substr(0,1)==='_'){continue}
-                    eval(name+'=$module["'+name+'"]')
+                    eval(name+'=$module[name]')
                 }
             }else{
                 for(var i=0;i<names.length;i++){
@@ -65,11 +65,12 @@ function $import_js(module,alias,names){
     }catch(err){throw ImportError(err.message)}
 }
 
-function $import_py(module,alias,names){
+function $import_py(module,alias,names,relpath){
     // import Python modules, in the same folder as the HTML page with
     // the Brython script
     var imp = $importer()
     var $xmlhttp = imp[0],fake_qs=imp[1],timer=imp[2],res=null
+    var module_path;
     $xmlhttp.onreadystatechange = function(){
         if($xmlhttp.readyState==4){
             window.clearTimeout(timer)
@@ -80,18 +81,30 @@ function $import_py(module,alias,names){
             }
         }
     }
-    $xmlhttp.open('GET',module+'.py'+fake_qs,false)
-    $xmlhttp.send()
+   
+    if (relpath !== undefined) {
+      module_path=relpath+"/"+ module + ".py";
+      $xmlhttp.open('GET',module_path+fake_qs,false)
+      $xmlhttp.send()
+    } else {
+      // fix me..  tests should not be hardcoded and we should
+      // use sys.path to find modules
+      module_path=document.$brython_path+"tests/"+ module + ".py";
+      $xmlhttp.open('GET',module+'.py'+fake_qs,false)
+      $xmlhttp.send()
+    }
 
     // patch by Bill Earney
-    if(res.constructor===Error){
+    if (relpath === undefined && res.constructor===Error){
       // try seeing if import candidate is really a dir name with __init__.py
+      module_path=document.$brython_path+"tests/"+module + "/__init__.py";
       res=null
       $xmlhttp.open('GET',module+'/__init__.py'+fake_qs,false)
       $xmlhttp.send()
     }
 
     if(res.constructor===Error){res.name='ImportError';throw res} // module not found
+    document.$py_loc[module]=module_path
     var root = $py2js(res,module)
     var body = root.children
     root.children = []
@@ -157,6 +170,7 @@ function $import_py(module,alias,names){
         // add class and __str__
         eval(alias+'.__class__ = $type')
         eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
+        eval(alias+'.__file__ = "' + module_path + '"')
     }catch(err){
         eval('throw '+err.name+'(err.message)')
     }
@@ -186,6 +200,12 @@ function $import_list(modules){ // list of objects with attributes name and alia
     }
 }
 
-function $import_from(module,names){
-    $import_single(module,module,names)
+function $import_from(module,names,relpath){
+    if (relpath !== "undefined") {
+      //this is a relative path import
+      // ie,  from .mymodule import a,b,c
+      $import_py(module,module,names,relpath);
+    } else {
+      $import_single(module,module,names)
+    }
 }

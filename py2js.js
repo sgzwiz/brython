@@ -738,8 +738,8 @@ function $FromCtx(context){
     this.names = []
     context.tree.push(this)
     this.expect = 'module'
-    this.toString = function(){return '(from) '+this.module+' (import) '+this.names}
-    this.to_js = function(){return '$import_from("'+this.module+'",'+this.names+')'}
+    this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(relative path)' + this.relpath}
+    this.to_js = function(){return '$import_from("'+this.module+'",'+this.names+', "' + this.relpath +'")'}
 }
 
 function $FuncArgs(context){
@@ -958,7 +958,7 @@ function $ListOrTupleCtx(context,real){
             }
             return '$list_comp('+res+')'
         }else if(this.real==='tuple'){
-            if(this.tree.length===1){return this.tree[0].to_js()}
+            if(this.tree.length===1 && this.has_comma===undefined){return this.tree[0].to_js()}
             else{return 'tuple('+$to_js(this.tree)+')'}
         }
     }
@@ -1662,6 +1662,10 @@ function $transition(context,token){
         }else if(token==='import' && context.expect==='import'){
             context.expect = 'id'
             return context
+        }else if (token==='import' && context.expect==='module' 
+                 && context.relpath !== undefined) {
+            context.expect = 'id'
+            return context
         }else if(token==='id' && context.expect==='id'){
             context.names.push(arguments[2])
             context.expect = ','
@@ -1678,6 +1682,20 @@ function $transition(context,token){
         }else if(token==='eol' && 
             (context.expect ===',' || context.expect==='eol')){
             return $transition(context.parent,token)
+        }else if (token==='.' && context.expect === 'module') {
+            context.expect='module'
+            //means we need the relative path
+            var relpath=document.$py_loc[context.parent.node.module];
+            var i=relpath.lastIndexOf('/')
+            context.relpath=relpath.substring(0,i);
+            //console.log("from context " + context.relpath);
+            return context
+        }else if (token==='(' && context.expect === 'id') {
+            context.expect='id'
+            return context
+        }else if (token===')' && context.expect === ',') {
+            context.expect='eol'
+            return context
         }else{$_SyntaxError(context,'token '+token+' after '+context)}
             
 
@@ -1817,6 +1835,7 @@ function $transition(context,token){
                     if(context.real==='list_comp'){context.intervals.push($pos)}
                     return context
                 }else if(token===','){
+                    if(context.real==='tuple'){context.has_comma=true}
                     context.expect = 'id'
                     return context
                 }else if(token==='for'){
@@ -2341,6 +2360,7 @@ function $tokenize(src,module){
 
 function brython(debug){
     document.$py_src = {}
+    document.$py_loc = {}
     document.$debug = debug
     document.$exc_stack = []
     var elts = document.getElementsByTagName("script")
@@ -2364,8 +2384,11 @@ function brython(debug){
                     }
                 $xmlhttp.open('GET',elt.src,false)
                 $xmlhttp.send()
+                document.$py_loc['__main__']=elt.src 
+
             }else{
                 var src = (elt.innerHTML || elt.textContent)
+                document.$py_loc['__main__']='.' 
             }
             var root = $py2js(src,'__main__')
             var js = root.to_js()
