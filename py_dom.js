@@ -115,7 +115,6 @@ function $DOMEvent(ev){
         if(attr=="x"){return $mouseCoords(ev).x}
         if(attr=="y"){return $mouseCoords(ev).y}
         if(attr=="data"){return new $Clipboard(ev.dataTransfer)}
-        if(attr=="target"){return new $EventTarget(ev.target||ev.srcElement)}
         return $getattr(ev,attr)
     }
     if(ev.preventDefault===undefined){ev.preventDefault = function(){ev.returnValue=false}}
@@ -139,33 +138,10 @@ $Clipboard.prototype.__setattr__ = function(attr,value){
     eval("this.data."+attr+"=value")
 }
 
-function $EventTarget(ev){
-    this.event = ev
-    this.__getattr__ = function(attr){return this[attr]}
-    if(ev.files!==undefined){
-        this.files = (function(obj){
-            var flist = obj.event.files, res=[]
-            for(var i=0;i<flist.length;i++){res.push(new $File(flist.item(i)))}
-            return res})(this)
-    }
-    if(ev.result!==undefined){this.result=this.event.result}
-}
-
-function $File(dom_file){
-    this.dom_file = dom_file
-    this.__class__ = dom.File
-    this.__getattr__ = function(attr){
-        if(this['get_'+attr]!==undefined){return this['get_'+attr]}
-        return this.dom_file[attr]
-    }
-    this.__str__ = function(){return "<object 'FileObject' "+dom_file.name+">"}
-    this.toString = this.__str__
-}
-
 function $OpenFile(file,mode,encoding){
     this.reader = new FileReader()
-    if(mode==='r'){this.reader.readAsText(file.dom_file,encoding)}
-    else if(mode==='rb'){this.reader.readAsBinaryString(file.dom_file)}
+    if(mode==='r'){this.reader.readAsText(file,encoding)}
+    else if(mode==='rb'){this.reader.readAsBinaryString(file)}
     
     this.file = file
     this.__class__ = dom.FileReader
@@ -273,8 +249,23 @@ JSObject.toString = JSObject.__str__
 function $JSObject(js){
     this.js = js
     this.__class__ = JSObject
-    this.__str__ = function(){return "<object 'JSObject' around "+this.js+">"}
+    this.__str__ = function(){return "<object 'JSObject' wraps "+this.js+">"}
     this.toString = this.__str__
+}
+
+$JSObject.prototype.__getitem__ = function(rank){
+    if(this.js.item!==undefined){return this.js.item(rank)}
+    else{throw AttributeError,this+' has no attribute __getitem__'}
+}
+
+$JSObject.prototype.__item__ = function(rank){ // for iterator protocol
+    if(this.js.item!==undefined){return this.js.item(rank)}
+    else{throw AttributeError,this+' has no attribute __item__'}
+}
+
+$JSObject.prototype.__len__ = function(){
+    if(this.js.length!==undefined){return this.js.length}
+    else{throw AttributeError,this+' has no attribute __len__'}
 }
 
 $JSObject.prototype.__getattr__ = function(attr){
