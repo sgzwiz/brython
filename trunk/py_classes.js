@@ -653,6 +653,7 @@ object.__str__ = "<class 'object'>"
 
 function $open(){
     // first argument is file : can be a string, or an instance of a DOM File object
+    // XXX only DOM File supported at the moment
     // other arguments : 
     // - mode can be 'r' (text, default) or 'rb' (binary)
     // - encoding if mode is 'rb'
@@ -660,7 +661,7 @@ function $open(){
     for(var attr in $ns){eval('var '+attr+'=$ns["'+attr+'"]')}
     if(args.length>0){var mode=args[0]}
     if(args.length>1){var encoding=args[1]}
-    if(isinstance(file,dom.File)){return new $OpenFile(file,mode,encoding)}
+    if(isinstance(file,JSObject)){return new $OpenFile(file.js,mode,encoding)}
 }
 
 function $print(){
