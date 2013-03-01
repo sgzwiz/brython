@@ -253,6 +253,8 @@ function $JSObject(js){
     this.toString = this.__str__
 }
 
+$JSObject.prototype.__bool__ = function(){return new Boolean(this.js)}
+
 $JSObject.prototype.__getitem__ = function(rank){
     if(this.js.item!==undefined){return this.js.item(rank)}
     else{throw AttributeError,this+' has no attribute __getitem__'}
