@@ -21,15 +21,14 @@
 reader = None
 
 def on_load(ev):
-    global reader
     log('ready state %s '%reader.readyState)
     log(reader.result)
     
 def on_fileupload(ev):
     global reader
     print('works, got some files')
-    for f in ev.target.files:
-        reader = open(f,'rb')
+    for file in ev.target.files:
+        reader = open(file,'rb')
         reader.onload = on_load
     
 filereader = doc['files']
