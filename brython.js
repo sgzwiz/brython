@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130301-095305
+// version 1.1.20130302-202026
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -566,7 +566,7 @@ var $ns=$MakeArgs('open',arguments,['file'],{'mode':'r','encoding':'utf-8'},'arg
 for(var attr in $ns){eval('var '+attr+'=$ns["'+attr+'"]')}
 if(args.length>0){var mode=args[0]}
 if(args.length>1){var encoding=args[1]}
-if(isinstance(file,JSObject)){console.log('file '+file.js);return new $OpenFile(file.js,mode,encoding)}
+if(isinstance(file,JSObject)){return new $OpenFile(file.js,mode,encoding)}
 }
 function $print(){
 var $ns=$MakeArgs('print',arguments,[],{},'args','kw')
@@ -1677,7 +1677,7 @@ $xmlhttp.open('GET',module+'/__init__.py'+fake_qs,false)
 $xmlhttp.send()
 }
 if(res.constructor===Error){res.name='ImportError';throw res}
-document.$py_loc[module]=module_path
+document.$py_module_path[module]=module_path
 var root=$py2js(res,module)
 var body=root.children
 root.children=[]
@@ -1758,13 +1758,18 @@ function $import_list(modules){
 for(var i=0;i<modules.length;i++){
 var module=modules[i][0]
 $import_single(modules[i][0],modules[i][1])
+document.$py_module_alias[modules[i][0]]=modules[i][1]
 }
 }
-function $import_from(module,names,relpath){
-if(relpath !=="undefined"){
-$import_py(module,module,names,relpath)
-}else{
-$import_single(module,module,names)
+function $import_from(module,names,parent_module){
+var relpath
+var alias=module
+throw ImportError('from .. import .. not supported yet')
+if(parent_module !=="undefined"){
+relpath=document.$py_module_path[parent_module]
+var i=relpath.lastIndexOf('/')
+relpath=relpath.substring(0, i)
+alias=document.$py_module_alias[parent_module]
 }
 }
 var $operators={
@@ -2430,8 +2435,8 @@ this.parent=context
 this.names=[]
 context.tree.push(this)
 this.expect='module'
-this.toString=function(){return '(from) '+this.module+' (import) '+this.names + '(relative path)' + this.relpath}
-this.to_js=function(){return '$import_from("'+this.module+'",'+this.names+', "' + this.relpath +'")'}
+this.toString=function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module}
+this.to_js=function(){return '$import_from("'+this.module+'",'+this.names+', "' + this.parent_module +'");\n'}
 }
 function $FuncArgs(context){
 this.type='func_args'
@@ -3265,9 +3270,7 @@ return context
 return $transition(context.parent,token)
 }else if(token==='.' && context.expect==='module'){
 context.expect='module'
-var relpath=document.$py_loc[context.parent.node.module]
-var i=relpath.lastIndexOf('/')
-context.relpath=relpath.substring(0,i)
+context.parent_module=context.parent.node.module
 return context
 }else if(token==='(' && context.expect==='id'){
 context.expect='id'
@@ -3347,6 +3350,8 @@ return context
 }else if(token==='id' && context.expect==='alias'){
 context.expect=','
 context.tree[context.tree.length-1].alias=arguments[2]
+var mod_name=context.tree[context.tree.length-1].name
+document.$py_module_alias[mod_name]=arguments[2]
 return context
 }else if(token==='eol' && context.expect===','){
 return $transition(context.parent,token)
@@ -3846,7 +3851,8 @@ return root
 }
 function brython(debug){
 document.$py_src={}
-document.$py_loc={}
+document.$py_module_path={}
+document.$py_module_alias={}
 document.$debug=debug
 document.$exc_stack=[]
 var elts=document.getElementsByTagName("script")
@@ -3867,10 +3873,10 @@ src=$xmlhttp.responseText
 }
 $xmlhttp.open('GET',elt.src,false)
 $xmlhttp.send()
-document.$py_loc['__main__']=elt.src 
+document.$py_module_path['__main__']=elt.src 
 }else{
 var src=(elt.innerHTML || elt.textContent)
-document.$py_loc['__main__']='.' 
+document.$py_module_path['__main__']='.' 
 }
 var root=$py2js(src,'__main__')
 var js=root.to_js()
@@ -4438,9 +4444,14 @@ this.__class__=JSObject
 this.__str__=function(){return "<object 'JSObject' wraps "+this.js+">"}
 this.toString=this.__str__
 }
+$JSObject.prototype.__bool__=function(){return new Boolean(this.js)}
 $JSObject.prototype.__getitem__=function(rank){
 if(this.js.item!==undefined){return this.js.item(rank)}
 else{throw AttributeError,this+' has no attribute __getitem__'}
+}
+$JSObject.prototype.__item__=function(rank){
+if(this.js.item!==undefined){return this.js.item(rank)}
+else{throw AttributeError,this+' has no attribute __item__'}
 }
 $JSObject.prototype.__len__=function(){
 if(this.js.length!==undefined){return this.js.length}

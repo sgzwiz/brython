@@ -738,8 +738,8 @@ function $FromCtx(context){
     this.names = []
     context.tree.push(this)
     this.expect = 'module'
-    this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(relative path)' + this.relpath}
-    this.to_js = function(){return '$import_from("'+this.module+'",'+this.names+', "' + this.relpath +'")'}
+    this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module}
+    this.to_js = function(){ return '$import_from("'+this.module+'",'+this.names+', "' + this.parent_module +'");\n'}
 }
 
 function $FuncArgs(context){
@@ -1684,11 +1684,8 @@ function $transition(context,token){
             return $transition(context.parent,token)
         }else if (token==='.' && context.expect === 'module') {
             context.expect='module'
-            //means we need the relative path
-            var relpath=document.$py_loc[context.parent.node.module];
-            var i=relpath.lastIndexOf('/')
-            context.relpath=relpath.substring(0,i);
-            //console.log("from context " + context.relpath);
+            // this is a relative import
+            context.parent_module=context.parent.node.module;
             return context
         }else if (token==='(' && context.expect === 'id') {
             context.expect='id'
@@ -1783,6 +1780,8 @@ function $transition(context,token){
         }else if(token==='id' && context.expect==='alias'){
             context.expect = ','
             context.tree[context.tree.length-1].alias = arguments[2]
+            var mod_name=context.tree[context.tree.length-1].name;
+            document.$py_module_alias[mod_name]=arguments[2]
             return context
         }else if(token==='eol' && context.expect===','){
             return $transition(context.parent,token)
@@ -2360,7 +2359,8 @@ function $tokenize(src,module){
 
 function brython(debug){
     document.$py_src = {}
-    document.$py_loc = {}
+    document.$py_module_path = {}
+    document.$py_module_alias = {}
     document.$debug = debug
     document.$exc_stack = []
     var elts = document.getElementsByTagName("script")
@@ -2384,11 +2384,11 @@ function brython(debug){
                     }
                 $xmlhttp.open('GET',elt.src,false)
                 $xmlhttp.send()
-                document.$py_loc['__main__']=elt.src 
+                document.$py_module_path['__main__']=elt.src 
 
             }else{
                 var src = (elt.innerHTML || elt.textContent)
-                document.$py_loc['__main__']='.' 
+                document.$py_module_path['__main__']='.' 
             }
             var root = $py2js(src,'__main__')
             var js = root.to_js()
