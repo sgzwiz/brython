@@ -104,7 +104,7 @@ function $import_py(module,alias,names,relpath){
     }
 
     if(res.constructor===Error){res.name='ImportError';throw res} // module not found
-    document.$py_loc[module]=module_path
+    document.$py_module_path[module]=module_path
     var root = $py2js(res,module)
     var body = root.children
     root.children = []
@@ -197,15 +197,25 @@ function $import_list(modules){ // list of objects with attributes name and alia
     for(var i=0;i<modules.length;i++){
         var module = modules[i][0]
         $import_single(modules[i][0],modules[i][1])
+        document.$py_module_alias[modules[i][0]]=modules[i][1]
     }
 }
 
-function $import_from(module,names,relpath){
-    if (relpath !== "undefined") {
-      //this is a relative path import
-      // ie,  from .mymodule import a,b,c
-      $import_py(module,module,names,relpath);
-    } else {
-      $import_single(module,module,names)
+function $import_from(module,names,parent_module){
+    var relpath;
+    var alias=module;
+
+    throw ImportError('from .. import .. not supported yet');
+
+    if (parent_module !== "undefined") {
+       //this is a relative path import
+       // ie,  from .mymodule import a,b,c
+       //get parent module
+       relpath=document.$py_module_path[parent_module];
+       var i=relpath.lastIndexOf('/');
+       relpath=relpath.substring(0, i);
+    
+       alias=document.$py_module_alias[parent_module];
+       //console.log(parent_module+','+alias+','+relpath);
     }
 }
