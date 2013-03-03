@@ -262,6 +262,7 @@ function float(value){
         typeof value=="string" && !isNaN(value))){
         return new $FloatClass(parseFloat(value))
     }else if (value == 'inf') {return new $FloatClass(Infinity);
+    }else if (value == '-inf') {return new $FloatClass(-Infinity);
     }else if(isinstance(value,float)){return value}
     else{throw ValueError("Could not convert to float(): '"+str(value)+"'")}
 }
@@ -269,9 +270,33 @@ float.__class__ = $type
 float.__name__ = 'float'
 float.toString = function(){return "<class 'float'>"}
 
+float.__hash__ = function() {
+    // http://cw.tactileint.com/++Floats/Ruby,JavaScript,Ruby
+    frexp=function (re) {
+       var ex = Math.floor(Math.log(re) / Math.log(2)) + 1;
+       var frac = re / Math.pow(2, ex);
+       return [frac, ex];
+    }
+
+    if (this.value === Infinity || this.value === -Infinity) {
+       if (this.value < 0.0) return -271828
+       return 314159;
+    } else if (isNaN(this.value)) {
+       return 0;
+    }
+
+    var r=frexp(this.value);
+    r[0] *= Math.pow(2,31)
+    hipart = int(r[0])
+    r[0] = (r[0] - hipart) * Math.pow(2,31)
+    var x = hipart + int(r[0]) + (r[1] << 15)
+    return x & 0xFFFFFFFF;
+}
+
 function $FloatClass(value){
     this.value = value
     this.__class__ = float
+    this.__hash__ = float.__hash__
 }
 
 $FloatClass.prototype.toString = function(){
@@ -295,6 +320,8 @@ $FloatClass.prototype.__floordiv__ = function(other){
         "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
     }
 }
+
+$FloatClass.prototype.__hash__=float.__hash__;
 
 $FloatClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
@@ -372,6 +399,17 @@ function hasattr(obj,attr){
     catch(err){return False}
 }
 
+function hash(obj){
+    if (isinstance(obj, int)) { return obj.valueOf();}
+    if (obj.__hashvalue__ !== undefined) { return obj.__hashvalue__;}
+    if (obj.__hash__ !== undefined) {
+       obj.__hashvalue__=obj.__hash__()
+       return obj.__hashvalue__
+    } else {
+       throw AttributeError(
+        "'"+str(obj.__class__)+"' object has no attribute '__hash1__'")
+    }
+}
 
 //not a direct alias of prompt: input has no default value
 function input(src){
@@ -409,6 +447,8 @@ Number.prototype.__floordiv__ = function(other){
 
 Number.prototype.__getattr__ = function(attr){throw AttributeError(
     "'int' object has no attribute '"+attr+"'")}
+
+Number.prototype.__hash__ = function(){return this.valueOf()}
 
 Number.prototype.__in__ = function(item){return item.__contains__(this)}
 
@@ -877,12 +917,24 @@ function tuple(){
         if(obj.length===1){res+=','}
         return res+')'
     }
+
+    obj.__hash__ = function () {
+    // http://nullege.com/codes/show/src%40p%40y%40pypy-HEAD%40pypy%40rlib%40test%40test_objectmodel.py/145/pypy.rlib.objectmodel._hash_float/python
+    var x= 0x345678
+    for(var i=0; i < args.length; i++) {
+       var y=args[i].__hash__();
+       x=(1000003 * x) ^ y & 0xFFFFFFFF;
+    }
+    return x
+}
+
     return obj
 }
 tuple.__class__ = $type
 tuple.__name__ = 'tuple'
 tuple.__str__ = function(){return "<class 'tuple'>"}
 tuple.toString = tuple.__str__
+
 
 function zip(){
     var $ns=$MakeArgs('zip',arguments,[],{},'args','kw')

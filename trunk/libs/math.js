@@ -103,67 +103,10 @@ $module = {
     floor:function(x){return Math.floor(float_check(x))},
     fmod:function(x,y){return float(float_check(x)%float_check(y))},
     frexp:function(x){
-        //copied from http://blog.coolmuse.com/2012/06/21/getting-the-exponent-and-mantissa-from-a-javascript-number/
-        /*
-         * Getting the exponent and mantissa from a JavaScript number
-         * By Monroe Thomas http://blog.coolmuse.com
-         *
-         * MIT Licensed.
-         *
-         */
-
-        var value = float_check(x);
-        //if ( typeof value !== "number" )
-        //   throw new TypeError( "value must be a Number" );
-
-        var result = {
-            isNegative : false,
-            exponent : 0,
-            mantissa : 0
-        }
-
-        if ( value === 0 ) return result
-
-        // not finite?
-        if ( !isFinite( value ) ) {
-           result.exponent = 2047
-           if ( isNaN( value ) ) {
-              result.isNegative = false
-              result.mantissa = 2251799813685248 // QNan
-           } else {
-              result.isNegative = value === -Infinity
-              result.mantissa = 0
-           }
-           return result
-        }
-
-        // negative?
-        if (value < 0) {
-           result.isNegative = true 
-           value = -value
-        }
-
-        // calculate biased exponent
-        var e = 0;
-        if ( value >= Math.pow( 2, -1022 ) ) { // not denormalized
-           // calculate integer part of binary logarithm
-           // http://en.wikipedia.org/wiki/Binary_logarithm
-           var r = value
-           while (r<1) {e-=1; r*=2;}
-           while (r>=2) {e+=1; r/=2;}
-           e += 1023; // add bias
-        }
-        result.exponent = e;
-
-        // calculate mantissa
-        if ( e != 0 ) {
-           var f = value/Math.pow(2,e-1023);
-           result.mantissa = Math.floor( (f - 1) * Math.pow( 2, 52 ) );
-        } else { // denormalized
-           result.mantissa = Math.floor( value / Math.pow( 2, -1074 ) );
-        }
-
-        return new Array(result.mantissa, result.exponent);
+       var x1=float_check(x);
+       var ex = Math.floor(Math.log(x1) / Math.log(2)) + 1;
+       frac = x1 / Math.pow(2, ex);
+       return [frac, ex];
     },
     //fsum:function(x){},
     gamma: function(x){

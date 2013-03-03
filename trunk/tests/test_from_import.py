@@ -1,3 +1,7 @@
+from simple import text
+
+assert text=="text in simple"
+
 import from_import_test as mod
 
 #the following should work (it does in cpython).
