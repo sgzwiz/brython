@@ -179,6 +179,10 @@ Array.prototype.__getitem__ = function(arg){
     }
 }
 
+Array.prototype.__hash__ = function() {
+  throw TypeError("unhashable type: 'list'");
+}
+
 Array.prototype.__init__ = function(){
     this.splice(0,this.length)
     if(arguments.length===0){return}

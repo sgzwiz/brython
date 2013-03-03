@@ -205,17 +205,20 @@ function $import_from(module,names,parent_module){
     var relpath;
     var alias=module;
 
-    throw ImportError('from .. import .. not supported yet');
-
     if (parent_module !== "undefined") {
        //this is a relative path import
        // ie,  from .mymodule import a,b,c
        //get parent module
+
+       throw ImportError('from .. import .. not supported yet');
+
        relpath=document.$py_module_path[parent_module];
        var i=relpath.lastIndexOf('/');
        relpath=relpath.substring(0, i);
     
        alias=document.$py_module_alias[parent_module];
        //console.log(parent_module+','+alias+','+relpath);
+    } else {
+       $import_single(module,module,names)
     }
 }

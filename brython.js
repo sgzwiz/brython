@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130302-202026
+// version 1.1.20130303-105913
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -223,15 +223,36 @@ if(typeof value=="number" ||(
 typeof value=="string" && !isNaN(value))){
 return new $FloatClass(parseFloat(value))
 }else if(value=='inf'){return new $FloatClass(Infinity)
+}else if(value=='-inf'){return new $FloatClass(-Infinity)
 }else if(isinstance(value,float)){return value}
 else{throw ValueError("Could not convert to float(): '"+str(value)+"'")}
 }
 float.__class__=$type
 float.__name__='float'
 float.toString=function(){return "<class 'float'>"}
+float.__hash__=function(){
+frexp=function(re){
+var ex=Math.floor(Math.log(re)/ Math.log(2))+ 1
+var frac=re / Math.pow(2, ex)
+return[frac, ex]
+}
+if(this.value===Infinity || this.value===-Infinity){
+if(this.value < 0.0)return -271828
+return 314159
+}else if(isNaN(this.value)){
+return 0
+}
+var r=frexp(this.value)
+r[0]*=Math.pow(2,31)
+hipart=int(r[0])
+r[0]=(r[0]- hipart)* Math.pow(2,31)
+var x=hipart + int(r[0])+(r[1]<< 15)
+return x & 0xFFFFFFFF
+}
 function $FloatClass(value){
 this.value=value
 this.__class__=float
+this.__hash__=float.__hash__
 }
 $FloatClass.prototype.toString=function(){
 var res=this.value+'' 
@@ -251,6 +272,7 @@ else{return float(Math.floor(this.value/other.value))}
 "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
 }
 }
+$FloatClass.prototype.__hash__=float.__hash__
 $FloatClass.prototype.__in__=function(item){return item.__contains__(this)}
 $FloatClass.prototype.__not_in__=function(item){return !(item.__contains__(this))}
 $FloatClass.prototype.__truediv__=function(other){
@@ -316,6 +338,17 @@ function hasattr(obj,attr){
 try{getattr(obj,attr);return True}
 catch(err){return False}
 }
+function hash(obj){
+if(isinstance(obj, int)){return obj.valueOf();}
+if(obj.__hashvalue__ !==undefined){return obj.__hashvalue__;}
+if(obj.__hash__ !==undefined){
+obj.__hashvalue__=obj.__hash__()
+return obj.__hashvalue__
+}else{
+throw AttributeError(
+"'"+str(obj.__class__)+"' object has no attribute '__hash1__'")
+}
+}
 function input(src){
 return prompt(src)
 }
@@ -347,6 +380,7 @@ else{return float(Math.floor(this/other.value))}
 }
 Number.prototype.__getattr__=function(attr){throw AttributeError(
 "'int' object has no attribute '"+attr+"'")}
+Number.prototype.__hash__=function(){return this.valueOf()}
 Number.prototype.__in__=function(item){return item.__contains__(this)}
 Number.prototype.__int__=function(){return this}
 Number.prototype.__mul__=function(other){
@@ -752,6 +786,14 @@ res='('+res.substr(1,res.length-2)
 if(obj.length===1){res+=','}
 return res+')'
 }
+obj.__hash__=function(){
+var x=0x345678
+for(var i=0 i < args.length i++){
+var y=args[i].__hash__()
+x=(1000003 * x)^ y & 0xFFFFFFFF
+}
+return x
+}
 return obj
 }
 tuple.__class__=$type
@@ -996,6 +1038,9 @@ return this.__getitem__(int(arg))
 }else{
 throw TypeError('list indices must be integer, not '+str(arg.__class__))
 }
+}
+Array.prototype.__hash__=function(){
+throw TypeError("unhashable type: 'list'")
 }
 Array.prototype.__init__=function(){
 this.splice(0,this.length)
@@ -1276,6 +1321,14 @@ return res
 return this.__getitem__(int(arg))
 }
 }
+String.prototype.__hash__=function(){
+var hash=1
+for(var i=0 i < this.length i++){
+hash=(101*hash + this.charCodeAt(i))& 0xFFFFFFFF
+}
+return hash
+}
+*/
 String.prototype.__in__=function(item){return item.__contains__(this.valueOf())}
 String.prototype.__item__=function(i){return this.charAt(i)}
 String.prototype.__len__=function(){return this.length}
@@ -1764,12 +1817,14 @@ document.$py_module_alias[modules[i][0]]=modules[i][1]
 function $import_from(module,names,parent_module){
 var relpath
 var alias=module
-throw ImportError('from .. import .. not supported yet')
 if(parent_module !=="undefined"){
+throw ImportError('from .. import .. not supported yet')
 relpath=document.$py_module_path[parent_module]
 var i=relpath.lastIndexOf('/')
 relpath=relpath.substring(0, i)
 alias=document.$py_module_alias[parent_module]
+}else{
+$import_single(module,module,names)
 }
 }
 var $operators={
