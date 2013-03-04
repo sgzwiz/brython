@@ -58,11 +58,11 @@ for fname in sources:
             end = src.find('*/',pos)
             if end==-1:
                 break
-            pos = end
+            pos = end+2
         elif src[pos] in '={[(' and res and res[-1]==' ':
             res = res[:-1]+src[pos]
             pos += 1
-        elif src[pos]==';' and pos<len(src)-1 and src[pos+1] in ' \r\n':
+        elif src[pos]==';' and pos<len(src)-1 and src[pos+1] in '\r\n':
             pos +=1
         else:
             res += src[pos]
