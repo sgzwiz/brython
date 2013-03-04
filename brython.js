@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130303-105913
+// version 1.1.20130303-205116
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -839,6 +839,7 @@ this.__class__=new $class(this,"NoneType")
 this.value=null
 this.__bool__=function(){return False}
 this.__eq__=function(other){return other===None}
+this.__hash__=function(){return 0}
 this.__str__=function(){return 'None'}
 }
 None=new $NoneClass()
