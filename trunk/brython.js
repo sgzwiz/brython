@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130304-145237
+// version 1.1.20130304-220203
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -60,13 +60,20 @@ this.toString=function(){return "<class '"+info+"'>"}
 function $confirm(src){return confirm(src)}
 function dict(){
 if(arguments.length==0){return new $DictClass([],[])}
-var iterable=arguments[0]
+var $ns=$MakeArgs('dict',arguments,[],{},'args','kw')
+var args=$ns['args']
+var kw=$ns['kw']
+if(args.length>0){
+var iterable=args[0]
 var obj=new $DictClass([],[])
 for(var i=0;i<iterable.__len__();i++){
 var elt=iterable.__item__(i)
 obj.__setitem__(elt.__item__(0),elt.__item__(1))
 }
 return obj
+}else if(kw.$keys.length>0){
+return kw
+}
 }
 dict.__class__=$type
 dict.__name__='dict'
@@ -3958,7 +3965,7 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
 var i=null,$PyVars={},$def_names=[],$ns={}
 for(var k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
 if($other_args !=null){$ns[$other_args]=[]}
-if($other_kw !=null){$dict_items=[]}
+if($other_kw !=null){$dict_keys=[];$dict_values=[]}
 var upargs=[]
 for(var i=0;i<$args.length;i++){
 if($args[i]===null){upargs.push(null)}
@@ -3988,7 +3995,8 @@ $ns[$required[ix]]=$PyVar
 }else if($arg.name in $defaults){
 $ns[$arg.name]=$PyVar
 }else if($other_kw!=null){
-$dict_items.push([$arg.name,$PyVar])
+$dict_keys.push($arg.name)
+$dict_values.push($PyVar)
 }else{
 throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"'")
 }
@@ -4008,7 +4016,7 @@ throw TypeError(msg)
 }
 }
 }
-if($other_kw!=null){$ns[$other_kw]=dict($dict_items)}
+if($other_kw!=null){$ns[$other_kw]=new $DictClass($dict_keys,$dict_values)}
 return $ns
 }
 function $list_comp(){
@@ -4612,7 +4620,10 @@ else if('$brython_id' in this){return this.$brython_id===other.$brython_id}
 else{throw NotImplementedError('__eq__ is not implemented')}
 }
 DOMNode.prototype.__getattr__=function(attr){
+attr=attr.replace('_','-')
 if('get_'+attr in this){return this['get_'+attr]()}
+var res=this.getAttribute(attr)
+if(res!==undefined && res!==null){return res}
 return $getattr(this,attr)
 }
 DOMNode.prototype.__getitem__=function(key){
@@ -4682,9 +4693,14 @@ this.addEventListener(attr.substr(2),callback)
 var callback=function(ev){return value($DOMEvent(window.event))}
 this.attachEvent(attr,callback)
 }
-}else if('set_'+attr in this){return this['set_'+attr](value)}
+}else{
+attr=attr.replace('_','-')
+if('set_'+attr in this){return this['set_'+attr](value)}
+var res=this.getAttribute(attr)
+if(res!==undefined){this.setAttribute(attr,value)}
 else if(attr in this){this[attr]=value}
 else{setattr(this,attr,value)}
+}
 }
 DOMNode.prototype.__setitem__=function(key,value){
 this.childNodes[key]=value
