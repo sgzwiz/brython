@@ -214,7 +214,9 @@ function $class_constructor(class_name,factory){
     f.__str__ = function(){return "<class '"+class_name+"'>"}
     for(var attr in factory){
         f[attr]=factory[attr]
-        f[attr].__str__ = function(){return "<function "+class_name+'.'+attr+'>'}
+        f[attr].__str__ = (function(x){
+            return function(){return "<function "+class_name+'.'+x+'>'}
+            })(attr)
     }
     f.__getattr__ = function(attr){
         if(f[attr]!==undefined){return f[attr]}
@@ -222,6 +224,7 @@ function $class_constructor(class_name,factory){
     }
     return f
 }
+
 // escaping double quotes
 var $dq_regexp = new RegExp('"',"g") // to escape double quotes in arguments
 function $escape_dq(arg){return arg.replace($dq_regexp,'\\"')}
