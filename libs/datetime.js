@@ -173,3 +173,8 @@ $module.date.__getattr__= function(attr){
     }
     $raise('AttributeError','datetime.datetime has no attribute '+attr)
 }
+
+
+$module.time.__getattr__= function(attr){
+    $raise('AttributeError','datetime.datetime has no attribute '+attr)
+} 
