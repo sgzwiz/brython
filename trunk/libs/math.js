@@ -4,8 +4,8 @@ var float_check=function(x) {
 }
 
 var isinf=function(x) {
-         var x1=float_check(x);
-         return x1 == -Infinity || x1 == Infinity || x1 == Number.POSITIVE_INFINITY || x1 == Number.NEGATIVE_INFINITY;
+    var x1=float_check(x);
+    return x1 == -Infinity || x1 == Infinity || x1 == Number.POSITIVE_INFINITY || x1 == Number.NEGATIVE_INFINITY;
 }
 
 $module = {

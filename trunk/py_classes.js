@@ -983,6 +983,7 @@ function $NoneClass(){
     this.value = null
     this.__bool__ = function(){return False}
     this.__eq__ = function(other){return other===None}
+    this.__hash__ = function(){return 0}
     this.__str__ = function(){return 'None'}
 }
 None = new $NoneClass()

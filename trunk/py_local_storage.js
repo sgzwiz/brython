@@ -16,12 +16,12 @@ function $LocalStorageClass(){
             else{return res}
         }
         else{$raise('NameError',"local storage is not supported by this browser")}
-   }
+    }
 
     this.__setitem__ = function(key,value){
         if(this.supported){localStorage[key]=value}
         else{$raise('NameError',"local storage is not supported by this browser")}
-   }
+    }
 }
 
 local_storage = new $LocalStorageClass()
