@@ -359,7 +359,10 @@ DOMNode.prototype.__eq__ = function(other){
 }
 
 DOMNode.prototype.__getattr__ = function(attr){
+    attr = attr.replace('_','-')
     if('get_'+attr in this){return this['get_'+attr]()}
+    var res = this.getAttribute(attr)
+    if(res!==undefined){return res}
     return $getattr(this,attr)
 }
 
@@ -440,9 +443,14 @@ DOMNode.prototype.__setattr__ = function(attr,value){
             var callback = function(ev){return value($DOMEvent(window.event))}
             this.attachEvent(attr,callback)
         }
-    }else if('set_'+attr in this){return this['set_'+attr](value)}
-    else if(attr in this){this[attr]=value}
-    else{setattr(this,attr,value)}
+    }else{
+        attr = attr.replace('_','-')
+        if('set_'+attr in this){return this['set_'+attr](value)}
+        var res = this.getAttribute(attr)
+        if(res!==undefined){this.setAttribute(attr,value)}
+        else if(attr in this){this[attr]=value}
+        else{setattr(this,attr,value)}
+    }
 }
     
 DOMNode.prototype.__setitem__ = function(key,value){
