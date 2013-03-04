@@ -10,6 +10,6 @@ $module = {
         },
     has_local_storage:typeof(Storage)!=="undefined",
     has_json:typeof(JSON)!=="undefined",
-    version_info:[1,1,"20130303-211627"],
+    version_info:[1,1,"20130304-145237"],
     path:[]
 }
