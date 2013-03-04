@@ -346,11 +346,11 @@ function $ClassCtx(context){
     this.expect = 'id'
     this.toString = function(){return 'class '+this.tree}
     this.transform = function(node,rank){
-        // insert "$class = new Object()"
+        // insert "$class = new Object"
         var instance_decl = new $Node('expression')
         new $NodeJSCtx(instance_decl,'var $class = new Object()')
         node.insert(0,instance_decl)
-        
+
         // return $class at the end of class definition
         var ret_obj = new $Node('expression')
         new $NodeJSCtx(ret_obj,'return $class')
@@ -360,14 +360,20 @@ function $ClassCtx(context){
         var run_func = new $Node('expression')
         new $NodeJSCtx(run_func,')()')
         node.parent.insert(rank+1,run_func)
-        
+
         // class constructor
-        js = this.name+'=$class_constructor("'+this.name+'",$'+this.name+')'
+        var scope = $get_scope(this)
+        if(scope===null||scope.ntype!=='class'){
+            js = 'var '+this.name
+        }else{
+            js = '$class.'+this.name
+        }
+        js += '=$class_constructor("'+this.name+'",$'+this.name+')'
         var cl_cons = new $Node('expression')
         new $NodeJSCtx(cl_cons,js)
         node.parent.insert(rank+2,cl_cons)
         // add declaration of class at window level
-        if(this.parent.node.module==='__main__'){
+        if(scope===null && this.parent.node.module==='__main__'){
             js = 'window.'+this.name+'='+this.name
             var w_decl = new $Node('expression')
             new $NodeJSCtx(w_decl,js)
@@ -375,7 +381,7 @@ function $ClassCtx(context){
         }
     }
     this.to_js = function(){
-        return '$'+this.name+'=(function()'
+        return 'var $'+this.name+'=(function()'
     }
 }
 
@@ -534,7 +540,7 @@ function $DefCtx(context){
         }
         this.transformed = true
     }
-    this.to_js = function(indent){
+    this.to_js = function(){
         var scope = $get_scope(this)
         if(scope===null || scope.ntype!=='class'){
             res = this.name+'= (function ('
@@ -1815,7 +1821,7 @@ function $transition(context,token){
     }else if(context.type==='list_or_tuple'){ 
 
         if(context.closed){
-            if(token==='['){return new $SubCtx(context)}
+            if(token==='['){return new $SubCtx(context.parent)}
             else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
             else if(token==='.'){return new $AttrCtx(context)}
             else if(token==='op'){
@@ -2407,3 +2413,4 @@ function brython(debug){
         }
     }
 }
+
