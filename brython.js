@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130303-211627
+// version 1.1.20130304-102901
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -291,7 +291,7 @@ var $op_func=function(other){
 if(isinstance(other,int)){return float(this.value-other)}
 else if(isinstance(other,float)){return float(this.value-other.value)}
 else if(isinstance(other,bool)){
-var bool_value=0 
+var bool_value=0;
 if(other.valueOf())bool_value=1
 return float(this.value-bool_value)}
 else{throw TypeError(
@@ -789,7 +789,7 @@ return res+')'
 }
 obj.__hash__=function(){
 var x=0x345678
-for(var i=0 i < args.length i++){
+for(var i=0;i < args.length;i++){
 var y=args[i].__hash__()
 x=(1000003 * x)^ y & 0xFFFFFFFF
 }
@@ -1325,12 +1325,11 @@ return this.__getitem__(int(arg))
 }
 String.prototype.__hash__=function(){
 var hash=1
-for(var i=0 i < this.length i++){
+for(var i=0;i < this.length;i++){
 hash=(101*hash + this.charCodeAt(i))& 0xFFFFFFFF
 }
 return hash
 }
-*/
 String.prototype.__in__=function(item){return item.__contains__(this.valueOf())}
 String.prototype.__item__=function(i){return this.charAt(i)}
 String.prototype.__len__=function(){return this.length}
@@ -4191,10 +4190,10 @@ if(!Array.indexOf){
 Array.prototype.indexOf=function(obj){
 for(var i=0;i<this.length;i++){
 if(this[i]==obj){
-return i 
+return i;
 }
 }
-return -1 
+return -1;
 }
 }
 try{console}
@@ -4282,7 +4281,7 @@ $xmlhttp.send(res)
 this.set_timeout=function(seconds,func){
 $xmlhttp.$requestTimer=setTimeout(
 function(){$xmlhttp.abort();func()}, 
-seconds*1000)
+seconds*1000);
 }
 }
 function ajax(){
