@@ -69,13 +69,20 @@ function $confirm(src){return confirm(src)}
 // dictionary
 function dict(){
     if(arguments.length==0){return new $DictClass([],[])}
-    var iterable = arguments[0]
-    var obj = new $DictClass([],[])
-    for(var i=0;i<iterable.__len__();i++){
-        var elt = iterable.__item__(i)
-        obj.__setitem__(elt.__item__(0),elt.__item__(1))
+    var $ns=$MakeArgs('dict',arguments,[],{},'args','kw')
+    var args = $ns['args']
+    var kw = $ns['kw']
+    if(args.length>0){ // format dict([(k1,v1),(k2,v2)...])
+        var iterable = args[0]
+        var obj = new $DictClass([],[])
+        for(var i=0;i<iterable.__len__();i++){
+            var elt = iterable.__item__(i)
+            obj.__setitem__(elt.__item__(0),elt.__item__(1))
+        }
+        return obj
+    }else if(kw.$keys.length>0){ // format dict(k1=v1,k2=v2...)
+        return kw
     }
-    return obj
 }
 dict.__class__ = $type
 dict.__name__ = 'dict'

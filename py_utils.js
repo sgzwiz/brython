@@ -8,7 +8,7 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
     var i=null,$PyVars = {},$def_names = [],$ns = {}
     for(var k in $defaults){$def_names.push(k);$ns[k]=$defaults[k]}
     if($other_args != null){$ns[$other_args]=[]}
-    if($other_kw != null){$dict_items=[]}
+    if($other_kw != null){$dict_keys=[];$dict_values=[]}
     // create new list of arguments in case some are packed
     var upargs = []
     for(var i=0;i<$args.length;i++){
@@ -39,7 +39,8 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
             } else if($arg.name in $defaults){
                 $ns[$arg.name]=$PyVar
             } else if($other_kw!=null){
-                $dict_items.push([$arg.name,$PyVar])
+                $dict_keys.push($arg.name)
+                $dict_values.push($PyVar)
             } else {
                 throw new TypeError($fname+"() got an unexpected keyword argument '"+$arg.name+"'")
             }
@@ -59,7 +60,7 @@ function $MakeArgs($fname,$args,$required,$defaults,$other_args,$other_kw){
             }
         }
     }
-    if($other_kw!=null){$ns[$other_kw]=dict($dict_items)}
+    if($other_kw!=null){$ns[$other_kw]=new $DictClass($dict_keys,$dict_values)}
     return $ns
 }
 
