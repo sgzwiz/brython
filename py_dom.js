@@ -359,10 +359,9 @@ DOMNode.prototype.__eq__ = function(other){
 }
 
 DOMNode.prototype.__getattr__ = function(attr){
-    attr = attr.replace('_','-')
     if('get_'+attr in this){return this['get_'+attr]()}
     var res = this.getAttribute(attr)
-    if(res!==undefined && res!==null){return res}
+    if(res){return res}
     return $getattr(this,attr)
 }
 
