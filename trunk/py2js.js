@@ -291,7 +291,7 @@ function $AssignCtx(context){
                 }
             }else if(scope.ntype==='class'){
                 // assignment in a class : creates a class attribute
-                return 'this.'+left.to_js()+'='+right.to_js()
+                return '$class.'+left.to_js()+'='+right.to_js()
             }
         }
     }
@@ -346,26 +346,36 @@ function $ClassCtx(context){
     this.expect = 'id'
     this.toString = function(){return 'class '+this.tree}
     this.transform = function(node,rank){
-        // insert "$instance = this"
+        // insert "$class = new Object()"
         var instance_decl = new $Node('expression')
-        new $NodeJSCtx(instance_decl,'var $instance = this')
+        new $NodeJSCtx(instance_decl,'var $class = new Object()')
         node.insert(0,instance_decl)
-
+        
+        // return $class at the end of class definition
+        var ret_obj = new $Node('expression')
+        new $NodeJSCtx(ret_obj,'return $class')
+        node.insert(node.children.length,ret_obj) 
+       
+        // close function and run it
+        var run_func = new $Node('expression')
+        new $NodeJSCtx(run_func,')()')
+        node.parent.insert(rank+1,run_func)
+        
         // class constructor
         js = this.name+'=$class_constructor("'+this.name+'",$'+this.name+')'
         var cl_cons = new $Node('expression')
         new $NodeJSCtx(cl_cons,js)
-        node.parent.insert(rank+1,cl_cons)
+        node.parent.insert(rank+2,cl_cons)
         // add declaration of class at window level
         if(this.parent.node.module==='__main__'){
             js = 'window.'+this.name+'='+this.name
             var w_decl = new $Node('expression')
             new $NodeJSCtx(w_decl,js)
-            node.parent.insert(rank+2,w_decl)
+            node.parent.insert(rank+3,w_decl)
         }
     }
     this.to_js = function(){
-        return '$'+this.name+'=function()'
+        return '$'+this.name+'=(function()'
     }
 }
 
@@ -456,18 +466,6 @@ function $DefCtx(context){
         // if function inside a class, the first argument represents
         // the instance
         var scope = $get_scope(this)
-        if(scope !== null && scope.ntype==='class'){
-            // first argument of function is the instance
-            var func_args = this.tree[0]
-            if(func_args.tree.length==0){throw Error('no argument to class func')}
-            var first_arg = func_args.tree[0]
-            if(first_arg.type!=='func_arg_id'){throw Error('wrong first argument '+first_arg.type)}
-            func_args.tree.splice(0,1) // remove self from function definition
-            var js = 'var '+first_arg.name+' = $instance'
-            var new_node3 = new $Node('expression')
-            new $NodeJSCtx(new_node3,js)
-            node.children.splice(0,0,new_node3)            
-        }
         var required = ''
         var defaults = ''
         var other_args = null
@@ -541,7 +539,7 @@ function $DefCtx(context){
         if(scope===null || scope.ntype!=='class'){
             res = this.name+'= (function ('
         }else{
-            res = 'this.'+this.name+'= (function('
+            res = '$class.'+this.name+'= (function('
         }
         for(var i=0;i<this.env.length;i++){
             res+=this.env[i]

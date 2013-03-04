@@ -181,22 +181,45 @@ function $IndentationError(module,msg,pos) {
 }
 
 // generic code for class constructor
-function $class_constructor(class_name,class_func){  
+function $class_constructor(class_name,factory){  
     var f = function(){
-        var obj = new class_func()
+        var obj = new Object()
+        for(var attr in factory){
+            if(typeof factory[attr]==="function"){
+                var func = factory[attr]
+                obj[attr] = (function(func){
+                    return function(){
+                        var args = [obj]
+                        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+                        return func.apply(obj,args)
+                    }
+                })(func)
+            }else{obj[attr] = factory[attr]}
+        }
         obj.__class__ = f
         obj.__getattr__ = function(attr){
             if(obj[attr]!==undefined){return obj[attr]}
-            else{$raise("AttributeError",obj+" has no attribute '"+attr+"'")}
+            else{throw AttributeError(obj+" has no attribute '"+attr+"'")}
         }
         obj.__setattr__ = function(attr,value){obj[attr]=value}
         obj.__str__ = function(){return "<object '"+class_name+"'>"}
         obj.toString = obj.__str__
-        if(obj.__init__ !== undefined){obj.__init__.apply(obj,arguments)}
+        if(obj.__init__ !== undefined){
+            var args = [obj]
+            for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+            factory.__init__.apply(obj,args)
+        }
         return obj
         }
     f.__str__ = function(){return "<class '"+class_name+"'>"}
-    f.__getattr__ = function(attr){console.log('attr '+attr);return class_func[attr]}
+    for(var attr in factory){
+        f[attr]=factory[attr]
+        f[attr].__str__ = function(){return "<function "+class_name+'.'+attr+'>'}
+    }
+    f.__getattr__ = function(attr){
+        if(f[attr]!==undefined){return f[attr]}
+        return factory[attr]
+    }
     return f
 }
 // escaping double quotes
