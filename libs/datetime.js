@@ -19,6 +19,8 @@ function $Date(args){
     this.__str__ = function(){return this.strftime('%Y-%m-%d')}
 
     this.strftime = function(fmt){return this.$dt.strftime(fmt)}
+
+    this.weekday = function(fmt){return this.$dt.weekday(fmt)}
 }
 
 function $DateTimeClass(){return new $DateTime(arguments)}
@@ -68,7 +70,8 @@ function $DateTime(args){
         
     this.__getattr__ = function(attr){return $getattr(this,attr)}
     
-    this.__str__ = function(){return this.strftime('%Y-%m-%d %H:%M:%S')}
+    this.__str__ = function(){return !this.microsecond?
+        this.strftime('%Y-%m-%d%H:%M:%S'):this.strftime('%Y-%m-%d %H:%M:%S.%f')}
     
     this.norm_str = function(arg,nb){
         // left padding with 0
@@ -91,6 +94,38 @@ function $DateTime(args){
         res = res.replace('%w',this.$js_date.getDay())
         return str(res)
     }
+
+    this.weekday = function(){
+        var wd = this.$js_date.getDay()
+        return wd == 0 ? 6 : wd-1
+    }
+}
+
+function $TimeClass(){return new $Time(arguments)}
+$TimeClass.__class__ = $type
+$TimeClass.__str__ = function(){return "<class 'datetime.time'>"}
+
+function $Time(args){
+
+    this.__class__ = $TimeClass
+
+    if(args.length>4){$raise('TypeError',"Too many arguments - required 4, got "+args.length)}
+    if(args.length>0){hour=args[0]}else{hour=0}
+    if(args.length>1){minute=args[1]}else{minute=0}
+    if(args.length>2){second=args[2]}else{second=0}
+    if(args.length>3){microsecond=args[3]}else{microsecond=0}
+
+    if(!isinstance(hour,int)
+        || !isinstance(minute,int) || !isinstance(second,int)
+        || !isinstance(microsecond,int)){$raise('TypeError',"an integer is required")}
+    if(hour<0 || hour>23){$raise('ValueError',"hour must be in 0..23")}
+    if(minute<0 || minute>59){$raise('ValueError',"minute must be in 0..59")}
+    if(second<0 || second>59){$raise('ValueError',"second must be in 0..59")}
+    if(day===undefined){throw new TypeError("Required argument 'day' (pos 3) not found")}
+     return new $DateTime(year,month,day,hour,minute,second,microsecond)
+}
+function $time(hour,minute,second,microsecond){
+    return new $Time(hour,minute,second,microsecond)
 }
 
 function $date(year,month,day){
@@ -109,7 +144,10 @@ function $datetime(year,month,day,hour,minute,second,microsecond){
 $module = {
     __getattr__ : function(attr){return this[attr]},
     date : $DateClass,
-    datetime : $DateTimeClass
+    datetime : $DateTimeClass,
+    time : $TimeClass,
+    MAXYEAR : 9999,
+    MINYEAR : 1    
 }
 
 $module.datetime.__getattr__= function(attr){
