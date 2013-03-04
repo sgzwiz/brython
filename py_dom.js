@@ -362,7 +362,7 @@ DOMNode.prototype.__getattr__ = function(attr){
     attr = attr.replace('_','-')
     if('get_'+attr in this){return this['get_'+attr]()}
     var res = this.getAttribute(attr)
-    if(res!==undefined){return res}
+    if(res!==undefined && res!==null){return res}
     return $getattr(this,attr)
 }
 
