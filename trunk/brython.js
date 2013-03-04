@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130304-102901
+// version 1.1.20130304-145237
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -2096,7 +2096,7 @@ return left.to_js()+'='+right.to_js()
 return 'var '+left.to_js()+'='+right.to_js()
 }
 }else if(scope.ntype==='class'){
-return 'this.'+left.to_js()+'='+right.to_js()
+return '$class.'+left.to_js()+'='+right.to_js()
 }
 }
 }
@@ -2145,21 +2145,33 @@ this.expect='id'
 this.toString=function(){return 'class '+this.tree}
 this.transform=function(node,rank){
 var instance_decl=new $Node('expression')
-new $NodeJSCtx(instance_decl,'var $instance = this')
+new $NodeJSCtx(instance_decl,'var $class = new Object()')
 node.insert(0,instance_decl)
-js=this.name+'=$class_constructor("'+this.name+'",$'+this.name+')'
+var ret_obj=new $Node('expression')
+new $NodeJSCtx(ret_obj,'return $class')
+node.insert(node.children.length,ret_obj)
+var run_func=new $Node('expression')
+new $NodeJSCtx(run_func,')()')
+node.parent.insert(rank+1,run_func)
+var scope=$get_scope(this)
+if(scope===null||scope.ntype!=='class'){
+js='var '+this.name
+}else{
+js='$class.'+this.name
+}
+js +='=$class_constructor("'+this.name+'",$'+this.name+')'
 var cl_cons=new $Node('expression')
 new $NodeJSCtx(cl_cons,js)
-node.parent.insert(rank+1,cl_cons)
-if(this.parent.node.module==='__main__'){
+node.parent.insert(rank+2,cl_cons)
+if(scope===null && this.parent.node.module==='__main__'){
 js='window.'+this.name+'='+this.name
 var w_decl=new $Node('expression')
 new $NodeJSCtx(w_decl,js)
-node.parent.insert(rank+2,w_decl)
+node.parent.insert(rank+3,w_decl)
 }
 }
 this.to_js=function(){
-return '$'+this.name+'=function()'
+return 'var $'+this.name+'=(function()'
 }
 }
 function $CompIfCtx(context){
@@ -2240,17 +2252,6 @@ ctx.tree=[this.tree[this.tree.length-1]]
 node.add(new_node)
 }
 var scope=$get_scope(this)
-if(scope !==null && scope.ntype==='class'){
-var func_args=this.tree[0]
-if(func_args.tree.length==0){throw Error('no argument to class func')}
-var first_arg=func_args.tree[0]
-if(first_arg.type!=='func_arg_id'){throw Error('wrong first argument '+first_arg.type)}
-func_args.tree.splice(0,1)
-var js='var '+first_arg.name+' = $instance'
-var new_node3=new $Node('expression')
-new $NodeJSCtx(new_node3,js)
-node.children.splice(0,0,new_node3)
-}
 var required=''
 var defaults=''
 var other_args=null
@@ -2312,12 +2313,12 @@ node.parent.children.splice(rank+2,0,new_node1)
 }
 this.transformed=true
 }
-this.to_js=function(indent){
+this.to_js=function(){
 var scope=$get_scope(this)
 if(scope===null || scope.ntype!=='class'){
 res=this.name+'= (function ('
 }else{
-res='this.'+this.name+'= (function('
+res='$class.'+this.name+'= (function('
 }
 for(var i=0;i<this.env.length;i++){
 res+=this.env[i]
@@ -3434,7 +3435,7 @@ return $transition(context.parent,token)
 else{$_SyntaxError(context,'token '+token+' after '+context)}
 }else if(context.type==='list_or_tuple'){
 if(context.closed){
-if(token==='['){return new $SubCtx(context)}
+if(token==='['){return new $SubCtx(context.parent)}
 else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
 else if(token==='.'){return new $AttrCtx(context)}
 else if(token==='op'){
@@ -4107,22 +4108,47 @@ $src_error('SyntaxError',module,msg,pos)
 function $IndentationError(module,msg,pos){
 $src_error('IndentationError',module,msg,pos)
 }
-function $class_constructor(class_name,class_func){
+function $class_constructor(class_name,factory){
 var f=function(){
-var obj=new class_func()
+var obj=new Object()
+for(var attr in factory){
+if(typeof factory[attr]==="function"){
+var func=factory[attr]
+obj[attr]=(function(func){
+return function(){
+var args=[obj]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return func.apply(obj,args)
+}
+})(func)
+}else{obj[attr]=factory[attr]}
+}
 obj.__class__=f
 obj.__getattr__=function(attr){
 if(obj[attr]!==undefined){return obj[attr]}
-else{$raise("AttributeError",obj+" has no attribute '"+attr+"'")}
+else{throw AttributeError(obj+" has no attribute '"+attr+"'")}
 }
 obj.__setattr__=function(attr,value){obj[attr]=value}
 obj.__str__=function(){return "<object '"+class_name+"'>"}
 obj.toString=obj.__str__
-if(obj.__init__ !==undefined){obj.__init__.apply(obj,arguments)}
+if(obj.__init__ !==undefined){
+var args=[obj]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+factory.__init__.apply(obj,args)
+}
 return obj
 }
 f.__str__=function(){return "<class '"+class_name+"'>"}
-f.__getattr__=function(attr){console.log('attr '+attr);return class_func[attr]}
+for(var attr in factory){
+f[attr]=factory[attr]
+f[attr].__str__=(function(x){
+return function(){return "<function "+class_name+'.'+x+'>'}
+})(attr)
+}
+f.__getattr__=function(attr){
+if(f[attr]!==undefined){return f[attr]}
+return factory[attr]
+}
 return f
 }
 var $dq_regexp=new RegExp('"',"g")
