@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130303-205116
+// version 1.1.20130303-211627
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -136,6 +136,7 @@ if(arg.__eq__(this.$keys[i])){return this.$values[i]}
 }
 throw KeyError(str(arg))
 }
+$DictClass.prototype.__hash__=function(){throw TypeError("unhashable type: 'dict'");}
 $DictClass.prototype.__in__=function(item){return item.__contains__(this)}
 $DictClass.prototype.__item__=function(i){return this.$keys[i]}
 $DictClass.prototype.__len__=function(){return this.$keys.length}
@@ -346,7 +347,7 @@ obj.__hashvalue__=obj.__hash__()
 return obj.__hashvalue__
 }else{
 throw AttributeError(
-"'"+str(obj.__class__)+"' object has no attribute '__hash1__'")
+"'"+str(obj.__class__)+"' object has no attribute '__hash__'")
 }
 }
 function input(src){

@@ -159,6 +159,8 @@ $DictClass.prototype.__getitem__ = function(arg){
     throw KeyError(str(arg))
 }
 
+$DictClass.prototype.__hash__ = function() {throw TypeError("unhashable type: 'dict'");}
+
 $DictClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
 $DictClass.prototype.__item__ = function(i){return this.$keys[i]}
@@ -407,7 +409,7 @@ function hash(obj){
        return obj.__hashvalue__
     } else {
        throw AttributeError(
-        "'"+str(obj.__class__)+"' object has no attribute '__hash1__'")
+        "'"+str(obj.__class__)+"' object has no attribute '__hash__'")
     }
 }
 
