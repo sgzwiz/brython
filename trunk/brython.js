@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130304-220203
+// version 1.1.20130304-221651
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -4620,10 +4620,9 @@ else if('$brython_id' in this){return this.$brython_id===other.$brython_id}
 else{throw NotImplementedError('__eq__ is not implemented')}
 }
 DOMNode.prototype.__getattr__=function(attr){
-attr=attr.replace('_','-')
 if('get_'+attr in this){return this['get_'+attr]()}
 var res=this.getAttribute(attr)
-if(res!==undefined && res!==null){return res}
+if(res){return res}
 return $getattr(this,attr)
 }
 DOMNode.prototype.__getitem__=function(key){
