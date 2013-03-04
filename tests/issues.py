@@ -319,6 +319,11 @@ class NoCascade:
 nc = NoCascade()
 assert nc.a == 2
 
+# issue 65
+assert ((2,)*2)==(2,2)
+assert ((2,2)+(2,))==(2,2,2)
+assert ([2]*2)==[2,2]
+
 # issue 72
 x=[1,2]
 try:
