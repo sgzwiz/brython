@@ -203,7 +203,11 @@ function $class_constructor(class_name,factory){
             else{throw AttributeError(obj+" has no attribute '"+attr+"'")}
         }
         obj.__setattr__ = function(attr,value){obj[attr]=value}
-        obj.__str__ = function(){return "<object '"+class_name+"'>"}
+        if(obj.__str__===undefined){
+            obj.__str__ = function(){
+                return "<object '"+class_name+"'>"
+            }
+        }
         obj.toString = obj.__str__
         if(obj.__init__ !== undefined){
             var args = [obj]
