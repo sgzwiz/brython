@@ -108,8 +108,9 @@ except ValueError:
 #print(x.split('h'))
 assert x.split('h') == ['aZj', 'k', 'Zyuy']
 
-print(x.split('h',1))
-assert x.split('h',1) == ['aZj', 'khZyuy']   # this fails!
+#print(x.split('h',1))
+#test issue # 91
+assert x.split('h',1) == ['aZj', 'khZyuy']
 
 #print(x.startswith('aZ'))
 assert x.startswith('aZ')
