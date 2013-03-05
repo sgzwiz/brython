@@ -359,4 +359,8 @@ def cards(cardin):
     assert (0,'n') in [(index,cardinal) for index,cardinal in enumerate('%sw'%cardin)]
 cards('nes')
 
+# issue 91
+x='aZjhkhZyuy'
+assert x.split('h',1) == ['aZj', 'khZyuy']
+
 print('All tests ok')

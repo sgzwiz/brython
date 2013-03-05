@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130304-201907
+// version 1.1.20130305-174615
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -1643,7 +1643,12 @@ esc_sep +=sep.charAt(i)
 }
 var re=new RegExp(esc_sep)
 }
-return obj.split(re,maxsplit)
+if(maxsplit==-1)return obj.split(re,maxsplit)
+var l=obj.split(re,-1)
+var a=l.splice(0, maxsplit)
+var b=l.splice(maxsplit-1, l.length)
+a.push(b.join(sep))
+return a
 }
 function $string_splitlines(obj){return $string_split(obj,'\n')}
 function $string_startswith(obj){
@@ -2894,11 +2899,18 @@ context.parent=this
 this.tree=[context]
 this.toString=function(){return '(ternary) '+this.tree}
 this.to_js=function(){
+var env='{'
+var ids=$get_ids(this)
+for(var i=0;i<ids.length;i++){
+env +='"'+ids[i]+'":'+ids[i]
+if(i<ids.length-1){env+=','}
+}
+env+='}'
 var qesc=new RegExp('"',"g")
-var args=this.tree[1].to_js().replace(qesc,'\\"')+','
-args +=this.tree[0].to_js().replace(qesc,'\\"')+','
+var args='"'+this.tree[1].to_js().replace(qesc,'\\"')+'","' 
+args +=this.tree[0].to_js().replace(qesc,'\\"')+'","' 
 args +=this.tree[2].to_js().replace(qesc,'\\"')
-return '$ternary('+$to_js(this.tree)+')'
+return '$ternary('+env+','+args+'")'
 }
 }
 function $TryCtx(context){
@@ -3870,9 +3882,9 @@ pos++;continue
 }
 if(car in br_close){
 if(br_stack==""){
-$SyntaxError(context,"Unexpected closing bracket")
+$_SyntaxError(context,"Unexpected closing bracket")
 }else if(br_close[car]!=$last(br_stack)){
-$SyntaxError(context,"Unbalanced bracket",pos)
+$_SyntaxError(context,"Unbalanced bracket",pos)
 }else{
 br_stack=br_stack.substr(0,br_stack.length-1)
 $pos=pos
@@ -3930,7 +3942,6 @@ return root
 }
 function brython(debug){
 document.$py_src={}
-document.$py_next_hash=Number.MIN_VALUE
 document.$py_module_path={}
 document.$py_module_alias={}
 document.$debug=debug
@@ -4054,9 +4065,11 @@ var $js=$py2js($py).to_js()
 eval($js)
 return eval($res)
 }
-function $ternary(expr1,cond,expr2){
-var res='var $res=expr1\n'
-res +='if(!cond){$res=expr2}\n'
+function $ternary(env,cond,expr1,expr2){
+for(var attr in env){eval('var '+attr+'=env["'+attr+'"]')}
+var res='if ('+cond+'){\n'
+res +='    var $res = '+expr1+'\n}else{\n'
+res +='    var $res = '+expr2+'\n}'
 eval(res)
 return $res
 }
@@ -4153,7 +4166,11 @@ if(obj[attr]!==undefined){return obj[attr]}
 else{throw AttributeError(obj+" has no attribute '"+attr+"'")}
 }
 obj.__setattr__=function(attr,value){obj[attr]=value}
-obj.__str__=function(){return "<object '"+class_name+"'>"}
+if(obj.__str__===undefined){
+obj.__str__=function(){
+return "<object '"+class_name+"'>"
+}
+}
 obj.toString=obj.__str__
 if(obj.__init__ !==undefined){
 var args=[obj]

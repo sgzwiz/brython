@@ -503,7 +503,17 @@ function $string_split(obj){
         }
         var re = new RegExp(esc_sep)
     }
-    return obj.split(re,maxsplit)
+    if (maxsplit==-1) return obj.split(re,maxsplit)
+
+    // javascript split behavior is different from python when
+    // a maxsplit argument is supplied. (see javascript string split
+    // function docs for details)
+
+    var l=obj.split(re,-1)
+    var a=l.splice(0, maxsplit);
+    var b=l.splice(maxsplit-1, l.length)
+    a.push(b.join(sep));
+    return a;
 }
 
 function $string_splitlines(obj){return $string_split(obj,'\n')}
