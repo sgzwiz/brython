@@ -56,6 +56,10 @@ bool.__class__ = $type
 bool.__name__ = 'bool'
 bool.__str__ = function(){return "<class 'bool'>"}
 bool.toString = bool.__str__
+bool.__hash__ = function() {
+    if(this.valueOf()) return 1
+    return 0
+}
 
 function $class(obj,info){
     this.obj = obj
@@ -409,7 +413,7 @@ function hasattr(obj,attr){
 }
 
 function hash(obj){
-    if (isinstance(obj, int)) { return obj.valueOf();}
+    //if (isinstance(obj, int)) { return obj.valueOf();}
     if (obj.__hashvalue__ !== undefined) { return obj.__hashvalue__;}
     if (obj.__hash__ !== undefined) {
        obj.__hashvalue__=obj.__hash__()
@@ -699,6 +703,12 @@ function object(){
 object.__class__ = $type
 object.__name__ = 'object'
 object.__str__ = "<class 'object'>"
+object.__hash__ = function () { 
+    document.$py_next_hash+=1; 
+    return document.$py_next_hash;
+}
+
+$ObjectClass.prototype.__hash__ = object.__hash__
 
 function $open(){
     // first argument is file : can be a string, or an instance of a DOM File object
@@ -807,6 +817,8 @@ set.__class__ = $type
 set.__name__ = 'set'
 set.toString = function(){return "<class 'set'>"}
 
+set.__hash__ = function() {throw TypeError("unhashable type: 'set'");}
+
 function $SetClass(){
     var x = null;
     var i = null;
@@ -853,6 +865,8 @@ $SetClass.prototype.__eq__ = function(other){
     }
     return False
 }
+
+$SetClass.prototype.__hash__ = set.__hash__
 
 $SetClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
@@ -928,14 +942,14 @@ function tuple(){
     }
 
     obj.__hash__ = function () {
-    // http://nullege.com/codes/show/src%40p%40y%40pypy-HEAD%40pypy%40rlib%40test%40test_objectmodel.py/145/pypy.rlib.objectmodel._hash_float/python
-    var x= 0x345678
-    for(var i=0; i < args.length; i++) {
-       var y=args[i].__hash__();
-       x=(1000003 * x) ^ y & 0xFFFFFFFF;
+      // http://nullege.com/codes/show/src%40p%40y%40pypy-HEAD%40pypy%40rlib%40test%40test_objectmodel.py/145/pypy.rlib.objectmodel._hash_float/python
+      var x= 0x345678
+      for(var i=0; i < args.length; i++) {
+         var y=args[i].__hash__();
+         x=(1000003 * x) ^ y & 0xFFFFFFFF;
+      }
+      return x
     }
-    return x
-}
 
     return obj
 }
@@ -973,6 +987,11 @@ Boolean.prototype.__eq__ = function(other){
     if(this.valueOf()){return !!other}else{return !other}
 }
 
+Boolean.prototype.__hash__ = function() {
+   if(this.valueOf()) return 1
+   return 0
+}
+
 Boolean.prototype.__mul__ = function(other){
     if(this.valueOf()) return other;
     return 0;
@@ -984,7 +1003,8 @@ Boolean.prototype.__add__ = function(other){
 }
 
 Boolean.prototype.toString = function(){
-    if(this.valueOf()){return "True"}else{return "False"}
+    if(this.valueOf()) return "True"
+    return "False"
 }
 
 function $NoneClass(){
@@ -1041,4 +1061,3 @@ var $errors = ['AssertionError','AttributeError','EOFError','FloatingPointError'
     'SystemError','SystemExit','TypeError','UnboundLocalError','ValueError',
     'ZeroDivisionError','IOError']
 for(var i=0;i<$errors.length;i++){$make_exc($errors[i])}
-
