@@ -1160,11 +1160,19 @@ function $TernaryCtx(context){
     this.tree = [context]
     this.toString = function(){return '(ternary) '+this.tree}
     this.to_js = function(){
+        // build namespace
+        var env = '{'
+        var ids = $get_ids(this)
+        for(var i=0;i<ids.length;i++){
+            env += '"'+ids[i]+'":'+ids[i]
+            if(i<ids.length-1){env+=','}
+        }
+        env+='}'
         var qesc = new RegExp('"',"g") // to escape double quotes in arguments
-        var args = this.tree[1].to_js().replace(qesc,'\\"')+','
-        args += this.tree[0].to_js().replace(qesc,'\\"')+','
-        args += this.tree[2].to_js().replace(qesc,'\\"')
-        return '$ternary('+$to_js(this.tree)+')'
+        var args = '"'+this.tree[1].to_js().replace(qesc,'\\"')+'","' // condition
+        args += this.tree[0].to_js().replace(qesc,'\\"')+'","' // result if true
+        args += this.tree[2].to_js().replace(qesc,'\\"') // result if false
+        return '$ternary('+env+','+args+'")'
     }
 }
 
