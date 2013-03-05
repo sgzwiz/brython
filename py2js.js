@@ -2297,9 +2297,9 @@ function $tokenize(src,module){
         }
         if(car in br_close){
             if(br_stack==""){
-                $SyntaxError(context,"Unexpected closing bracket")
+                $_SyntaxError(context,"Unexpected closing bracket")
             } else if(br_close[car]!=$last(br_stack)){
-                $SyntaxError(context,"Unbalanced bracket",pos)
+                $_SyntaxError(context,"Unbalanced bracket",pos)
             } else {
                 br_stack = br_stack.substr(0,br_stack.length-1)
                 $pos = pos
@@ -2363,7 +2363,6 @@ function $tokenize(src,module){
 
 function brython(debug){
     document.$py_src = {}
-    document.$py_next_hash = Number.MIN_VALUE
     document.$py_module_path = {}
     document.$py_module_alias = {}
     document.$debug = debug
