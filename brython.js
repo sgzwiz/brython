@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130304-221651
+// version 1.1.20130304-201907
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -51,6 +51,10 @@ bool.__class__=$type
 bool.__name__='bool'
 bool.__str__=function(){return "<class 'bool'>"}
 bool.toString=bool.__str__
+bool.__hash__=function(){
+if(this.valueOf())return 1
+return 0
+}
 function $class(obj,info){
 this.obj=obj
 this.info=info
@@ -347,7 +351,6 @@ try{getattr(obj,attr);return True}
 catch(err){return False}
 }
 function hash(obj){
-if(isinstance(obj, int)){return obj.valueOf();}
 if(obj.__hashvalue__ !==undefined){return obj.__hashvalue__;}
 if(obj.__hash__ !==undefined){
 obj.__hashvalue__=obj.__hash__()
@@ -603,6 +606,11 @@ return new $ObjectClass()
 object.__class__=$type
 object.__name__='object'
 object.__str__="<class 'object'>"
+object.__hash__=function(){
+document.$py_next_hash+=1;
+return document.$py_next_hash
+}
+$ObjectClass.prototype.__hash__=object.__hash__
 function $open(){
 var $ns=$MakeArgs('open',arguments,['file'],{'mode':'r','encoding':'utf-8'},'args','kw')
 for(var attr in $ns){eval('var '+attr+'=$ns["'+attr+'"]')}
@@ -692,6 +700,7 @@ throw TypeError("set expected at most 1 argument, got "+arguments.length)
 set.__class__=$type
 set.__name__='set'
 set.toString=function(){return "<class 'set'>"}
+set.__hash__=function(){throw TypeError("unhashable type: 'set'");}
 function $SetClass(){
 var x=null
 var i=null
@@ -733,6 +742,7 @@ return True
 }
 return False
 }
+$SetClass.prototype.__hash__=set.__hash__
 $SetClass.prototype.__in__=function(item){return item.__contains__(this)}
 $SetClass.prototype.__len__=function(){return int(this.items.length)}
 $SetClass.prototype.__ne__=function(other){return !(this.__eq__(other))}
@@ -831,6 +841,10 @@ Boolean.prototype.__class__=bool
 Boolean.prototype.__eq__=function(other){
 if(this.valueOf()){return !!other}else{return !other}
 }
+Boolean.prototype.__hash__=function(){
+if(this.valueOf())return 1
+return 0
+}
 Boolean.prototype.__mul__=function(other){
 if(this.valueOf())return other
 return 0
@@ -840,7 +854,8 @@ if(this.valueOf())return other + 1
 return other
 }
 Boolean.prototype.toString=function(){
-if(this.valueOf()){return "True"}else{return "False"}
+if(this.valueOf())return "True"
+return "False"
 }
 function $NoneClass(){
 this.__class__=new $class(this,"NoneType")
@@ -3915,6 +3930,7 @@ return root
 }
 function brython(debug){
 document.$py_src={}
+document.$py_next_hash=Number.MIN_VALUE
 document.$py_module_path={}
 document.$py_module_alias={}
 document.$debug=debug

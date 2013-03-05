@@ -2363,6 +2363,7 @@ function $tokenize(src,module){
 
 function brython(debug){
     document.$py_src = {}
+    document.$py_next_hash = Number.MIN_VALUE
     document.$py_module_path = {}
     document.$py_module_alias = {}
     document.$debug = debug
