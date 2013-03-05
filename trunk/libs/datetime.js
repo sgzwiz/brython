@@ -71,7 +71,7 @@ function $DateTime(args){
     this.__getattr__ = function(attr){return $getattr(this,attr)}
     
     this.__str__ = function(){return !this.microsecond?
-        this.strftime('%Y-%m-%d%H:%M:%S'):this.strftime('%Y-%m-%d %H:%M:%S.%f')}
+        this.strftime('%Y-%m-%d %H:%M:%S'):this.strftime('%Y-%m-%d %H:%M:%S.%f')}
     
     this.norm_str = function(arg,nb){
         // left padding with 0
@@ -121,9 +121,36 @@ function $Time(args){
     if(hour<0 || hour>23){$raise('ValueError',"hour must be in 0..23")}
     if(minute<0 || minute>59){$raise('ValueError',"minute must be in 0..59")}
     if(second<0 || second>59){$raise('ValueError',"second must be in 0..59")}
-    if(day===undefined){throw new TypeError("Required argument 'day' (pos 3) not found")}
-     return new $DateTime(year,month,day,hour,minute,second,microsecond)
+    if(microsecond<0 || microsecond>999999){
+        $raise('ValueError',"microsecond must be in 0..999999")}
+    this.hour = hour
+    this.minute = minute
+    this.second = second
+    this.microsecond = microsecond
+    this.$js_date = new Date(hour,minute,second,microsecond/1000)
+
+    this.__getattr__ = function(attr){return $getattr(this,attr)}
+
+    this.__str__ = function(){return !!this.microsecond?this.strftime('%H:%M:%S.%f'):this.strftime('%H:%M:%S')}
+
+    this.norm_str = function(arg,nb){
+        // left padding with 0
+        var res = str(arg)
+        while(res.length<nb){res = '0'+res}
+        return res
+    }
+    this.strftime = function(fmt){
+        if(!isinstance(fmt,str)){throw new TypeError("strftime() argument should be str, not "+$str(fmt.__class__))}
+        var res = fmt
+        res = res.replace('%f',this.norm_str(this.microsecond,6))
+        res = res.replace('%H',this.norm_str(this.hour,2))
+        res = res.replace('%I',this.norm_str(int(this.hour.value%12),2))
+        res = res.replace('%M',this.norm_str(this.minute,2))
+        res = res.replace('%S',this.norm_str(this.second,2))
+        return str(res)
+    }
 }
+
 function $time(hour,minute,second,microsecond){
     return new $Time(hour,minute,second,microsecond)
 }
