@@ -84,9 +84,11 @@ function $list_comp(){
     return eval($res)    
 }
 
-function $ternary(expr1,cond,expr2){
-    var res = 'var $res=expr1\n'
-    res += 'if(!cond){$res=expr2}\n'
+function $ternary(env,cond,expr1,expr2){
+    for(var attr in env){eval('var '+attr+'=env["'+attr+'"]')}
+    var res = 'if ('+cond+'){\n'
+    res += '    var $res = '+expr1+'\n}else{\n'
+    res += '    var $res = '+expr2+'\n}'
     eval(res)
     return $res
 }
