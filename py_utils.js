@@ -229,6 +229,7 @@ function $class_constructor(class_name,factory){
         if(f[attr]!==undefined){return f[attr]}
         return factory[attr]
     }
+    f.__setattr__ = function(attr,value){factory[attr]=value}
     return f
 }
 
