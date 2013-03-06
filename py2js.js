@@ -1848,7 +1848,7 @@ function $transition(context,token){
 
         if(context.closed){
             if(token==='['){return new $SubCtx(context.parent)}
-            else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
+            else if(token==='('){return new $CallCtx(context)}
             else if(token==='.'){return new $AttrCtx(context)}
             else if(token==='op'){
                 return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
