@@ -84,6 +84,21 @@ function $list_comp(){
     return eval($res)    
 }
 
+function $generator(func){
+    var res = function(){
+        func.$iter = []
+        func.apply(this,arguments)
+    
+        var obj = new Object()
+        obj.__class__ = $generator
+        obj.__len__ = function(){return func.$iter.__len__()}
+        obj.__item__ = function(rank){return func.$iter.__item__(rank)}
+        return obj
+    }
+    res.__str__ = function(){return "<function "+res.__name__+">"}
+    return res
+}
+
 function $ternary(env,cond,expr1,expr2){
     for(var attr in env){eval('var '+attr+'=env["'+attr+'"]')}
     var res = 'if ('+cond+'){\n'
@@ -305,12 +320,7 @@ Function.prototype.__eq__ = function(other){
     return other+''===this+''
 }
 Function.prototype.__class__ = Function
-Function.prototype.get_name = function(){
-    var src = this.toString() // coerce to string
-    pattern = new RegExp("function (.*?)\\(")
-    var res = pattern.exec(src)
-    value = '<function '+res[1]+'>'
-}
+Function.prototype.__str__ = function(){return "<function "+this.__name__+">"}
 
 Array.prototype.match = function(other){
     // return true if array and other have the same first items

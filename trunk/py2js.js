@@ -467,6 +467,7 @@ function $DefCtx(context){
     this.transform = function(node,rank){
         // already transformed ?
         if(this.transformed!==undefined){return}
+        this.rank = rank // save rank if we must add generator declaration
         // if function body is in the same line, add a child
         if(this.in_line!==undefined){
             var new_node = new $Node('expression')
@@ -535,22 +536,42 @@ function $DefCtx(context){
         }
         new $NodeJSCtx(ret_node,txt+')')
         node.parent.insert(rank+1,ret_node)
+        
+        // add function name
+        js = this.name+'.__name__="'+this.name+'"'
+        var name_decl = new $Node('expression')
+        new $NodeJSCtx(name_decl,js)
+        node.parent.children.splice(rank+2,0,name_decl)
 
         // add declaration of function at window level
         if(scope===null && node.module==='__main__'){
             js = 'window.'+this.name+'='+this.name
             new_node1 = new $Node('expression')
             new $NodeJSCtx(new_node1,js)
-            node.parent.children.splice(rank+2,0,new_node1)
+            node.parent.children.splice(rank+3,0,new_node1)
         }
         this.transformed = true
     }
+    this.add_generator_declaration = function(){
+        // if generator, add line 'foo = $generator($foo)
+        console.log('in transform, type '+this.type)
+        var node = this.parent.node
+        if(this.type==='generator'){
+            js = this.name+'=$generator($'+this.name+')'
+            var gen_node = new $Node('expression')
+            new $NodeJSCtx(gen_node,js)
+            node.parent.children.splice(this.rank+2,0,gen_node)        
+        }
+    }
+
     this.to_js = function(){
         var scope = $get_scope(this)
+        var name = this.name
+        if(this.type==='generator'){name='$'+name}
         if(scope===null || scope.ntype!=='class'){
-            res = this.name+'= (function ('
+            res = name+'= (function ('
         }else{
-            res = 'var '+this.name+' = $class.'+this.name+'= (function('
+            res = 'var '+name+' = $class.'+name+'= (function ('
         }
         for(var i=0;i<this.env.length;i++){
             res+=this.env[i]
@@ -913,8 +934,9 @@ function $ListOrTupleCtx(context,real){
     this.tree = []
     context.tree.push(this)
     this.to_js = function(){
+        console.log('list or tuple '+this.real)
         if(this.real==='list'){return '['+$to_js(this.tree)+']'}
-        else if(this.real==='list_comp'){
+        else if(this.real==='list_comp'||this.real==='gen_expr'){
             var res_env=[],local_env=[],env=[]
             var ctx_node = this
             while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
@@ -970,7 +992,8 @@ function $ListOrTupleCtx(context,real){
                 res += '"'+txt+'"'
                 if(i<this.intervals.length-1){res+=','}
             }
-            return '$list_comp('+res+')'
+            if(this.real==='list_comp'){return '$list_comp('+res+')'}
+            else{return '$gen_expr('+res+')'}
         }else if(this.real==='tuple'){
             if(this.tree.length===1 && this.has_comma===undefined){return this.tree[0].to_js()}
             else{return 'tuple('+$to_js(this.tree)+')'}
@@ -1239,12 +1262,12 @@ function $TryCtx(context){
                 catch_node.insert(catch_node.children.length,
                     node.parent.children[pos])
                 if(ctx.type==='except' && ctx.tree.length===0){
-                    if(has_default){$_SyntaxError('more than one except: line')}
+                    if(has_default){$_SyntaxError(context,'more than one except: line')}
                     has_default=true
                 }
                 node.parent.children.splice(pos,1)
             }else if(ctx.type==='single_kw' && ctx.token==='else'){
-                if(has_else){$_SyntaxError("more than one 'else'")}
+                if(has_else){$_SyntaxError(context,"more than one 'else'")}
                 has_else = true
                 var else_children = node.parent.children[pos].children
                 for(var i=0;i<else_children.length;i++){
@@ -1274,6 +1297,28 @@ function $UnaryCtx(context,op){
     context.tree.push(this)
     this.to_js = function(){return this.op+$to_js(this.tree)}
 }
+
+function $YieldCtx(context){ // subscription or slicing
+    this.type = 'yield'
+    this.toString = function(){return '(yield) '+this.tree}
+    this.parent = context
+    this.tree = []
+    context.tree.push(this)
+    this.transform = function(node,rank){
+        if(this.transformed!==undefined){return}
+        console.log('yield transform, node '+node.context)
+        var scope = $get_scope(node.context.tree[0])
+        // change type of function to generator
+        scope.context.tree[0].type = 'generator'
+        this.transformed = true
+        this.func_name = scope.context.tree[0].name
+        scope.context.tree[0].add_generator_declaration()
+    }
+    this.to_js = function(){
+        return '$'+this.func_name+'.$iter.push('+$to_js(this.tree)+')'
+    }
+}
+
 
 // used in loops
 var $loop_num = 0
@@ -1795,8 +1840,6 @@ function $transition(context,token){
 
     }else if(context.type==='id'){
     
-        //if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
-        //else if(token==='.'){return new $AttrCtx(context)}
         if(token==='='){
             if(context.parent.type==='expr' &&
                 context.parent.parent !== undefined &&
@@ -1866,8 +1909,10 @@ function $transition(context,token){
             }else{return $transition(context.parent,token,arguments[2])}
         }else{
             if(context.expect===','){
-                if(context.real==='tuple' && token===')'){
+                if((context.real==='tuple'||context.real==='gen_expr')
+                    && token===')'){
                     context.closed = true
+                    if(context.real==='gen_expr'){context.intervals.push($pos)}
                     return context
                 }else if((context.real==='list'||context.real==='list_comp')
                     && token===']'){
@@ -1880,7 +1925,9 @@ function $transition(context,token){
                     return context
                 }else if(token==='for'){
                     // comprehension
-                    context.real = 'list_comp'
+                    console.log('token for, real '+context.real)
+                    if(context.real==='list'){context.real = 'list_comp'}
+                    else{context.real='gen_expr'}
                     context.intervals = [context.start+1]
                     context.expression = context.tree
                     context.tree = [] // reset tree
@@ -1933,6 +1980,9 @@ function $transition(context,token){
         else if(token==='return'){
             var ret = new $ReturnCtx(context)
             return new $AbstractExprCtx(ret,true)
+        }else if(token==='yield'){
+            var yield = new $YieldCtx(context)
+            return new $AbstractExprCtx(yield,true)
         }else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),true)}
         else if(token===':'){ // end of if,def,for etc.
             var tree_node = context.node
@@ -2075,6 +2125,10 @@ function $transition(context,token){
             return context
         }else{return $transition(context.parent,token,arguments[2])}
 
+    }else if(context.type==='yield'){
+
+        return $transition(context.parent,token)
+
     }
 }
 
@@ -2109,7 +2163,7 @@ function $tokenize(src,module){
         //"False","None","True","break","continue",
         // "and',"or","is"
         ]
-    var unsupported = ["nonlocal","with","yield"]
+    var unsupported = ["nonlocal","with"]
     var $indented = ['class','def','for','condition','single_kw','try','except']
     // from https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Reserved_Words
     var forbidden = ['case','catch','debugger','default','delete',
