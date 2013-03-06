@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130305-174615
+// version 1.1.20130305-191002
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -351,6 +351,8 @@ try{getattr(obj,attr);return True}
 catch(err){return False}
 }
 function hash(obj){
+if(isinstance(obj, int)){return obj.valueOf();}
+if(isinstance(obj, bool)){return int(obj);}
 if(obj.__hashvalue__ !==undefined){return obj.__hashvalue__;}
 if(obj.__hash__ !==undefined){
 obj.__hashvalue__=obj.__hash__()
@@ -3944,6 +3946,7 @@ function brython(debug){
 document.$py_src={}
 document.$py_module_path={}
 document.$py_module_alias={}
+document.$py_next_hash=-Math.pow(2,53)
 document.$debug=debug
 document.$exc_stack=[]
 var elts=document.getElementsByTagName("script")

@@ -413,7 +413,8 @@ function hasattr(obj,attr){
 }
 
 function hash(obj){
-    //if (isinstance(obj, int)) { return obj.valueOf();}
+    if (isinstance(obj, int)) { return obj.valueOf();}
+    if (isinstance(obj, bool)) { return int(obj);}
     if (obj.__hashvalue__ !== undefined) { return obj.__hashvalue__;}
     if (obj.__hash__ !== undefined) {
        obj.__hashvalue__=obj.__hash__()
