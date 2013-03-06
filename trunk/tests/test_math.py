@@ -70,8 +70,7 @@ assert almost_equal(math.atanh(0.5), 0.54930614433405489)
 
 assert almost_equal(math.atanh(-0.5), -0.54930614433405489)
 
-#print("skip test... float('nan') issue")
-#assert math.isnan(math.atanh(float("nan")))
+assert math.isnan(math.atanh(float("nan")))
 
 assert math.trunc(1.9) == 1.0
 
@@ -83,9 +82,6 @@ assert math.trunc(foo()) == "truncated"
 
 assert math.copysign(1.0, -5) == -1.0
 assert math.copysign(-1.0, 5) == 1.0
-
-#print("skip test ...  keyword 'is' is not supported yet")
-#assert type(math.ceil(0.4)) is int
 
 assert almost_equal(math.ceil(0.5), 1)
 assert almost_equal(math.ceil(1.0), 1)
@@ -107,4 +103,4 @@ class StrangeCeil:
 
 assert math.ceil(StrangeCeil()) == "this is a string"
 
-print("Tests completed, known issues skipped..")
+print("passed all tests..")

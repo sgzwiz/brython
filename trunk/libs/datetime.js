@@ -11,12 +11,39 @@ function $Date(args){
     this.month = obj.month
     this.day = obj.day
     this.$dt = obj
+
+    this.__add__ = function(other) {
+        //if (isinstance(other, timedelta)) {}
+        $raise('TypeError', "unsupported operand type(s) for +: 'datetime.date' and '" + other.__class__ + "'");
+    }
     
     this.__class__ = $DateClass
 
+    this.__div__ = function(other) {
+        $raise('TypeError', "unsupported operand type(s) for /: 'datetime.date' and '" + other.__class__ + "'");
+    }
+
     this.__getattr__ = function(attr){return $getattr(this,attr)}
-    
+
+    this.__gt__ = function(other) {
+         if (!isinstance(other, $Date)) {
+            $raise('TypeError', "unorderable types: datetime.date() < " + other.__class__ + "()");
+         }
+         return this.$js_date.getTime() > other.$js_date.getTime();
+    }
+
     this.__hash__ = function() {return hash(tuple(this.year,this.month,this.day))}
+
+    this.__lt__ = function(other) {
+         if (!isinstance(other, $Date)) {
+            $raise('TypeError', "unorderable types: datetime.date() < " + other.__class__ + "()");
+         }
+         return this.$js_date.getTime() < other.$js_date.getTime();
+    }
+    
+    this.__mul__ = function(other) {
+        $raise('TypeError', "unsupported operand type(s) for *: 'datetime.date' and '" + other.__class__ + "'");
+    }
 
     this.__str__ = function(){return this.strftime('%Y-%m-%d')}
 

@@ -133,7 +133,7 @@ $module = {
        return Math.sqrt(x1*x1 + y1*y1)},
     isfinite:function(x) {return isFinite(float_check(x))},
     isinf:function(x) { return isinf(x);},
-    isnan:function(x) {return isNan(float_check(x))},
+    isnan:function(x) {return isNaN(float_check(x))},
     ldexp:function(x,i) {return float_check(x) * Math.pow(2,float_check(i))},
     lgamma:function(x) {
          // see gamma function for sources
