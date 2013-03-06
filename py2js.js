@@ -295,7 +295,8 @@ function $AssignCtx(context){
                 }
             }else if(scope.ntype==='class'){
                 // assignment in a class : creates a class attribute
-                return '$class.'+left.to_js()+'='+right.to_js()
+                var attr = left.to_js()
+                return 'var '+attr+' = $class.'+attr+'='+right.to_js()
             }
         }
     }
@@ -370,7 +371,7 @@ function $ClassCtx(context){
         if(scope===null||scope.ntype!=='class'){
             js = 'var '+this.name
         }else{
-            js = '$class.'+this.name
+            js = 'var '+this.name+' = $class.'+this.name
         }
         js += '=$class_constructor("'+this.name+'",$'+this.name+')'
         var cl_cons = new $Node('expression')
@@ -549,7 +550,7 @@ function $DefCtx(context){
         if(scope===null || scope.ntype!=='class'){
             res = this.name+'= (function ('
         }else{
-            res = '$class.'+this.name+'= (function('
+            res = 'var '+this.name+' = $class.'+this.name+'= (function('
         }
         for(var i=0;i<this.env.length;i++){
             res+=this.env[i]
