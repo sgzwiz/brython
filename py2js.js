@@ -8,13 +8,13 @@ var $operators = {
     "^":"pow","<":"lt",">":"gt",
     "<=":"le",">=":"ge","==":"eq","!=":"ne",
     "or":"or","and":"and", "in":"in", //"not":"not",
-    "not_in":"not_in","is_not":"is_not" // fake
+    "is":"is","not_in":"not_in","is_not":"is_not" // fake
     }
 // operators weight for precedence
 var $op_weight={
     'or':1,'and':2,
     'in':3,'not_in':3,
-    '<':4, '<=':4, '>':4, '>=':4, '!=':4, '==':4,
+    '<':4, '<=':4, '>':4, '>=':4, '!=':4, '==':4,'is':4,
     '+':5,
     '-':6,
     '/':7,'//':7,'%':7,
@@ -1034,7 +1034,11 @@ function $OpCtx(context,op){ // context is the left operand
             return res
         }else{
             var res = this.tree[0].to_js()
-            res += '.__'+$operators[this.op]+'__('+this.tree[1].to_js()+')'
+            if(this.op==="is"){
+                res += '==='+this.tree[1].to_js()
+            }else{
+                res += '.__'+$operators[this.op]+'__('+this.tree[1].to_js()+')'
+            }
             return res
         }
     }
@@ -2086,15 +2090,15 @@ function $tokenize(src,module){
     var br_close = {")":"(","]":"[","}":"{"}
     var br_stack = ""
     var br_pos = new Array()
-    var kwdict = ["class","is","return",
+    var kwdict = ["class","return",
         "for","lambda","try","finally","raise","def","from",
         "nonlocal","while","del","global","with",
         "as","elif","else","if","yield","assert","import",
         "except","raise","in","not","pass",
         //"False","None","True","break","continue",
-        // "and',"or"
+        // "and',"or","is"
         ]
-    var unsupported = ["is","nonlocal","with","yield"]
+    var unsupported = ["nonlocal","with","yield"]
     var $indented = ['class','def','for','condition','single_kw','try','except']
     // from https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Reserved_Words
     var forbidden = ['case','catch','debugger','default','delete',
