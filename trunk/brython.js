@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130305-205311
+// version 1.1.20130306-210222
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -1374,6 +1374,7 @@ else{this.mapping_key=null}
 this.flag=res[2]
 this.min_width=res[3]
 this.precision=res[4]
+if(this.precision!==undefined){this.precision=parseInt(res[4].substr(1))}
 this.length_modifier=res[5]
 this.type=res[6]
 this.toString=function(){
@@ -1395,6 +1396,22 @@ return str(int(src))
 if(!isinstance(src,[int,float])){throw TypeError(
 "%"+this.type+" format : a number is required, not "+str(src.__class__))}
 return str(float(src))
+}else if(this.type=="g" || this.type=="G"){
+if(!isinstance(src,[int,float])){throw TypeError(
+"%"+this.type+" format : a number is required, not "+str(src.__class__))}
+console.log('precision '+this.precision)
+var pr=this.precision
+if(src<0.0001){
+if(pr!==undefined){
+var res=str(Number(src).toExponential(parseInt(pr.substr(1))))
+}else{
+var res=str(Number(src).toExponential())
+}
+if(this.type==='g'){return res}
+else{return res.replace('e','E')}
+}
+if(pr!==undefined){return Number(src).toPrecision(pr)}
+else{return str(Number(src))}
 }
 }
 }
@@ -1868,12 +1885,12 @@ var $operators={
 "^":"pow","<":"lt",">":"gt",
 "<=":"le",">=":"ge","==":"eq","!=":"ne",
 "or":"or","and":"and", "in":"in", 
-"not_in":"not_in","is_not":"is_not" 
+"is":"is","not_in":"not_in","is_not":"is_not" 
 }
 var $op_weight={
 'or':1,'and':2,
 'in':3,'not_in':3,
-'<':4, '<=':4, '>':4, '>=':4, '!=':4, '==':4,
+'<':4, '<=':4, '>':4, '>=':4, '!=':4, '==':4,'is':4,
 '+':5,
 '-':6,
 '/':7,'//':7,'%':7,
@@ -1885,8 +1902,8 @@ var $augmented_assigns={
 "**=":"ipow","+=":"iadd","-=":"isub","*=":"imul","/=":"itruediv",
 "%=":"imod","^=":"ipow"
 }
-function $_SyntaxError(context,msg){
-var ctx_node=context
+function $_SyntaxError(C,msg){
+var ctx_node=C
 while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
 var tree_node=ctx_node.node
 var module=tree_node.module
@@ -1917,7 +1934,7 @@ res +=this.children[i].show(indent)
 }else{
 indent=indent || 0
 for(var i=0;i<indent;i++){res+=' '}
-res +=this.context
+res +=this.C
 if(this.children.length>0){res +='{'}
 res +='\n'
 for(var i=0;i<this.children.length;i++){
@@ -1938,7 +1955,7 @@ res +=this.children[i].to_js(indent)
 }
 }else{
 indent=indent || 0
-var ctx_js=this.context.to_js(indent)
+var ctx_js=this.C.to_js(indent)
 if(ctx_js){
 for(var i=0;i<indent;i++){res+=' '}
 res +=ctx_js
@@ -1965,7 +1982,7 @@ this.children[i].transform(i)
 i++
 }
 }else{
-var elt=this.context.tree[0]
+var elt=this.C.tree[0]
 if(elt.transform !==undefined){
 elt.transform(this,rank)
 }
@@ -1979,41 +1996,45 @@ i++
 }
 function $last(src){return src[src.length-1]}
 var $loop_id=0
-function $AbstractExprCtx(context,with_commas){
+function $AbstractExprCtx(C,with_commas){
 this.type='abstract_expr'
 this.with_commas=with_commas
 this.name=name
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(abstract_expr '+with_commas+') '+this.tree}
 this.to_js=function(){
 if(this.type==='list'){return '['+$to_js(this.tree)+']'}
 else{return $to_js(this.tree)}
 }
 }
-function $AssertCtx(context){
+function $AssertCtx(C){
 this.type='assert'
 this.toString=function(){return '(assert) '+this.tree}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.transform=function(node,rank){
-var new_ctx=new $ConditionCtx(node.context,'if')
+var new_ctx=new $ConditionCtx(node.C,'if')
 var not_ctx=new $NotCtx(new_ctx)
-not_ctx.tree=this.tree
-node.context=new_ctx
+not_ctx.tree=[this.tree[0]]
+node.C=new_ctx
 var new_node=new $Node('expression')
-new $NodeJSCtx(new_node,'throw AssertionError("")')
+var js='throw AssertionError("")'
+if(this.tree.length==2){
+js='throw AssertionError(str('+this.tree[1].to_js()+'))'
+}
+new $NodeJSCtx(new_node,js)
 node.add(new_node)
 }
 }
-function $AssignCtx(context){
+function $AssignCtx(C){
 this.type='assign'
-context.parent.tree.pop()
-context.parent.tree.push(this)
-this.parent=context.parent
-this.tree=[context]
+C.parent.tree.pop()
+C.parent.tree.push(this)
+this.parent=C.parent
+this.tree=[C]
 this.toString=function(){return '(assign) '+this.tree[0]+'='+this.tree[1]}
 this.transform=function(node,rank){
 var left=this.tree[0]
@@ -2063,8 +2084,8 @@ new_nodes.push(new_node)
 }
 for(var i=0;i<left_items.length;i++){
 var new_node=new $Node('expression')
-var context=new $NodeCtx(new_node)
-left_items[i].parent=context
+var C=new $NodeCtx(new_node)
+left_items[i].parent=C
 var assign=new $AssignCtx(left_items[i])
 assign.tree[1]=new $JSCode('$temp'+$loop_num+'['+i+']')
 new_nodes.push(new_node)
@@ -2080,8 +2101,8 @@ new $NodeJSCtx(new_node,'$right='+right.to_js())
 var new_nodes=[new_node]
 for(var i=0;i<left_items.length;i++){
 var new_node=new $Node('expression')
-var context=new $NodeCtx(new_node)
-left_items[i].parent=context
+var C=new $NodeCtx(new_node)
+left_items[i].parent=C
 var assign=new $AssignCtx(left_items[i])
 assign.tree[1]=new $JSCode('$right.__item__('+i+')')
 new_nodes.push(new_node)
@@ -2126,17 +2147,18 @@ return left.to_js()+'='+right.to_js()
 return 'var '+left.to_js()+'='+right.to_js()
 }
 }else if(scope.ntype==='class'){
-return '$class.'+left.to_js()+'='+right.to_js()
+var attr=left.to_js()
+return 'var '+attr+' = $class.'+attr+'='+right.to_js()
 }
 }
 }
 }
-function $AttrCtx(context){
+function $AttrCtx(C){
 this.type='attribute'
-this.value=context.tree[0]
-this.parent=context
-context.tree.pop()
-context.tree.push(this)
+this.value=C.tree[0]
+this.parent=C
+C.tree.pop()
+C.tree.push(this)
 this.tree=[]
 this.func='getattr' 
 this.toString=function(){return '(attr) '+this.value+'.'+this.name}
@@ -2147,30 +2169,30 @@ if(name.substr(0,2)!=='__'){name='__'+this.func+'__("'+name+'")'}
 return this.value.to_js()+'.'+name
 }
 }
-function $CallArgCtx(context){
+function $CallArgCtx(C){
 this.type='call_arg'
 this.toString=function(){return 'call_arg '+this.tree}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.expect='id'
 this.to_js=function(){return $to_js(this.tree)}
 }
-function $CallCtx(context){
+function $CallCtx(C){
 this.type='call'
-this.func=context.tree[0]
-this.parent=context
-context.tree.pop()
-context.tree.push(this)
+this.func=C.tree[0]
+this.parent=C
+C.tree.pop()
+C.tree.push(this)
 this.tree=[]
 this.toString=function(){return '(call) '+this.func+'('+this.tree+')'}
 this.to_js=function(){return this.func.to_js()+'('+$to_js(this.tree)+')'}
 }
-function $ClassCtx(context){
+function $ClassCtx(C){
 this.type='class'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.expect='id'
 this.toString=function(){return 'class '+this.tree}
 this.transform=function(node,rank){
@@ -2187,7 +2209,7 @@ var scope=$get_scope(this)
 if(scope===null||scope.ntype!=='class'){
 js='var '+this.name
 }else{
-js='$class.'+this.name
+js='var '+this.name+' = $class.'+this.name
 }
 js +='=$class_constructor("'+this.name+'",$'+this.name+')'
 var cl_cons=new $Node('expression')
@@ -2204,20 +2226,20 @@ this.to_js=function(){
 return 'var $'+this.name+'=(function()'
 }
 }
-function $CompIfCtx(context){
+function $CompIfCtx(C){
 this.type='comp_if'
-context.parent.intervals.push($pos)
-this.parent=context
+C.parent.intervals.push($pos)
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(comp if) '+this.tree}
 this.to_js=function(){return 'comp if to js'}
 }
-function $ComprehensionCtx(context){
+function $ComprehensionCtx(C){
 this.type='comprehension'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(comprehension) '+this.tree}
 this.to_js=function(){
 var intervals=[]
@@ -2227,30 +2249,30 @@ intervals.push(this.tree[i].start)
 return intervals
 }
 }
-function $CompForCtx(context){
+function $CompForCtx(C){
 this.type='comp_for'
-context.parent.intervals.push($pos)
-this.parent=context
+C.parent.intervals.push($pos)
+this.parent=C
 this.tree=[]
 this.expect='in'
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(comp for) '+this.tree}
 this.to_js=function(){return 'comp for to js'}
 }
-function $CompIterableCtx(context){
+function $CompIterableCtx(C){
 this.type='comp_iterable'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(comp iter) '+this.tree}
 this.to_js=function(){return 'comp iter to js'}
 }
-function $ConditionCtx(context,token){
+function $ConditionCtx(C,token){
 this.type='condition'
 this.token=token
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return this.token+' '+this.tree}
 this.to_js=function(){
 var tok=this.token
@@ -2266,15 +2288,16 @@ res +='{'+this.tree[1].to_js()+'}'
 return res
 }
 }
-function $DefCtx(context){
+function $DefCtx(C){
 this.type='def'
 this.name=null
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return 'def '+this.name+'('+this.tree+')'}
 this.transform=function(node,rank){
 if(this.transformed!==undefined){return}
+this.rank=rank 
 if(this.in_line!==undefined){
 var new_node=new $Node('expression')
 var ctx=new $NodeCtx(new_node)
@@ -2335,20 +2358,36 @@ if(i<this.env.length-1){txt +=','}
 }
 new $NodeJSCtx(ret_node,txt+')')
 node.parent.insert(rank+1,ret_node)
+js=this.name+'.__name__="'+this.name+'"'
+var name_decl=new $Node('expression')
+new $NodeJSCtx(name_decl,js)
+node.parent.children.splice(rank+2,0,name_decl)
 if(scope===null && node.module==='__main__'){
 js='window.'+this.name+'='+this.name
 new_node1=new $Node('expression')
 new $NodeJSCtx(new_node1,js)
-node.parent.children.splice(rank+2,0,new_node1)
+node.parent.children.splice(rank+3,0,new_node1)
 }
 this.transformed=true
 }
+this.add_generator_declaration=function(){
+console.log('in transform, type '+this.type)
+var node=this.parent.node
+if(this.type==='generator'){
+js=this.name+'=$generator($'+this.name+')'
+var gen_node=new $Node('expression')
+new $NodeJSCtx(gen_node,js)
+node.parent.children.splice(this.rank+2,0,gen_node)
+}
+}
 this.to_js=function(){
 var scope=$get_scope(this)
+var name=this.name
+if(this.type==='generator'){name='$'+name}
 if(scope===null || scope.ntype!=='class'){
-res=this.name+'= (function ('
+res=name+'= (function ('
 }else{
-res='$class.'+this.name+'= (function('
+res='var '+name+' = $class.'+name+'= (function ('
 }
 for(var i=0;i<this.env.length;i++){
 res+=this.env[i]
@@ -2358,36 +2397,41 @@ res +=')'
 return res
 }
 }
-function $DelCtx(context){
+function $DelCtx(C){
 this.type='del'
-this.parent=context
-context.tree.push(this)
+this.parent=C
+C.tree.push(this)
 this.tree=[]
 this.toString=function(){return 'del '+this.tree}
 this.to_js=function(){
-var expr=this.tree[0]
-if(expr.type!=='expr'){throw Error('SyntaxError, no expr after del')}
-var del_id=expr.tree[0]
-if(del_id.type!=='sub'){
-throw Error('SyntaxError, no subscription for del')
+res=[]
+var tree=this.tree[0].tree
+for(var i=0;i<tree.length;i++){
+var expr=tree[i]
+if(expr.type==='expr'||expr.type==='id'){
+res.push('delete '+expr.to_js())
+}else if(expr.type==='sub'){
+expr.func='delitem'
+res.push(expr.to_js())
+expr.func='getitem'
+}else{
+throw SyntaxError("wrong argument for del "+expr.type)
 }
-del_id.func='delitem'
-var res=del_id.to_js()
-del_id.func='getitem'
-return res
+}
+return res.join(';')
 }
 }
-function $DictCtx(context){
+function $DictCtx(C){
 this.type='dict'
-this.parent=context.parent
-context.parent.tree.pop()
-context.parent.tree.push(this)
-context.name='dict_key'
-this.tree=[context]
+this.parent=C.parent
+C.parent.tree.pop()
+C.parent.tree.push(this)
+C.name='dict_key'
+this.tree=[C]
 this.expect=','
 this.toString=function(){return 'dict '+this.tree}
 }
-function $DictOrSetCtx(context){
+function $DictOrSetCtx(C){
 this.type='dict_or_set'
 this.real='dict_or_set'
 this.expect='id'
@@ -2397,9 +2441,9 @@ if(this.real==='dict'){return '(dict) {'+this.tree+'}'}
 else if(this.real==='set'){return '(set) {'+this.tree+'}'}
 else{return '(dict_or_set) {'+this.tree+'}'}
 }
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){
 if(this.real==='dict'){
 var res='dict(['
@@ -2411,18 +2455,18 @@ return res+'])'+$to_js(this.tree)
 }else{return 'set(['+$to_js(this.items)+'])'+$to_js(this.tree)}
 }
 }
-function $DoubleStarArgCtx(context){
+function $DoubleStarArgCtx(C){
 this.type='double_star_arg'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '**'+this.tree}
 this.to_js=function(){return '$pdict('+$to_js(this.tree)+')'}
 }
-function $ExceptCtx(context){
+function $ExceptCtx(C){
 this.type='except'
-this.parent=context
-context.tree.push(this)
+this.parent=C
+C.tree.push(this)
 this.tree=[]
 this.expect='id'
 this.toString=function(){return '(except) '}
@@ -2439,14 +2483,14 @@ return res
 }
 }
 }
-function $ExprCtx(context,name,with_commas){
+function $ExprCtx(C,name,with_commas){
 this.type='expr'
 this.name=name
 this.with_commas=with_commas
 this.expect=',' 
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(expr '+with_commas+') '+this.tree}
 this.to_js=function(){
 if(this.type==='list'){return '['+$to_js(this.tree)+']'}
@@ -2454,35 +2498,35 @@ else if(this.tree.length===1){return this.tree[0].to_js()}
 else{return 'tuple('+$to_js(this.tree)+')'}
 }
 }
-function $ExprNot(context){
+function $ExprNot(C){
 this.type='expr_not'
 this.toString=function(){return '(expr_not)'}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 }
-function $FloatCtx(context,value){
+function $FloatCtx(C,value){
 this.type='float'
 this.value=value
 this.toString=function(){return 'float '+this.value}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){return 'float('+this.value+')'}
 }
-function $ForTarget(context){
+function $ForTarget(C){
 this.type='for_target'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return 'for_target'+' '+this.tree}
 this.to_js=function(){return $to_js(this.tree)}
 }
-function $ForExpr(context){
+function $ForExpr(C){
 this.type='for'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(for) '+this.tree}
 this.transform=function(node,rank){
 var new_nodes=[]
@@ -2503,8 +2547,8 @@ node.parent.insert(rank,new_nodes[i])
 }
 var new_node=new $Node('expression')
 node.insert(0,new_node)
-var context=new $NodeCtx(new_node)
-var target_expr=new $ExprCtx(context,'left',true)
+var C=new $NodeCtx(new_node)
+var target_expr=new $ExprCtx(C,'left',true)
 target_expr.tree=target.tree
 var assign=new $AssignCtx(target_expr)
 assign.tree[1]=new $JSCode('$iter'+$loop_num+'.__item__($i'+$loop_num+')')
@@ -2516,20 +2560,20 @@ var iterable=this.tree.pop()
 return 'for '+$to_js(this.tree)+' in '+iterable.to_js()
 }
 }
-function $FromCtx(context){
+function $FromCtx(C){
 this.type='from'
-this.parent=context
+this.parent=C
 this.names=[]
-context.tree.push(this)
+C.tree.push(this)
 this.expect='module'
 this.toString=function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module}
 this.to_js=function(){return '$import_from("'+this.module+'",'+this.names+', "' + this.parent_module +'");\n'}
 }
-function $FuncArgs(context){
+function $FuncArgs(C){
 this.type='func_args'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return 'func args '+this.tree}
 this.expect='id'
 this.has_default=false
@@ -2537,28 +2581,28 @@ this.has_star_arg=false
 this.has_kw_arg=false
 this.to_js=function(){return $to_js(this.tree)}
 }
-function $FuncArgIdCtx(context,name){
+function $FuncArgIdCtx(C,name){
 this.type='func_arg_id'
 this.name=name
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return 'func arg id '+this.name +'='+this.tree}
 this.expect='='
 this.to_js=function(){return this.name+$to_js(this.tree)}
 }
-function $FuncStarArgCtx(context,op){
+function $FuncStarArgCtx(C,op){
 this.type='func_star_arg'
 this.op=op
-this.parent=context
-context.tree.push(this)
+this.parent=C
+C.tree.push(this)
 this.toString=function(){return '(func star arg '+this.op+') '+this.name}
 }
-function $GlobalCtx(context){
+function $GlobalCtx(C){
 this.type='global'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.expect='id'
 this.toString=function(){return 'global '+this.tree}
 this.transform=function(node,rank){
@@ -2570,48 +2614,48 @@ scope.globals.push(this.tree[i].value)
 }
 this.to_js=function(){return ''}
 }
-function $IdCtx(context,value,minus){
+function $IdCtx(C,value,minus){
 this.type='id'
 this.toString=function(){return '(id) '+this.value+':'+(this.tree||'')}
 this.value=value
 this.minus=minus
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){
 var val=this.value
 if(['print','alert','eval','open'].indexOf(this.value)>-1){val='$'+val}
 return val+$to_js(this.tree,'')
 }
 }
-function $ImportCtx(context){
+function $ImportCtx(C){
 this.type='import'
 this.toString=function(){return 'import '+this.tree}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.expect='id'
 this.to_js=function(){
 return '$import_list(['+$to_js(this.tree)+'])'
 }
 }
-function $ImportedModuleCtx(context,name){
+function $ImportedModuleCtx(C,name){
 this.toString=function(){return ' (imported module) '+this.name}
-this.parent=context
+this.parent=C
 this.name=name
 this.alias=name
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){
 return '["'+this.name+'","'+this.alias+'"]'
 }
 }
-function $IntCtx(context,value){
+function $IntCtx(C,value){
 this.type='int'
 this.value=value
 this.toString=function(){return 'int '+this.value}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){return 'Number('+this.value+')'}
 }
 function $JSCode(js){
@@ -2619,24 +2663,24 @@ this.js=js
 this.toString=function(){return this.js}
 this.to_js=function(){return this.js}
 }
-function $KwArgCtx(context){
+function $KwArgCtx(C){
 this.type='kwarg'
 this.toString=function(){return 'kwarg '+this.tree[0]+'='+this.tree[1]}
-this.parent=context.parent
-this.tree=[context.tree[0]]
-context.parent.tree.pop()
-context.parent.tree.push(this)
+this.parent=C.parent
+this.tree=[C.tree[0]]
+C.parent.tree.pop()
+C.parent.tree.push(this)
 this.to_js=function(){
 var res='$Kw("'+this.tree[0].to_js()+'",'
 res +=$to_js(this.tree.slice(1,this.tree.length))+')'
 return res
 }
 }
-function $LambdaCtx(context){
+function $LambdaCtx(C){
 this.type='lambda'
 this.toString=function(){return '(lambda) '+this.args_start+' '+this.body_start}
-this.parent=context
-context.tree.push(this)
+this.parent=C
+C.tree.push(this)
 this.tree=[]
 this.to_js=function(){
 var ctx_node=this
@@ -2649,7 +2693,7 @@ var body=src.substring(this.body_start+1,this.body_end).replace(qesc,'\\"')
 return '$lambda("'+args+'","'+body+'")'
 }
 }
-function $ListOrTupleCtx(context,real){
+function $ListOrTupleCtx(C,real){
 this.type='list_or_tuple'
 this.start=$pos
 this.real=real
@@ -2660,12 +2704,13 @@ if(this.real==='list'){return '(list) ['+this.tree+']'}
 else if(this.real==='list_comp'){return '(list comp) ['+this.intervals+'-'+this.tree+']'}
 else{return '(tuple) ('+this.tree+')'}
 }
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){
+console.log('list or tuple '+this.real)
 if(this.real==='list'){return '['+$to_js(this.tree)+']'}
-else if(this.real==='list_comp'){
+else if(this.real==='list_comp'||this.real==='gen_expr'){
 var res_env=[],local_env=[],env=[]
 var ctx_node=this
 while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
@@ -2719,7 +2764,8 @@ txt=txt.replace(/\n/g,' ')
 res +='"'+txt+'"'
 if(i<this.intervals.length-1){res+=','}
 }
-return '$list_comp('+res+')'
+if(this.real==='list_comp'){return '$list_comp('+res+')'}
+else{return '$gen_expr('+res+')'}
 }else if(this.real==='tuple'){
 if(this.tree.length===1 && this.has_comma===undefined){return this.tree[0].to_js()}
 else{return 'tuple('+$to_js(this.tree)+')'}
@@ -2728,7 +2774,7 @@ else{return 'tuple('+$to_js(this.tree)+')'}
 }
 function $NodeCtx(node){
 this.node=node
-node.context=this
+node.C=this
 this.tree=[]
 this.type='node'
 this.toString=function(){return 'node '+this.tree}
@@ -2746,28 +2792,28 @@ return $to_js(this.tree)
 }
 function $NodeJSCtx(node,js){
 this.node=node
-node.context=this
+node.C=this
 this.type='node_js'
 this.tree=[js]
 this.toString=function(){return 'js '+js}
 this.to_js=function(){return js}
 }
-function $NotCtx(context){
+function $NotCtx(C){
 this.type='not'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return 'not ('+this.tree+')'}
 this.to_js=function(){return '!bool('+$to_js(this.tree)+')'}
 }
-function $OpCtx(context,op){
+function $OpCtx(C,op){
 this.type='op'
 this.op=op
 this.toString=function(){return '(op '+this.op+')'+this.tree}
-this.parent=context.parent
-this.tree=[context]
-context.parent.tree.pop()
-context.parent.tree.push(this)
+this.parent=C.parent
+this.tree=[C]
+C.parent.tree.pop()
+C.parent.tree.push(this)
 this.to_js=function(){
 if(this.op==='and'){
 var res='$test_expr($test_item('+this.tree[0].to_js()+')&&'
@@ -2779,33 +2825,37 @@ res +='$test_item('+this.tree[1].to_js()+'))'
 return res
 }else{
 var res=this.tree[0].to_js()
+if(this.op==="is"){
+res +='==='+this.tree[1].to_js()
+}else{
 res +='.__'+$operators[this.op]+'__('+this.tree[1].to_js()+')'
+}
 return res
 }
 }
 }
-function $ParentClassCtx(context){
+function $ParentClassCtx(C){
 this.type='parent_class'
 this.expect='id'
 this.toString=function(){return '('+this.tree+')'}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 }
-function $PassCtx(context){
+function $PassCtx(C){
 this.type='pass'
 this.toString=function(){return '(pass)'}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){return 'void(0)'}
 }
-function $RaiseCtx(context){
+function $RaiseCtx(C){
 this.type='raise'
 this.toString=function(){return ' (raise) '+this.tree}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){
 if(this.tree.length===0){return '$raise()'}
 var exc=this.tree[0]
@@ -2813,52 +2863,52 @@ if(exc.type==='id'){return 'throw '+exc.value+'("")'}
 else{return 'throw '+$to_js(this.tree)}
 }
 }
-function $ReturnCtx(context){
+function $ReturnCtx(C){
 this.type='return'
 this.toString=function(){return 'return '+this.tree}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){return 'return '+$to_js(this.tree)}
 }
-function $SingleKwCtx(context,token){
+function $SingleKwCtx(C,token){
 this.type='single_kw'
 this.token=token
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return this.token}
 this.to_js=function(){return this.token}
 }
-function $StarArgCtx(context){
+function $StarArgCtx(C){
 this.type='star_arg'
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(star arg) '+this.tree}
 this.to_js=function(){
 return '$ptuple('+$to_js(this.tree)+')'
 }
 }
-function $StringCtx(context,value){
+function $StringCtx(C,value){
 this.type='str'
 this.value=value
 this.toString=function(){return 'string '+this.value+' '+(this.tree||'')}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){
 return this.value.replace(/\n/g,' \\\n')+$to_js(this.tree,'')
 }
 }
-function $SubCtx(context){
+function $SubCtx(C){
 this.type='sub'
 this.func='getitem' 
 this.toString=function(){return '(sub) '+this.tree}
-this.value=context.tree[0]
-context.tree.pop()
-context.tree.push(this)
-this.parent=context
+this.value=C.tree[0]
+C.tree.pop()
+C.tree.push(this)
+this.parent=C
 this.tree=[]
 this.to_js=function(){
 var res=this.value.to_js()+'.__'+this.func+'__('
@@ -2875,31 +2925,31 @@ return res+'))'
 }
 }
 }
-function $TargetCtx(context,name){
+function $TargetCtx(C,name){
 this.toString=function(){return ' (target) '+this.name}
-this.parent=context
+this.parent=C
 this.name=name
 this.alias=null
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){
 return '["'+this.name+'","'+this.alias+'"]'
 }
 }
-function $TargetListCtx(context){
+function $TargetListCtx(C){
 this.type='target_list'
-this.parent=context
+this.parent=C
 this.tree=[]
 this.expect='id'
-context.tree.push(this)
+C.tree.push(this)
 this.toString=function(){return '(target list) '+this.tree}
 }
-function $TernaryCtx(context){
+function $TernaryCtx(C){
 this.type='ternary'
-this.parent=context.parent
-context.parent.tree.pop()
-context.parent.tree.push(this)
-context.parent=this
-this.tree=[context]
+this.parent=C.parent
+C.parent.tree.pop()
+C.parent.tree.push(this)
+C.parent=this
+this.tree=[C]
 this.toString=function(){return '(ternary) '+this.tree}
 this.to_js=function(){
 var env='{'
@@ -2916,18 +2966,18 @@ args +=this.tree[2].to_js().replace(qesc,'\\"')
 return '$ternary('+env+','+args+'")'
 }
 }
-function $TryCtx(context){
+function $TryCtx(C){
 this.type='try'
-this.parent=context
-context.tree.push(this)
+this.parent=C
+C.tree.push(this)
 this.toString=function(){return '(try) '}
 this.transform=function(node,rank){
 if(node.parent.children.length===rank+1){
-$_SyntaxError(context,"missing clause after 'try' 1")
+$_SyntaxError(C,"missing clause after 'try' 1")
 }else{
-var next_ctx=node.parent.children[rank+1].context.tree[0]
+var next_ctx=node.parent.children[rank+1].C.tree[0]
 if(['except','finally'].indexOf(next_ctx.type)===-1){
-$_SyntaxError(context,"missing clause after 'try' 2")
+$_SyntaxError(C,"missing clause after 'try' 2")
 }
 }
 new $NodeJSCtx(node,'try')
@@ -2939,11 +2989,13 @@ new $NodeJSCtx(new_node,'if(false){void(0)}')
 catch_node.insert(0,new_node)
 var pos=rank+2
 var has_default=false 
+var has_else=false 
 while(true){
 if(pos===node.parent.children.length){break}
-var ctx=node.parent.children[pos].context.tree[0]
+var ctx=node.parent.children[pos].C.tree[0]
 if(ctx.type==='except'||
 (ctx.type==='single_kw' && ctx.token==='finally')){
+if(has_else){$_SyntaxError("'except' or 'finally' after 'else'")}
 ctx.error_name='$err'+$loop_num
 if(ctx.tree.length>0 && ctx.tree[0].alias!==null){
 var new_node=new $Node('expression')
@@ -2955,8 +3007,16 @@ node.parent.children[pos].insert(0,new_node)
 catch_node.insert(catch_node.children.length,
 node.parent.children[pos])
 if(ctx.type==='except' && ctx.tree.length===0){
-if(has_default){$_SyntaxError('more than one except: line')}
+if(has_default){$_SyntaxError(C,'more than one except: line')}
 has_default=true
+}
+node.parent.children.splice(pos,1)
+}else if(ctx.type==='single_kw' && ctx.token==='else'){
+if(has_else){$_SyntaxError(C,"more than one 'else'")}
+has_else=true
+var else_children=node.parent.children[pos].children
+for(var i=0;i<else_children.length;i++){
+node.add(else_children[i])
 }
 node.parent.children.splice(pos,1)
 }else{break}
@@ -2970,14 +3030,33 @@ $loop_num++
 }
 this.to_js=function(){return 'try'}
 }
-function $UnaryCtx(context,op){
+function $UnaryCtx(C,op){
 this.type='unary'
 this.op=op
 this.toString=function(){return '(unary) '+this.op+' ['+this.tree+']'}
-this.parent=context
+this.parent=C
 this.tree=[]
-context.tree.push(this)
+C.tree.push(this)
 this.to_js=function(){return this.op+$to_js(this.tree)}
+}
+function $YieldCtx(C){
+this.type='yield'
+this.toString=function(){return '(yield) '+this.tree}
+this.parent=C
+this.tree=[]
+C.tree.push(this)
+this.transform=function(node,rank){
+if(this.transformed!==undefined){return}
+console.log('yield transform, node '+node.C)
+var scope=$get_scope(node.C.tree[0])
+scope.C.tree[0].type='generator'
+this.transformed=true
+this.func_name=scope.C.tree[0].name
+scope.C.tree[0].add_generator_declaration()
+}
+this.to_js=function(){
+return '$'+this.func_name+'.$iter.push('+$to_js(this.tree)+')'
+}
 }
 var $loop_num=0
 var $iter_num=0 
@@ -2988,7 +3067,7 @@ while(i<node.children.length){
 i +=$add_line_num(node.children[i],i)
 }
 }else{
-var elt=node.context.tree[0],offset=1
+var elt=node.C.tree[0],offset=1
 var flag=true
 if(node.line_num===undefined){flag=false}
 if(elt.type==='condition' && elt.token==='elif'){flag=false}
@@ -3008,21 +3087,21 @@ i +=$add_line_num(node.children[i],i)
 return offset
 }
 }
-function $augmented_assign(context,op){
-var assign=new $AssignCtx(context)
-var new_op=new $OpCtx(context,op.substr(0,op.length-1))
+function $augmented_assign(C,op){
+var assign=new $AssignCtx(C)
+var new_op=new $OpCtx(C,op.substr(0,op.length-1))
 assign.tree.push(new_op)
-context.parent.tree.pop()
-context.parent.tree.push(assign)
+C.parent.tree.pop()
+C.parent.tree.push(assign)
 return new_op
 }
-function $get_scope(context){
-var ctx_node=context.parent
+function $get_scope(C){
+var ctx_node=C.parent
 while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
 var tree_node=ctx_node.node
 var scope=null
 while(tree_node.parent.type!=='module'){
-var ntype=tree_node.parent.context.tree[0].type
+var ntype=tree_node.parent.C.tree[0].type
 if(['def','class'].indexOf(ntype)>-1){
 scope=tree_node.parent
 scope.ntype=ntype
@@ -3079,231 +3158,236 @@ function $arbo(ctx){
 while(ctx.parent!=undefined){ctx=ctx.parent}
 return ctx
 }
-function $transition(context,token){
-if(context.type==='abstract_expr'){
+function $transition(C,token){
+if(C.type==='abstract_expr'){
 if($expr_starters.indexOf(token)>-1){
-context.parent.tree.pop()
-var commas=context.with_commas
-context=context.parent
+C.parent.tree.pop()
+var commas=C.with_commas
+C=C.parent
 }
-if(token==='id'){return new $IdCtx(new $ExprCtx(context,'id',commas),arguments[2])}
-else if(token==='str'){return new $StringCtx(new $ExprCtx(context,'str',commas),arguments[2])}
-else if(token==='int'){return new $IntCtx(new $ExprCtx(context,'int',commas),arguments[2])}
-else if(token==='float'){return new $FloatCtx(new $ExprCtx(context,'float',commas),arguments[2])}
-else if(token==='('){return new $ListOrTupleCtx(new $ExprCtx(context,'tuple',commas),'tuple')}
-else if(token==='['){return new $ListOrTupleCtx(new $ExprCtx(context,'list',commas),'list')}
-else if(token==='{'){return new $DictOrSetCtx(new $ExprCtx(context,'dict_or_set',commas))}
-else if(token==='not'){return new $NotCtx(new $ExprCtx(context,'not',commas))}
-else if(token==='lambda'){return new $LambdaCtx(new $ExprCtx(context,'lambda',commas))}
+if(token==='id'){return new $IdCtx(new $ExprCtx(C,'id',commas),arguments[2])}
+else if(token==='str'){return new $StringCtx(new $ExprCtx(C,'str',commas),arguments[2])}
+else if(token==='int'){return new $IntCtx(new $ExprCtx(C,'int',commas),arguments[2])}
+else if(token==='float'){return new $FloatCtx(new $ExprCtx(C,'float',commas),arguments[2])}
+else if(token==='('){return new $ListOrTupleCtx(new $ExprCtx(C,'tuple',commas),'tuple')}
+else if(token==='['){return new $ListOrTupleCtx(new $ExprCtx(C,'list',commas),'list')}
+else if(token==='{'){return new $DictOrSetCtx(new $ExprCtx(C,'dict_or_set',commas))}
+else if(token==='not'){return new $NotCtx(new $ExprCtx(C,'not',commas))}
+else if(token==='lambda'){return new $LambdaCtx(new $ExprCtx(C,'lambda',commas))}
 else if(token==='op' && '+-'.search(arguments[2])){
-return new $UnaryCtx(context,arguments[2])
-}else if(token==='='){$_SyntaxError(context,token)}
-else{return $transition(context.parent,token,arguments[2])}
-}else if(context.type==='assert'){
-if($expr_starters.indexOf(token)>-1&&context.init===undefined){
-context.init=true
-return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
-}else if(token==='eol'&&context.init===true){
-return $transition(context.parent,token)
-}else{$_SyntaxError(context,token)}
-}else if(context.type==='assign'){
-if(token==='eol'){return $transition(context.parent,'eol')}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='attribute'){
+return new $UnaryCtx(C,arguments[2])
+}else if(token==='='){$_SyntaxError(C,token)}
+else{return $transition(C.parent,token,arguments[2])}
+}else if(C.type==='assert'){
+if($expr_starters.indexOf(token)>-1&&C.expect===undefined){
+C.expect='cond'
+return $transition(new $AbstractExprCtx(C,false),token,arguments[2])
+}else if(token===',' && C.expect==='cond'){
+C.expect='arg'
+return C
+}else if($expr_starters.indexOf(token)>-1 && C.expect==='arg'){
+return $transition(new $AbstractExprCtx(C,false),token,arguments[2])
+}else if(token==='eol' && C.expect){
+return $transition(C.parent,token)
+}else{$_SyntaxError(C,token)}
+}else if(C.type==='assign'){
+if(token==='eol'){return $transition(C.parent,'eol')}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='attribute'){
 if(token==='id'){
 var name=arguments[2]
 if(name.substr(0,2)=='$$'){name=name.substr(2)}
-context.name=name
-return context.parent
-}else{$_SyntaxError(context,token)}
-}else if(context.type==='call'){
-if(token===','){return context}
+C.name=name
+return C.parent
+}else{$_SyntaxError(C,token)}
+}else if(C.type==='call'){
+if(token===','){return C}
 else if($expr_starters.indexOf(token)>-1){
-var expr=new $CallArgCtx(context)
+var expr=new $CallArgCtx(C)
 return $transition(expr,token,arguments[2])
-}else if(token===')'){return context.parent}
+}else if(token===')'){return C.parent}
 else if(token==='op'){
 var op=arguments[2]
-if(op==='-'){return new $UnaryCtx(context,'-')}
-else if(op==='+'){return context}
-else if(op==='*'){return new $StarArgCtx(context)}
-else if(op==='**'){return new $DoubleStarArgCtx(context)}
+if(op==='-'){return new $UnaryCtx(C,'-')}
+else if(op==='+'){return C}
+else if(op==='*'){return new $StarArgCtx(C)}
+else if(op==='**'){return new $DoubleStarArgCtx(C)}
 else{throw Error('SyntaxError')}
-}else{return $transition(context.parent,token,arguments[2])}
-}else if(context.type==='call_arg'){
-if($expr_starters.indexOf(token)>-1 && context.expect==='id'){
-context.expect=','
-var expr=new $AbstractExprCtx(context,false)
+}else{return $transition(C.parent,token,arguments[2])}
+}else if(C.type==='call_arg'){
+if($expr_starters.indexOf(token)>-1 && C.expect==='id'){
+C.expect=','
+var expr=new $AbstractExprCtx(C,false)
 return $transition(expr,token,arguments[2])
-}else if(token==='=' && context.expect===','){
-return new $ExprCtx(new $KwArgCtx(context),'kw_value',false)
-}else if(token==='op' && context.expect==='id'){
+}else if(token==='=' && C.expect===','){
+return new $ExprCtx(new $KwArgCtx(C),'kw_value',false)
+}else if(token==='op' && C.expect==='id'){
 var op=arguments[2]
-context.expect=','
+C.expect=','
 if(op==='+'||op==='-'){
-return $transition(new $AbstractExprCtx(context,false),token,op)
-}else if(op==='*'){context.expect=',';return new $StarArgCtx(context)}
-else if(op==='**'){context.expect=',';return new $DoubleStarArgCtx(context)}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(token===')' && context.expect===','){
-return $transition(context.parent,token)
-}else if(token===','&& context.expect===','){
-return new $CallArgCtx(context.parent)
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='class'){
-if(token==='id' && context.expect==='id'){
-context.name=arguments[2]
-context.expect='(:'
-return context
+return $transition(new $AbstractExprCtx(C,false),token,op)
+}else if(op==='*'){C.expect=',';return new $StarArgCtx(C)}
+else if(op==='**'){C.expect=',';return new $DoubleStarArgCtx(C)}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(token===')' && C.expect===','){
+return $transition(C.parent,token)
+}else if(token===','&& C.expect===','){
+return new $CallArgCtx(C.parent)
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='class'){
+if(token==='id' && C.expect==='id'){
+C.name=arguments[2]
+C.expect='(:'
+return C
 }
-else if(token==='(' && context.expect==='(:'){
-return new $ParentClassCtx(context)
-}else if(token===':' && context.expect==='(:'){return context.parent}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='comp_if'){
-return $transition(context.parent,token,arguments[2])
-}else if(context.type==='comp_for'){
-if(token==='in' && context.expect==='in'){
-context.expect=null
-return new $AbstractExprCtx(new $CompIterableCtx(context),true)
-}else if(context.expect===null){
-return $transition(context.parent,token,arguments[2])
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='comp_iterable'){
-return $transition(context.parent,token,arguments[2])
-}else if(context.type==='comprehension'){
-if(token==='if'){return new $AbstractExprCtx(new $CompIfCtx(context),false)}
-else if(token==='for'){return new $TargetListCtx(new $CompForCtx(context))}
-else{return $transition(context.parent,token,arguments[2])}
-}else if(context.type==='condition'){
+else if(token==='(' && C.expect==='(:'){
+return new $ParentClassCtx(C)
+}else if(token===':' && C.expect==='(:'){return C.parent}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='comp_if'){
+return $transition(C.parent,token,arguments[2])
+}else if(C.type==='comp_for'){
+if(token==='in' && C.expect==='in'){
+C.expect=null
+return new $AbstractExprCtx(new $CompIterableCtx(C),true)
+}else if(C.expect===null){
+return $transition(C.parent,token,arguments[2])
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='comp_iterable'){
+return $transition(C.parent,token,arguments[2])
+}else if(C.type==='comprehension'){
+if(token==='if'){return new $AbstractExprCtx(new $CompIfCtx(C),false)}
+else if(token==='for'){return new $TargetListCtx(new $CompForCtx(C))}
+else{return $transition(C.parent,token,arguments[2])}
+}else if(C.type==='condition'){
 if(token===':'){
 var new_node=new $Node('expression')
-context.parent.node.add(new_node)
+C.parent.node.add(new_node)
 return new $NodeCtx(new_node)
 }
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='def'){
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='def'){
 if(token==='id'){
-if(context.name){
-$_SyntaxError(context,'token '+token+' after '+context)
+if(C.name){
+$_SyntaxError(C,'token '+token+' after '+C)
 }else{
-context.name=arguments[2]
-return context
+C.name=arguments[2]
+return C
 }
-}else if(token==='('){return new $FuncArgs(context)}
-else if(token===':'){return context.parent}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='dict_or_set'){
-if(context.closed){
-if(token==='['){return new $SubCtx(context)}
-else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
+}else if(token==='('){return new $FuncArgs(C)}
+else if(token===':'){return C.parent}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='dict_or_set'){
+if(C.closed){
+if(token==='['){return new $SubCtx(C)}
+else if(token==='('){return new $CallArgCtx(new $CallCtx(C))}
 else if(token==='op'){
-return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
-}else{return $transition(context.parent,token,arguments[2])}
+return new $AbstractExprCtx(new $OpCtx(C,arguments[2]),false)
+}else{return $transition(C.parent,token,arguments[2])}
 }else{
-if(context.expect===','){
+if(C.expect===','){
 if(token==='}'){
-if((context.real==='set')||
-(context.real==='dict'&&context.tree.length%2===0)){
-context.items=context.tree
-context.tree=[]
-context.closed=true
-return context
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
+if((C.real==='set')||
+(C.real==='dict'&&C.tree.length%2===0)){
+C.items=C.tree
+C.tree=[]
+C.closed=true
+return C
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
 }else if(token===','){
-if(context.real==='dict_or_set'){context.real='set'}
-if(context.real==='dict' && context.tree.length%2){
-$_SyntaxError(context,'token '+token+' after '+context)
+if(C.real==='dict_or_set'){C.real='set'}
+if(C.real==='dict' && C.tree.length%2){
+$_SyntaxError(C,'token '+token+' after '+C)
 }
-context.expect='id'
-return context
+C.expect='id'
+return C
 }else if(token===':'){
-if(context.real==='dict_or_set'){context.real='dict'}
-if(context.real==='dict'){
-context.expect='id'
-return context
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.expect==='id'){
-if(token==='}'&&context.tree.length===0){
-context.items=[]
-context.tree=[]
-context.closed=true
-context.real='dict'
-return context
+if(C.real==='dict_or_set'){C.real='dict'}
+if(C.real==='dict'){
+C.expect='id'
+return C
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.expect==='id'){
+if(token==='}'&&C.tree.length===0){
+C.items=[]
+C.tree=[]
+C.closed=true
+C.real='dict'
+return C
 }else if($expr_starters.indexOf(token)>-1){
-context.expect=','
-var expr=new $AbstractExprCtx(context,false)
+C.expect=','
+var expr=new $AbstractExprCtx(C,false)
 return $transition(expr,token,arguments[2])
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else{return $transition(context.parent,token,arguments[2])}
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else{return $transition(C.parent,token,arguments[2])}
 }
-}else if(context.type==='double_star_arg'){
+}else if(C.type==='double_star_arg'){
 if($expr_starters.indexOf(token)>-1){
-return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
-}else if(token===','){return context.parent}
-else if(token===')'){return $transition(context.parent,token)}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='except'){
-if(token==='id' && context.expect==='id'){
-new $TargetCtx(context,arguments[2])
-context.expect='as'
-return context
-}else if(token==='as' && context.expect==='as'
-&& context.has_alias===undefined 
-&& context.tree.length===1){
-context.expect='alias'
-context.has_alias=true
-return context
-}else if(token==='id' && context.expect==='alias'){
-if(context.parenth!==undefined){context.expect=','}
-else{context.expect=':'}
-context.tree[context.tree.length-1].alias=arguments[2]
-return context
-}else if(token===':' &&['id','as',':'].indexOf(context.expect)>-1){
-return context.parent
-}else if(token==='(' && context.expect==='id' && context.tree.length===0){
-context.parenth=true
-return context
-}else if(token===')' &&[',','as'].indexOf(context.expect)>-1){
-context.expect=':'
-return context
-}else if(token===',' && context.parenth!==undefined &&
-context.has_alias===undefined &&
-['as',','].indexOf(context.expect)>-1){
-context.expect='id'
-return context
-}else{$_SyntaxError(context,'token '+token+' after '+context.expect)}
-}else if(context.type==='expr'){
-if($expr_starters.indexOf(token)>-1 && context.expect==='expr'){
-context.expect=','
-return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
-}else if(token==='not'&&context.expect===','){
-return new $ExprNot(context)
-}else if(token==='in'&&context.expect===','){
-return new $AbstractExprCtx(new $OpCtx(context,'in'),false)
-}else if(token===',' && context.expect===','){
-if(context.with_commas){
-context.expect='expr'
-return context
-}else{return $transition(context.parent,token)}
-}else if(token==='.'){return new $AttrCtx(context)}
-else if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
-else if(token==='('){return new $CallCtx(context)}
+return $transition(new $AbstractExprCtx(C,false),token,arguments[2])
+}else if(token===','){return C.parent}
+else if(token===')'){return $transition(C.parent,token)}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='except'){
+if(token==='id' && C.expect==='id'){
+new $TargetCtx(C,arguments[2])
+C.expect='as'
+return C
+}else if(token==='as' && C.expect==='as'
+&& C.has_alias===undefined 
+&& C.tree.length===1){
+C.expect='alias'
+C.has_alias=true
+return C
+}else if(token==='id' && C.expect==='alias'){
+if(C.parenth!==undefined){C.expect=','}
+else{C.expect=':'}
+C.tree[C.tree.length-1].alias=arguments[2]
+return C
+}else if(token===':' &&['id','as',':'].indexOf(C.expect)>-1){
+return C.parent
+}else if(token==='(' && C.expect==='id' && C.tree.length===0){
+C.parenth=true
+return C
+}else if(token===')' &&[',','as'].indexOf(C.expect)>-1){
+C.expect=':'
+return C
+}else if(token===',' && C.parenth!==undefined &&
+C.has_alias===undefined &&
+['as',','].indexOf(C.expect)>-1){
+C.expect='id'
+return C
+}else{$_SyntaxError(C,'token '+token+' after '+C.expect)}
+}else if(C.type==='expr'){
+if($expr_starters.indexOf(token)>-1 && C.expect==='expr'){
+C.expect=','
+return $transition(new $AbstractExprCtx(C,false),token,arguments[2])
+}else if(token==='not'&&C.expect===','){
+return new $ExprNot(C)
+}else if(token==='in'&&C.expect===','){
+return new $AbstractExprCtx(new $OpCtx(C,'in'),false)
+}else if(token===',' && C.expect===','){
+if(C.with_commas){
+C.expect='expr'
+return C
+}else{return $transition(C.parent,token)}
+}else if(token==='.'){return new $AttrCtx(C)}
+else if(token==='['){return new $AbstractExprCtx(new $SubCtx(C),false)}
+else if(token==='('){return new $CallCtx(C)}
 else if(token==='op'){
-var op_parent=context.parent,op=arguments[2]
-var op1=context.parent,repl=null
+var op_parent=C.parent,op=arguments[2]
+var op1=C.parent,repl=null
 while(true){
 if(op1.type==='expr'){op1=op1.parent}
 else if(op1.type==='op'&&$op_weight[op1.op]>$op_weight[op]){repl=op1;op1=op1.parent}
 else{break}
 }
 if(repl===null){
-context.parent.tree.pop()
-var expr=new $ExprCtx(op_parent,'operand',context.with_commas)
+C.parent.tree.pop()
+var expr=new $ExprCtx(op_parent,'operand',C.with_commas)
 expr.expect=','
-context.parent=expr
-var new_op=new $OpCtx(context,op)
+C.parent=expr
+var new_op=new $OpCtx(C,op)
 return new $AbstractExprCtx(new_op,false)
 }
 repl.parent.tree.pop()
@@ -3312,346 +3396,355 @@ expr.tree=[op1]
 repl.parent=expr
 var new_op=new $OpCtx(repl,op)
 return new $AbstractExprCtx(new_op,false)
-}else if(token==='augm_assign' && context.expect===','){
-return $augmented_assign(context,arguments[2])
-}else if(token==='=' && context.expect===','){
-if(context.parent.type==="call_arg"){
-return new $AbstractExprCtx(new $KwArgCtx(context),true)
+}else if(token==='augm_assign' && C.expect===','){
+return $augmented_assign(C,arguments[2])
+}else if(token==='=' && C.expect===','){
+if(C.parent.type==="call_arg"){
+return new $AbstractExprCtx(new $KwArgCtx(C),true)
 }else{
-while(context.parent!==undefined){context=context.parent}
-context=context.tree[0]
-return new $AbstractExprCtx(new $AssignCtx(context),true)
+while(C.parent!==undefined){C=C.parent}
+C=C.tree[0]
+return new $AbstractExprCtx(new $AssignCtx(C),true)
 }
-}else if(token==='if' && context.parent.type!=='comp_iterable'){
-return new $AbstractExprCtx(new $TernaryCtx(context),false)
-}else{return $transition(context.parent,token)}
-}else if(context.type==='expr_not'){
+}else if(token==='if' && C.parent.type!=='comp_iterable'){
+return new $AbstractExprCtx(new $TernaryCtx(C),false)
+}else{return $transition(C.parent,token)}
+}else if(C.type==='expr_not'){
 if(token==='in'){
-context.parent.tree.pop()
-return new $AbstractExprCtx(new $OpCtx(context.parent,'not_in'),false)
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='for'){
-if(token==='in'){return new $AbstractExprCtx(context,true)}
-else if(token===':'){return context.parent}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='from'){
-if(token==='id' && context.expect==='module'){
-context.module=arguments[2]
-context.expect='import'
-return context
-}else if(token==='import' && context.expect==='import'){
-context.expect='id'
-return context
-}else if(token==='import' && context.expect==='module' 
-&& context.relpath !==undefined){
-context.expect='id'
-return context
-}else if(token==='id' && context.expect==='id'){
-context.names.push(arguments[2])
-context.expect=','
-return context
+C.parent.tree.pop()
+return new $AbstractExprCtx(new $OpCtx(C.parent,'not_in'),false)
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='for'){
+if(token==='in'){return new $AbstractExprCtx(C,true)}
+else if(token===':'){return C.parent}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='from'){
+if(token==='id' && C.expect==='module'){
+C.module=arguments[2]
+C.expect='import'
+return C
+}else if(token==='import' && C.expect==='import'){
+C.expect='id'
+return C
+}else if(token==='import' && C.expect==='module' 
+&& C.relpath !==undefined){
+C.expect='id'
+return C
+}else if(token==='id' && C.expect==='id'){
+C.names.push(arguments[2])
+C.expect=','
+return C
 }else if(token==='op' && arguments[2]==='*' 
-&& context.expect==='id'
-&& context.names.length===0){
-context.names.push(arguments[2])
-context.expect='eol'
-return context
-}else if(token===',' && context.expect===','){
-context.expect='id'
-return context
+&& C.expect==='id'
+&& C.names.length===0){
+C.names.push(arguments[2])
+C.expect='eol'
+return C
+}else if(token===',' && C.expect===','){
+C.expect='id'
+return C
 }else if(token==='eol' && 
-(context.expect===',' || context.expect==='eol')){
-return $transition(context.parent,token)
-}else if(token==='.' && context.expect==='module'){
-context.expect='module'
-context.parent_module=context.parent.node.module
-return context
-}else if(token==='(' && context.expect==='id'){
-context.expect='id'
-return context
-}else if(token===')' && context.expect===','){
-context.expect='eol'
-return context
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='func_arg_id'){
-if(token==='=' && context.expect==='='){
-context.parent.has_default=true
-return new $AbstractExprCtx(context,false)
+(C.expect===',' || C.expect==='eol')){
+return $transition(C.parent,token)
+}else if(token==='.' && C.expect==='module'){
+C.expect='module'
+C.parent_module=C.parent.node.module
+return C
+}else if(token==='(' && C.expect==='id'){
+C.expect='id'
+return C
+}else if(token===')' && C.expect===','){
+C.expect='eol'
+return C
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='func_arg_id'){
+if(token==='=' && C.expect==='='){
+C.parent.has_default=true
+return new $AbstractExprCtx(C,false)
 }else if(token===',' || token===')'){
-if(context.parent.has_default && context.tree.length==0){
+if(C.parent.has_default && C.tree.length==0){
 throw Error('SyntaxError: non-default argument follows default argument')
 }else{
-return $transition(context.parent,token)
+return $transition(C.parent,token)
 }
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='func_args'){
-if(token==='id' && context.expect==='id'){
-context.expect=','
-return new $FuncArgIdCtx(context,arguments[2])
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='func_args'){
+if(token==='id' && C.expect==='id'){
+C.expect=','
+return new $FuncArgIdCtx(C,arguments[2])
 }else if(token===','){
-if(context.has_kw_arg){throw Error('SyntaxError')}
-else if(context.expect===','){
-context.expect='id'
-return context
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
+if(C.has_kw_arg){throw Error('SyntaxError')}
+else if(C.expect===','){
+C.expect='id'
+return C
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
 }else if(token===')'){
-if(context.expect===','){return context.parent}
-else if(context.tree.length==0){return context.parent}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
+if(C.expect===','){return C.parent}
+else if(C.tree.length==0){return C.parent}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
 }else if(token==='op'){
 var op=arguments[2]
-context.expect=','
-if(op=='*'){return new $FuncStarArgCtx(context,'*')}
-else if(op=='**'){return new $FuncStarArgCtx(context,'**')}
-else{$_SyntaxError(context,'token '+op+' after '+context)}
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='func_star_arg'){
-if(token==='id' && context.name===undefined){
-context.name=arguments[2]
-return context.parent
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='global'){
-if(token==='id' && context.expect==='id'){
-new $IdCtx(context,arguments[2])
-context.expect=','
-return context
-}else if(token===',' && context.expect===','){
-context.expect='id'
-return context
-}else if(token==='eol' && context.expect===','){
-return $transition(context.parent,token)
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='id'){
+C.expect=','
+if(op=='*'){return new $FuncStarArgCtx(C,'*')}
+else if(op=='**'){return new $FuncStarArgCtx(C,'**')}
+else{$_SyntaxError(C,'token '+op+' after '+C)}
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='func_star_arg'){
+if(token==='id' && C.name===undefined){
+C.name=arguments[2]
+return C.parent
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='global'){
+if(token==='id' && C.expect==='id'){
+new $IdCtx(C,arguments[2])
+C.expect=','
+return C
+}else if(token===',' && C.expect===','){
+C.expect='id'
+return C
+}else if(token==='eol' && C.expect===','){
+return $transition(C.parent,token)
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='id'){
 if(token==='='){
-if(context.parent.type==='expr' &&
-context.parent.parent !==undefined &&
-context.parent.parent.type==='call_arg'){
-return new $AbstractExprCtx(new $KwArgCtx(context.parent),false)
-}else{return $transition(context.parent,token,arguments[2])}
-}else if(token==='op'){return $transition(context.parent,token,arguments[2])}
-else{return $transition(context.parent,token,arguments[2])}
-}else if(context.type==='import'){
-if(token==='id' && context.expect==='id'){
-new $ImportedModuleCtx(context,arguments[2])
-context.expect=','
-return context
-}else if(token===',' && context.expect===','){
-context.expect='id'
-return context
-}else if(token==='as' && context.expect===','){
-context.expect='alias'
-return context
-}else if(token==='id' && context.expect==='alias'){
-context.expect=','
-context.tree[context.tree.length-1].alias=arguments[2]
-var mod_name=context.tree[context.tree.length-1].name
+if(C.parent.type==='expr' &&
+C.parent.parent !==undefined &&
+C.parent.parent.type==='call_arg'){
+return new $AbstractExprCtx(new $KwArgCtx(C.parent),false)
+}else{return $transition(C.parent,token,arguments[2])}
+}else if(token==='op'){return $transition(C.parent,token,arguments[2])}
+else{return $transition(C.parent,token,arguments[2])}
+}else if(C.type==='import'){
+if(token==='id' && C.expect==='id'){
+new $ImportedModuleCtx(C,arguments[2])
+C.expect=','
+return C
+}else if(token===',' && C.expect===','){
+C.expect='id'
+return C
+}else if(token==='as' && C.expect===','){
+C.expect='alias'
+return C
+}else if(token==='id' && C.expect==='alias'){
+C.expect=','
+C.tree[C.tree.length-1].alias=arguments[2]
+var mod_name=C.tree[C.tree.length-1].name
 document.$py_module_alias[mod_name]=arguments[2]
-return context
-}else if(token==='eol' && context.expect===','){
-return $transition(context.parent,token)
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='int'||context.type==='float'){
+return C
+}else if(token==='eol' && C.expect===','){
+return $transition(C.parent,token)
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='int'||C.type==='float'){
 if($expr_starters.indexOf(token)>-1){
-$_SyntaxError(context,'token '+token+' after '+context)
-}else{return $transition(context.parent,token,arguments[2])}
-}else if(context.type==='kwarg'){
-if(token===')'){return $transition(context.parent,token)}
-else if(token===','){return new $CallArgCtx(context.parent)}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==="lambda"){
-if(context.args_start===undefined){
-context.args_start=$pos
-return context
-}else if(token===':' && context.tree.length===0){
-context.body_start=$pos
-return new $AbstractExprCtx(context,false)
-}else if(context.tree.length>0){
-context.body_end=$pos
-return $transition(context.parent,token)
-}else if(context.tree.length===0){return context}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='list_or_tuple'){
-if(context.closed){
-if(token==='['){return new $SubCtx(context.parent)}
-else if(token==='('){return new $CallArgCtx(new $CallCtx(context))}
-else if(token==='.'){return new $AttrCtx(context)}
+$_SyntaxError(C,'token '+token+' after '+C)
+}else{return $transition(C.parent,token,arguments[2])}
+}else if(C.type==='kwarg'){
+if(token===')'){return $transition(C.parent,token)}
+else if(token===','){return new $CallArgCtx(C.parent)}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==="lambda"){
+if(C.args_start===undefined){
+C.args_start=$pos
+return C
+}else if(token===':' && C.tree.length===0){
+C.body_start=$pos
+return new $AbstractExprCtx(C,false)
+}else if(C.tree.length>0){
+C.body_end=$pos
+return $transition(C.parent,token)
+}else if(C.tree.length===0){return C}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='list_or_tuple'){
+if(C.closed){
+if(token==='['){return new $SubCtx(C.parent)}
+else if(token==='('){return new $CallCtx(C)}
+else if(token==='.'){return new $AttrCtx(C)}
 else if(token==='op'){
-return new $AbstractExprCtx(new $OpCtx(context,arguments[2]),false)
-}else{return $transition(context.parent,token,arguments[2])}
+return new $AbstractExprCtx(new $OpCtx(C,arguments[2]),false)
+}else{return $transition(C.parent,token,arguments[2])}
 }else{
-if(context.expect===','){
-if(context.real==='tuple' && token===')'){
-context.closed=true
-return context
-}else if((context.real==='list'||context.real==='list_comp')
+if(C.expect===','){
+if((C.real==='tuple'||C.real==='gen_expr')
+&& token===')'){
+C.closed=true
+if(C.real==='gen_expr'){C.intervals.push($pos)}
+return C
+}else if((C.real==='list'||C.real==='list_comp')
 && token===']'){
-context.closed=true
-if(context.real==='list_comp'){context.intervals.push($pos)}
-return context
+C.closed=true
+if(C.real==='list_comp'){C.intervals.push($pos)}
+return C
 }else if(token===','){
-if(context.real==='tuple'){context.has_comma=true}
-context.expect='id'
-return context
+if(C.real==='tuple'){C.has_comma=true}
+C.expect='id'
+return C
 }else if(token==='for'){
-context.real='list_comp'
-context.intervals=[context.start+1]
-context.expression=context.tree
-context.tree=[]
-var comp=new $ComprehensionCtx(context)
+console.log('token for, real '+C.real)
+if(C.real==='list'){C.real='list_comp'}
+else{C.real='gen_expr'}
+C.intervals=[C.start+1]
+C.expression=C.tree
+C.tree=[]
+var comp=new $ComprehensionCtx(C)
 return new $TargetListCtx(new $CompForCtx(comp))
-}else{return $transition(context.parent,token,arguments[2])}
-}else if(context.expect==='id'){
-if(context.real==='tuple' && token===')'){
-context.closed=true
-return context
-}else if(context.real==='list'&& token===']'){
-context.closed=true
-return context
+}else{return $transition(C.parent,token,arguments[2])}
+}else if(C.expect==='id'){
+if(C.real==='tuple' && token===')'){
+C.closed=true
+return C
+}else if(C.real==='list'&& token===']'){
+C.closed=true
+return C
 }else if(token !==')'&&token!==']'&&token!==','){
-context.expect=','
-var expr=new $AbstractExprCtx(context,false)
+C.expect=','
+var expr=new $AbstractExprCtx(C,false)
 return $transition(expr,token,arguments[2])
 }
-}else{return $transition(context.parent,token,arguments[2])}
+}else{return $transition(C.parent,token,arguments[2])}
 }
-}else if(context.type==='list_comp'){
-if(token===']'){return context.parent}
-else if(token==='in'){return new $ExprCtx(context,'iterable',true)}
-else if(token==='if'){return new $ExprCtx(context,'condition',true)}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='node'){
+}else if(C.type==='list_comp'){
+if(token===']'){return C.parent}
+else if(token==='in'){return new $ExprCtx(C,'iterable',true)}
+else if(token==='if'){return new $ExprCtx(C,'condition',true)}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='node'){
 if($expr_starters.indexOf(token)>-1){
-var expr=new $AbstractExprCtx(context,true)
+var expr=new $AbstractExprCtx(C,true)
 return $transition(expr,token,arguments[2])
-}else if(token==='class'){return new $ClassCtx(context)}
-else if(token==='def'){return new $DefCtx(context)}
-else if(token==='for'){return new $TargetListCtx(new $ForExpr(context))}
+}else if(token==='class'){return new $ClassCtx(C)}
+else if(token==='def'){return new $DefCtx(C)}
+else if(token==='for'){return new $TargetListCtx(new $ForExpr(C))}
 else if(['if','elif','while'].indexOf(token)>-1){
-return new $AbstractExprCtx(new $ConditionCtx(context,token),false)
+return new $AbstractExprCtx(new $ConditionCtx(C,token),false)
 }else if(['else','finally'].indexOf(token)>-1){
-return new $SingleKwCtx(context,token)
-}else if(token==='try'){return new $TryCtx(context)}
-else if(token==='except'){return new $ExceptCtx(context)}
-else if(token==='assert'){return new $AssertCtx(context)}
-else if(token==='from'){return new $FromCtx(context)}
-else if(token==='import'){return new $ImportCtx(context)}
-else if(token==='global'){return new $GlobalCtx(context)}
-else if(token==='lambda'){return new $LambdaCtx(context)}
-else if(token==='pass'){return new $PassCtx(context)}
-else if(token==='raise'){return new $RaiseCtx(context)}
+return new $SingleKwCtx(C,token)
+}else if(token==='try'){return new $TryCtx(C)}
+else if(token==='except'){return new $ExceptCtx(C)}
+else if(token==='assert'){return new $AssertCtx(C)}
+else if(token==='from'){return new $FromCtx(C)}
+else if(token==='import'){return new $ImportCtx(C)}
+else if(token==='global'){return new $GlobalCtx(C)}
+else if(token==='lambda'){return new $LambdaCtx(C)}
+else if(token==='pass'){return new $PassCtx(C)}
+else if(token==='raise'){return new $RaiseCtx(C)}
 else if(token==='return'){
-var ret=new $ReturnCtx(context)
+var ret=new $ReturnCtx(C)
 return new $AbstractExprCtx(ret,true)
-}else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),false)}
+}else if(token==='yield'){
+var yield=new $YieldCtx(C)
+return new $AbstractExprCtx(yield,true)
+}else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(C),true)}
 else if(token===':'){
-var tree_node=context.node
+var tree_node=C.node
 var new_node=new $Node('expression')
 tree_node.add(new_node)
 return new $NodeCtx(new_node)
 }else if(token==='eol'){
-if(context.tree.length===0){
-context.node.parent.children.pop()
-return context.node.parent.context
+if(C.tree.length===0){
+C.node.parent.children.pop()
+return C.node.parent.C
 }
-return context
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='not'){
+return C
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='not'){
 if(token==='in'){
-context.parent.parent.tree.pop()
-return new $ExprCtx(new $OpCtx(context.parent,'not_in'),'op',false)
+C.parent.parent.tree.pop()
+return new $ExprCtx(new $OpCtx(C.parent,'not_in'),'op',false)
 }else if($expr_starters.indexOf(token)>-1){
-var expr=new $AbstractExprCtx(context,false)
+var expr=new $AbstractExprCtx(C,false)
 return $transition(expr,token,arguments[2])
-}else{return $transition(context.parent,token)}
-}else if(context.type==='op'){
+}else{return $transition(C.parent,token)}
+}else if(C.type==='op'){
 if($expr_starters.indexOf(token)>-1){
-return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+return $transition(new $AbstractExprCtx(C,false),token,arguments[2])
 }else if(token==='op' && '+-'.search(arguments[2])>-1){
-return new $UnaryCtx(context,arguments[2])
-}else{return $transition(context.parent,token)}
-}else if(context.type==='parent_class'){
-if(token==='id' && context.expect==='id'){
-new $IdCtx(context,arguments[2])
-context.expect=','
-return context
-}else if(token===',' && context.expect==','){
-context.expect='id'
-return context
-}else if(token===')'){return context.parent}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='pass'){
-if(token==='eol'){return context.parent}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='raise'){
-if(token==='id' && context.tree.length===0){
-return new $IdCtx(new $ExprCtx(context,'exc',false),arguments[2])
+return new $UnaryCtx(C,arguments[2])
+}else{return $transition(C.parent,token)}
+}else if(C.type==='parent_class'){
+if(token==='id' && C.expect==='id'){
+new $IdCtx(C,arguments[2])
+C.expect=','
+return C
+}else if(token===',' && C.expect==','){
+C.expect='id'
+return C
+}else if(token===')'){return C.parent}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='pass'){
+if(token==='eol'){return C.parent}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='raise'){
+if(token==='id' && C.tree.length===0){
+return new $IdCtx(new $ExprCtx(C,'exc',false),arguments[2])
 }else if(token==='eol'){
-return $transition(context.parent,token)
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='return'){
-return $transition(context.parent,token)
-}else if(context.type==='single_kw'){
-if(token===':'){return context.parent}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='star_arg'){
+return $transition(C.parent,token)
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='return'){
+return $transition(C.parent,token)
+}else if(C.type==='single_kw'){
+if(token===':'){return C.parent}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='star_arg'){
 if($expr_starters.indexOf(token)>-1){
-return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
-}else if(token===','){return context.parent}
-else if(token===')'){return $transition(context.parent,token)}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='str'){
-if(token==='['){return new $AbstractExprCtx(new $SubCtx(context),false)}
-else if(token==='('){return new $CallCtx(context)}
-else if(token=='str'){context.value +='+'+arguments[2];return context}
-else{return $transition(context.parent,token,arguments[2])}
-}else if(context.type==='sub'){
+return $transition(new $AbstractExprCtx(C,false),token,arguments[2])
+}else if(token===','){return C.parent}
+else if(token===')'){return $transition(C.parent,token)}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='str'){
+if(token==='['){return new $AbstractExprCtx(new $SubCtx(C),false)}
+else if(token==='('){return new $CallCtx(C)}
+else if(token=='str'){C.value +='+'+arguments[2];return C}
+else{return $transition(C.parent,token,arguments[2])}
+}else if(C.type==='sub'){
 if($expr_starters.indexOf(token)>-1){
-var expr=new $AbstractExprCtx(context,false)
+var expr=new $AbstractExprCtx(C,false)
 return $transition(expr,token,arguments[2])
-}else if(token===']'){return context.parent}
+}else if(token===']'){return C.parent}
 else if(token===':'){
-return new $AbstractExprCtx(context,false)
-}else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='target_list'){
-if(token==='id' && context.expect==='id'){
-context.expect=','
-new $IdCtx(context,arguments[2])
-return context
-}else if((token==='('||token==='[')&&context.expect==='id'){
-context.expect=','
-return new $TargetListCtx(context)
-}else if((token===')'||token===']')&&context.expect===','){
-return context.parent
-}else if(token===',' && context.expect==','){
-context.expect='id'
-return context
-}else if(context.expect===','){return $transition(context.parent,token,arguments[2])}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='ternary'){
-if(token==='else'){return new $AbstractExprCtx(context,false)}
-else{return $transition(context.parent,token,arguments[2])}
-}else if(context.type==='try'){
-if(token===':'){return context.parent}
-else{$_SyntaxError(context,'token '+token+' after '+context)}
-}else if(context.type==='unary'){
+return new $AbstractExprCtx(C,false)
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='target_list'){
+if(token==='id' && C.expect==='id'){
+C.expect=','
+new $IdCtx(C,arguments[2])
+return C
+}else if((token==='('||token==='[')&&C.expect==='id'){
+C.expect=','
+return new $TargetListCtx(C)
+}else if((token===')'||token===']')&&C.expect===','){
+return C.parent
+}else if(token===',' && C.expect==','){
+C.expect='id'
+return C
+}else if(C.expect===','){return $transition(C.parent,token,arguments[2])}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='ternary'){
+if(token==='else'){return new $AbstractExprCtx(C,false)}
+else{return $transition(C.parent,token,arguments[2])}
+}else if(C.type==='try'){
+if(token===':'){return C.parent}
+else{$_SyntaxError(C,'token '+token+' after '+C)}
+}else if(C.type==='unary'){
 if(['int','float'].indexOf(token)>-1){
-context.parent.tree.pop()
+C.parent.tree.pop()
 var value=arguments[2]
-if(context.op==='-'){value=-value}
-return $transition(context.parent,token,value)
+if(C.op==='-'){value=-value}
+return $transition(C.parent,token,value)
 }else if(token==='id'){
-context.parent.tree.pop()
-if(context.op==='-'){
-var int_expr=new $IntCtx(context.parent,-1)
+C.parent.tree.pop()
+if(C.op==='-'){
+var int_expr=new $IntCtx(C.parent,-1)
 return $transition(new $OpCtx(int_expr,'*'),token,arguments[2])
 }else{
-return $transition(context.parent,token,arguments[2])
+return $transition(C.parent,token,arguments[2])
 }
 }else if(token==="op" && '+-'.search(arguments[2])>-1){
 var op=arguments[2]
-if(context.op===op){context.op='+'}else{context.op='-'}
-return context
-}else{return $transition(context.parent,token,arguments[2])}
+if(C.op===op){C.op='+'}else{C.op='-'}
+return C
+}else{return $transition(C.parent,token,arguments[2])}
+}else if(C.type==='yield'){
+return $transition(C.parent,token)
 }
 }
 function $py2js(src,module){
@@ -3675,13 +3768,13 @@ var br_open={"(":0,"[":0,"{":0}
 var br_close={")":"(","]":"[","}":"{"}
 var br_stack=""
 var br_pos=new Array()
-var kwdict=["class","is","return",
+var kwdict=["class","return",
 "for","lambda","try","finally","raise","def","from",
 "nonlocal","while","del","global","with",
 "as","elif","else","if","yield","assert","import",
 "except","raise","in","not","pass",
 ]
-var unsupported=["is","nonlocal","with","yield"]
+var unsupported=["nonlocal","with"]
 var $indented=['class','def','for','condition','single_kw','try','except']
 var forbidden=['case','catch','debugger','default','delete',
 'do','function','instanceof','new','switch','this','throw',
@@ -3704,10 +3797,11 @@ var forbidden=['case','catch','debugger','default','delete',
 ]
 var punctuation={',':0,':':0}
 var int_pattern=new RegExp("^\\d+")
-var float_pattern=new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
+var float_pattern1=new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
+var float_pattern2=new RegExp("^\\d+(e-?\\d+)")
 var id_pattern=new RegExp("[\\$_a-zA-Z]\\w*")
 var qesc=new RegExp('"',"g")
-var context=null
+var C=null
 var root=new $Node('module')
 root.indent=-1
 var new_node=new $Node('expression')
@@ -3739,8 +3833,8 @@ new_node.indent=indent
 new_node.line_num=lnum
 new_node.module=module
 if(indent>current.indent){
-if(context!==null){
-if($indented.indexOf(context.tree[0].type)==-1){
+if(C!==null){
+if($indented.indexOf(C.tree[0].type)==-1){
 $IndentationError(module,'unexpected indent',pos)
 }
 }
@@ -3755,7 +3849,7 @@ $IndentationError(module,'unexpected indent',pos)
 current.parent.add(new_node)
 }
 current=new_node
-context=new $NodeCtx(new_node)
+C=new $NodeCtx(new_node)
 continue
 }
 if(car=="#"){
@@ -3795,7 +3889,7 @@ end++
 found=true
 $pos=pos-zone.length-1
 var string=zone.substr(1).replace(qesc,'\\"')
-context=$transition(context,'str',zone+car)
+C=$transition(C,'str',zone+car)
 pos=end+1
 if(_type=="triple_string"){pos=end+3}
 break
@@ -3806,7 +3900,7 @@ if(src.charAt(end)=='\n'){lnum++}
 end++
 }
 }
-if(!found){$_SyntaxError(context,"String end not found")}
+if(!found){$_SyntaxError(C,"String end not found")}
 continue
 }
 if(name==""){
@@ -3821,17 +3915,17 @@ pos++;continue
 }else{
 if(kwdict.indexOf(name)>-1){
 if(unsupported.indexOf(name)>-1){
-$_SyntaxError(context,"Unsupported Python keyword '"+name+"'")
+$_SyntaxError(C,"Unsupported Python keyword '"+name+"'")
 }
 $pos=pos-name.length
-context=$transition(context,name)
+C=$transition(C,name)
 }else if(name in $operators){
 $pos=pos-name.length
-context=$transition(context,'op',name)
+C=$transition(C,'op',name)
 }else{
 if(forbidden.indexOf(name)>-1){name='$$'+name}
 $pos=pos-name.length
-context=$transition(context,'id',name)
+C=$transition(C,'id',name)
 }
 name=""
 continue
@@ -3839,23 +3933,29 @@ continue
 }
 if(car=="."){
 $pos=pos
-context=$transition(context,'.')
+C=$transition(C,'.')
 pos++;continue
 }
 if(car.search(/\d/)>-1){
-var res=float_pattern.exec(src.substr(pos))
+var res=float_pattern1.exec(src.substr(pos))
 if(res){
 if(res[0].search('e')>-1){
 $pos=pos
-context=$transition(context,'float',res[0])
+C=$transition(C,'float',res[0])
 }else{
 $pos=pos
-context=$transition(context,'float',eval(res[0]))
+C=$transition(C,'float',eval(res[0]))
 }
+}else{
+res=float_pattern2.exec(src.substr(pos))
+if(res){
+$pos=pos
+C=$transition(C,'float',res[0])
 }else{
 res=int_pattern.exec(src.substr(pos))
 $pos=pos
-context=$transition(context,'int',eval(res[0]))
+C=$transition(C,'int',eval(res[0]))
+}
 }
 pos +=res[0].length
 continue
@@ -3865,9 +3965,9 @@ lnum++
 if(br_stack.length>0){
 pos++;continue
 }else{
-if(current.context.tree.length>0){
+if(current.C.tree.length>0){
 $pos=pos
-context=$transition(context,'eol')
+C=$transition(C,'eol')
 indent=null
 new_node=new $Node()
 }else{
@@ -3878,37 +3978,37 @@ pos++;continue
 }
 if(car in br_open){
 br_stack +=car
-br_pos[br_stack.length-1]=[context,pos]
+br_pos[br_stack.length-1]=[C,pos]
 $pos=pos
-context=$transition(context,car)
+C=$transition(C,car)
 pos++;continue
 }
 if(car in br_close){
 if(br_stack==""){
-$_SyntaxError(context,"Unexpected closing bracket")
+$_SyntaxError(C,"Unexpected closing bracket")
 }else if(br_close[car]!=$last(br_stack)){
-$_SyntaxError(context,"Unbalanced bracket",pos)
+$_SyntaxError(C,"Unbalanced bracket",pos)
 }else{
 br_stack=br_stack.substr(0,br_stack.length-1)
 $pos=pos
-context=$transition(context,car)
+C=$transition(C,car)
 pos++;continue
 }
 }
 if(car=="="){
 if(src.charAt(pos+1)!="="){
 $pos=pos
-context=$transition(context,'=')
+C=$transition(C,'=')
 pos++;continue
 }else{
 $pos=pos
-context=$transition(context,'op','==')
+C=$transition(C,'op','==')
 pos+=2;continue
 }
 }
 if(car in punctuation){
 $pos=pos
-context=$transition(context,car)
+C=$transition(C,car)
 pos++;continue
 }
 if(car in $first_op_letter){
@@ -3922,9 +4022,9 @@ op_match=op_sign
 $pos=pos
 if(op_match.length>0){
 if(op_match in $augmented_assigns){
-context=$transition(context,'augm_assign',op_match)
+C=$transition(C,'augm_assign',op_match)
 }else{
-context=$transition(context,'op',op_match)
+C=$transition(C,'op',op_match)
 }
 pos +=op_match.length
 continue
@@ -3933,7 +4033,7 @@ continue
 if(car=='\\' && src.charAt(pos+1)=='\n'){
 lnum++;pos+=2;continue
 }
-if(car!=' '&&car!=='\t'){$pos=pos;$_SyntaxError(context,'unknown token ['+car+']')}
+if(car!=' '&&car!=='\t'){$pos=pos;$_SyntaxError(C,'unknown token ['+car+']')}
 pos +=1
 }
 if(br_stack.length!=0){
@@ -4069,6 +4169,19 @@ var $js=$py2js($py).to_js()
 eval($js)
 return eval($res)
 }
+function $generator(func){
+var res=function(){
+func.$iter=[]
+func.apply(this,arguments)
+var obj=new Object()
+obj.__class__=$generator
+obj.__len__=function(){return func.$iter.__len__()}
+obj.__item__=function(rank){return func.$iter.__item__(rank)}
+return obj
+}
+res.__str__=function(){return "<function "+res.__name__+">"}
+return res
+}
 function $ternary(env,cond,expr1,expr2){
 for(var attr in env){eval('var '+attr+'=env["'+attr+'"]')}
 var res='if ('+cond+'){\n'
@@ -4194,6 +4307,7 @@ f.__getattr__=function(attr){
 if(f[attr]!==undefined){return f[attr]}
 return factory[attr]
 }
+f.__setattr__=function(attr,value){factory[attr]=value}
 return f
 }
 var $dq_regexp=new RegExp('"',"g")
@@ -4243,12 +4357,7 @@ if(typeof other !=='function'){return False}
 return other+''===this+''
 }
 Function.prototype.__class__=Function
-Function.prototype.get_name=function(){
-var src=this.toString()
-pattern=new RegExp("function (.*?)\\(")
-var res=pattern.exec(src)
-value='<function '+res[1]+'>'
-}
+Function.prototype.__str__=function(){return "<function "+this.__name__+">"}
 Array.prototype.match=function(other){
 var $i=0
 while($i<this.length && $i<other.length){
@@ -4963,91 +5072,6 @@ for($i=0;$i<$tags.length;$i++){
 $code=$src.replace(/A/gm,$tags[$i])
 eval($code)
 eval($tags[$i]+'.name="'+$tags[$i]+'"')
-}
-SVG={
-__getattr__:function(attr){return this[attr]}
-}
-$svgNS="http://www.w3.org/2000/svg"
-$xlinkNS="http://www.w3.org/1999/xlink"
-function $SVGTag(tag_name,args){
-var $i=null
-var $obj=this
-elt=$DOMNode(document.createElementNS($svgNS,tag_name))
-if(args!=undefined && args.length>0){
-$start=0
-$first=args[0]
-if(!isinstance($first,$Kw)){
-$start=1
-if(isinstance($first,[str,int,float])){
-txt=document.createTextNode(str($first))
-elt.appendChild(txt)
-}else if(isinstance($first,$AbstractTag)){
-for($i=0;$i<$first.children.length;$i++){
-elt.appendChild($first.children[$i])
-}
-}else{
-try{elt.appendChild($first)}
-catch(err){$raise('ValueError','wrong element '+$first)}
-}
-}
-for($i=$start;$i<args.length;$i++){
-$arg=args[$i]
-if(isinstance($arg,$Kw)){
-if($arg.name.toLowerCase()in $events){
-eval('elt.'+$arg.name.toLowerCase()+'=function(){'+$arg.value+'}')
-}else if($arg.name.toLowerCase()=="style"){
-elt.set_style($arg.value)
-}else if($arg.name.toLowerCase().indexOf("href")!==-1){
-elt.setAttributeNS("http://www.w3.org/1999/xlink","href",$arg.value)
-}else{
-if($arg.value!==false){
-elt.setAttributeNS(null,$arg.name.replace('_','-'),$arg.value)
-}
-}
-}
-}
-}
-return elt
-}
-var $svg_tags=['a',
-'altGlyph',
-'altGlyphDef',
-'altGlyphItem',
-'animate',
-'animateColor',
-'animateMotion',
-'animateTransform',
-'circle',
-'clipPath',
-'color_profile', 
-'cursor',
-'defs',
-'desc',
-'ellipse',
-'feBlend',
-'g',
-'image',
-'line',
-'linearGradient',
-'marker',
-'mask',
-'path',
-'pattern',
-'polygon',
-'polyline',
-'radialGradient',
-'rect',
-'stop',
-'svg',
-'text',
-'tref',
-'tspan',
-'use']
-$svg=function(){return $SVGTag('X',arguments)}
-$svg +='' 
-for(var i=0;i<$svg_tags.length;i++){
-var tag=$svg_tags[i]
-eval('SVG.'+tag+'='+$svg.replace('X',tag))
 }
 function $LocalStorageClass(){
 this.__class__='localStorage'
