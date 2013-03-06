@@ -571,14 +571,14 @@ function $DelCtx(context){
         var tree = this.tree[0].tree
         for(var i=0;i<tree.length;i++){
             var expr = tree[i]
-            if(expr.type==='expr'){
+            if(expr.type==='expr'||expr.type==='id'){
                 res.push('delete '+expr.to_js())
             }else if(expr.type==='sub'){
                 expr.func = 'delitem'
                 res.push(expr.to_js())
                 expr.func = 'getitem'
             }else{
-                throw SyntaxError("wrong argument for del "+expr)
+                throw SyntaxError("wrong argument for del "+expr.type)
             }
         }
         return res.join(';')
@@ -1219,11 +1219,13 @@ function $TryCtx(context){
         // move the except and finally clauses below catch_node
         var pos = rank+2
         var has_default = false // is there an "except:" ?
+        var has_else = false // is there an "else" clause ?
         while(true){
             if(pos===node.parent.children.length){break}
             var ctx = node.parent.children[pos].context.tree[0]
             if(ctx.type==='except'||
                 (ctx.type==='single_kw' && ctx.token==='finally')){
+                if(has_else){$_SyntaxError("'except' or 'finally' after 'else'")}
                 ctx.error_name = '$err'+$loop_num
                 if(ctx.tree.length>0 && ctx.tree[0].alias!==null){
                     // syntax "except ErrorName as Alias"
@@ -1238,6 +1240,14 @@ function $TryCtx(context){
                 if(ctx.type==='except' && ctx.tree.length===0){
                     if(has_default){$_SyntaxError('more than one except: line')}
                     has_default=true
+                }
+                node.parent.children.splice(pos,1)
+            }else if(ctx.type==='single_kw' && ctx.token==='else'){
+                if(has_else){$_SyntaxError("more than one 'else'")}
+                has_else = true
+                var else_children = node.parent.children[pos].children
+                for(var i=0;i<else_children.length;i++){
+                    node.add(else_children[i])
                 }
                 node.parent.children.splice(pos,1)
             }else{break}
