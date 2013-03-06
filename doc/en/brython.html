@@ -23,7 +23,7 @@ Brython follows the Python syntax:
 <a name="integr"><h3>Keywords and built-in functions</h3>
 
 Brython supports most keywords and functions of Python 3 :
-<ul><li>keywords : <code>assert break class continue def del elif else except False finally for global if import None pass return True try while </code>
+<ul><li>keywords : <code>as assert break class continue def del elif else except False finally for from global if import is lambda None pass return True try while yield</code>
 <li>built-in functions : <code>abs() all() any() bool() dict() dir() enumerate() eval() exec() filter() float() getattr() hasattr() input() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
@@ -33,10 +33,10 @@ By default, <code>print()</code> will output to the web browser console and so a
 
 <p>The following are not implemented : 
 <ul>
-<li>keywords <code>as from is lambda nonlocal raise with yield</code>
+<li>keywords <code>nonlocal with</code>
 <li>amongst the built-in functions :
-<ul><li>some might be implemented in the future : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), format(), frozenset(), globals(), hex(), id(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code></li>
-<li>while others are unlikely : <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code></li>
+<ul><li>some might be implemented in the future : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), format(), frozenset(), globals(), hash(), hex(), id(), locals(), ord(), pow(), repr(), sorted() type(), vars()</code></li>
+<li>while others are unlikely : <code>bytearray(), bytes(), compile(), help(), memoryview(), property(), super(), __import__() </code></li>
 <li>some are irrelevant in the context of a web browser : <code> open()</code></li>
 <li>the complex number type (<code>j</code>) is not supported</li>
 </ul>
