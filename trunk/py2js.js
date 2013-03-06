@@ -563,16 +563,21 @@ function $DelCtx(context){
     this.tree = []
     this.toString = function(){return 'del '+this.tree}
     this.to_js = function(){
-        var expr = this.tree[0]
-        if(expr.type!=='expr'){throw Error('SyntaxError, no expr after del')}
-        var del_id = expr.tree[0]
-        if(del_id.type!=='sub'){
-            throw Error('SyntaxError, no subscription for del')
+        res = []
+        var tree = this.tree[0].tree
+        for(var i=0;i<tree.length;i++){
+            var expr = tree[i]
+            if(expr.type==='expr'){
+                res.push('delete '+expr.to_js())
+            }else if(expr.type==='sub'){
+                expr.func = 'delitem'
+                res.push(expr.to_js())
+                expr.func = 'getitem'
+            }else{
+                throw SyntaxError("wrong argument for del "+expr)
+            }
         }
-        del_id.func = 'delitem'
-        var res = del_id.to_js()
-        del_id.func = 'getitem'
-        return res
+        return res.join(';')
     }
 }
 
@@ -1904,7 +1909,7 @@ function $transition(context,token){
         else if(token==='return'){
             var ret = new $ReturnCtx(context)
             return new $AbstractExprCtx(ret,true)
-        }else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),false)}
+        }else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),true)}
         else if(token===':'){ // end of if,def,for etc.
             var tree_node = context.node
             var new_node = new $Node('expression')
