@@ -2123,7 +2123,8 @@ function $tokenize(src,module){
 
     var punctuation = {',':0,':':0} //,';':0}
     var int_pattern = new RegExp("^\\d+")
-    var float_pattern = new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
+    var float_pattern1 = new RegExp("^\\d+\\.\\d*(e-?\\d+)?")
+    var float_pattern2 = new RegExp("^\\d+(e-?\\d+)")
     var id_pattern = new RegExp("[\\$_a-zA-Z]\\w*")
     var qesc = new RegExp('"',"g") // to escape double quotes in arguments
 
@@ -2279,7 +2280,7 @@ function $tokenize(src,module){
         // number
         if(car.search(/\d/)>-1){
             // digit
-            var res = float_pattern.exec(src.substr(pos))
+            var res = float_pattern1.exec(src.substr(pos))
             if(res){
                 if(res[0].search('e')>-1){
                     $pos = pos
@@ -2289,9 +2290,15 @@ function $tokenize(src,module){
                     context = $transition(context,'float',eval(res[0]))
                 }
             }else{
-                res = int_pattern.exec(src.substr(pos))
-                $pos = pos
-                context = $transition(context,'int',eval(res[0]))
+                res = float_pattern2.exec(src.substr(pos))
+                if(res){
+                    $pos =pos
+                    context = $transition(context,'float',res[0])
+                }else{
+                    res = int_pattern.exec(src.substr(pos))
+                    $pos = pos
+                    context = $transition(context,'int',eval(res[0]))
+                }
             }
             pos += res[0].length
             continue
