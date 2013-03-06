@@ -23,7 +23,7 @@ Brython est conforme à la syntaxe de Python 3
 <a name="integr"><h3>Mots clés et fonction intégrées</h3>
 
 Brython supporte l'essentiel des mots-clés et des fonctions de Python 3 :
-<ul><li>mots clés : <code>as assert break class continue def del elif else except False finally for from global if import lambda None pass return True try while </code>
+<ul><li>mots clés : <code>as assert break class continue def del elif else except False finally for from global if import is lambda None pass return True try while yield</code>
 <li>fonctions intégrées : <code>abs() all() any() bool() dict() dir() enumerate() eval() exec() filter() float() getattr() hasattr() input() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 
@@ -32,7 +32,7 @@ Par défaut, <code>print()</code> affiche sur la console du navigateur, et les me
 
 <p>Ne sont pas pris en charge : 
 <ul>
-<li>les mots-clés <code>is nonlocal with yield</code>
+<li>les mots-clés <code>nonlocal with</code>
 <li>parmi les fonctions intégrées :
 <ul><li>certaines seront peut-être intégrées dans des versions futures : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), format(), frozenset(), globals() ,hex(), id(), locals(), ord(), pow(), repr(), sorted(), type(), vars()</code>
 <li>d'autres ont peu de chances d'être intégrées : <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code>
