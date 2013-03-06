@@ -47,3 +47,5 @@ assert s.hexdigest() == "6f2c547d3681c2369a05916a5fcce16c0aed6fd7356362d9e188d64
 
 s.update("another test")
 assert s.hexdigest() == "9f14aecd5a945a6f81a1f8a11633aa428e2a404e39fea50c385a46d2637ee339c2c130101070245ae3164a4ca4e55bfe2089ebdc76885744a585eb232fede803"
+
+print("passed all tests..")

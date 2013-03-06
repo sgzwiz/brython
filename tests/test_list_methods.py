@@ -33,3 +33,4 @@ x = ['a','r','bg','Z']
 x.reverse()
 assert x==['Z','bg','r','a']
 
+print("passed all tests..")

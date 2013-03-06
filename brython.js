@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130305-195602
+// version 1.1.20130305-205311
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -231,13 +231,14 @@ res.push(iterable.__item__(i))
 return res
 }
 function float(value){
-if(typeof value=="number" ||(
-typeof value=="string" && !isNaN(value))){
+if(typeof value=="number" ||(typeof value=="string" && !isNaN(value))){
 return new $FloatClass(parseFloat(value))
-}else if(value=='inf'){return new $FloatClass(Infinity)
-}else if(value=='-inf'){return new $FloatClass(-Infinity)
-}else if(isinstance(value,float)){return value}
-else{throw ValueError("Could not convert to float(): '"+str(value)+"'")}
+}
+if(isinstance(value,float))return value
+if(value=='inf')return new $FloatClass(Infinity)
+if(value=='-inf')return new $FloatClass(-Infinity)
+if(typeof value=='string' && value.toLowerCase()=='nan')return new $FloatClass(Number.NaN)
+throw ValueError("Could not convert to float(): '"+str(value)+"'")
 }
 float.__class__=$type
 float.__name__='float'

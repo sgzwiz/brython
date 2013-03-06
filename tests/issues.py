@@ -363,4 +363,4 @@ cards('nes')
 x='aZjhkhZyuy'
 assert x.split('h',1) == ['aZj', 'khZyuy']
 
-print('All tests ok')
+print('passed all tests..')

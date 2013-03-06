@@ -58,3 +58,5 @@ assert "  azerty ".strip() == "azerty"
 assert "bghggbazertyhbg".strip("bhg") == "azerty"
 
 assert "zer".upper() == "ZER"
+
+print("passed all tests...")

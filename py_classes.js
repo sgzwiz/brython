@@ -271,14 +271,17 @@ function filter(){
 }
 
 function float(value){
-    if(typeof value=="number" || (
-        typeof value=="string" && !isNaN(value))){
+    if(typeof value=="number" || (typeof value=="string" && !isNaN(value))){
         return new $FloatClass(parseFloat(value))
-    }else if (value == 'inf') {return new $FloatClass(Infinity);
-    }else if (value == '-inf') {return new $FloatClass(-Infinity);
-    }else if(isinstance(value,float)){return value}
-    else{throw ValueError("Could not convert to float(): '"+str(value)+"'")}
+    }
+    if(isinstance(value,float)) return value
+    if (value == 'inf') return new $FloatClass(Infinity);
+    if (value == '-inf') return new $FloatClass(-Infinity);
+    if (typeof value == 'string' && value.toLowerCase() == 'nan') return new $FloatClass(Number.NaN)
+    
+    throw ValueError("Could not convert to float(): '"+str(value)+"'")
 }
+
 float.__class__ = $type
 float.__name__ = 'float'
 float.toString = function(){return "<class 'float'>"}
