@@ -24,16 +24,16 @@ Brython sigue la sintaxis de Python 3
 <a name="integr"><h3>Palabras clave y funciones integradas</h3>
 
 Brython soporta la mayoría de las palabras clave y las funciones de Python 3 :
-<ul><li>palabras claves : <code>assert break class continue def del elif else except False finally for global if import None pass return True try while </code>
+<ul><li>palabras claves : <code>as assert break class continue def del elif else except False finally for from global if import is lambda None pass raise return True try while yield</code>
 <li>funciones integradas : <code>abs() all() any() bool() dict() dir() enumerate() eval() exec() filter() float() getattr() hasattr() input() int() isinstance() iter() len() list() map() max() min() next() object() print() range() reversed() round() set() setattr() slice() str() sum() tuple() zip()</code>
 </ul>
 <p>Inicialmente, <code>print()</code> marca todo en la consola del navegador, y los mensajes de errores también se marcan en esta consola. <code>sys.stderr</code> y <code>sys.stdout</code> pueden ser asignados a un objeto que implementa un método <code>write()</code>. De esta manera es posible de cambiar la salida a una ventana, por ejemplo, en vez de la consola. No hay <code>sys.stdin</code>, pero hay <code>input()</code>, implementado por medio de <code>prompt()</code>
 <p>Para comenzar a imprimir en una impresora, utilice <code>win.print()</code>
 <p>No están soportados : 
 <ul>
-<li>palabras claves <code>as from is lambda nonlocal raise with yield</code>
+<li>palabras claves <code>nonlocal with</code>
 <li>entre las funciones integradas :
-<ul><li>algunas pueden ser incluidas en versiones futuras : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), format(), frozenset(), globals(), hex(), id(), locals(), ord(), pow(), repr(), sorted(), type(), vars()</code>
+<ul><li>algunas pueden ser incluidas en versiones futuras : <code>ascii(), bin(), callable(), chr(), classmethod(), complex(), delattr(), divmod(), format(), frozenset(), globals(), hex(), id(), locals(), ord(), pow(), repr(), sorted(), staticmethod(), type(), vars()</code>
 <li>otras son poco probable que sea integrada: <code>bytearray(), bytes(), compile(), hash(), help(), memoryview(), property(), super(), __import__() </code>
 <li>algunas no son relevantes en el contexto de un navegador : <code> open()</code>
 <li>el tipo de números complejos (j)
