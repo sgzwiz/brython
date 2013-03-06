@@ -16,7 +16,7 @@ function $Date(args){
 
     this.__getattr__ = function(attr){return $getattr(this,attr)}
     
-    this.__hash__ = function() {return hash((this.year,this.month,this.day))}
+    this.__hash__ = function() {return hash(tuple(this.year,this.month,this.day))}
 
     this.__str__ = function(){return this.strftime('%Y-%m-%d')}
 
@@ -73,7 +73,7 @@ function $DateTime(args){
     this.__getattr__ = function(attr){return $getattr(this,attr)}
     
     this.__hash__ = function() {
-       return hash((this.year,this.month,this.day,this.hour,this.min,this.second,this.microsecond))
+       return hash(tuple(this.year,this.month,this.day,this.hour,this.minute,this.second,this.microsecond));
     }
 
     this.__str__ = function(){return !this.microsecond?
@@ -138,7 +138,7 @@ function $Time(args){
     this.__getattr__ = function(attr){return $getattr(this,attr)}
 
     this.__hash__ = function() {
-       return hash((this.hour,this.min,this.second,this.microsecond))
+       return hash(tuple(this.hour,this.minute,this.second,this.microsecond))
     }
 
     this.__str__ = function(){return !!this.microsecond?this.strftime('%H:%M:%S.%f'):this.strftime('%H:%M:%S')}
