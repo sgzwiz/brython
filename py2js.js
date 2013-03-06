@@ -151,10 +151,14 @@ function $AssertCtx(context){
         // transform "assert cond" into "if not cond: throw AssertionError"
         var new_ctx = new $ConditionCtx(node.context,'if')
         var not_ctx = new $NotCtx(new_ctx)
-        not_ctx.tree = this.tree
+        not_ctx.tree = [this.tree[0]]
         node.context = new_ctx
         var new_node = new $Node('expression')
-        new $NodeJSCtx(new_node,'throw AssertionError("")')
+        var js = 'throw AssertionError("")'
+        if(this.tree.length==2){
+            js = 'throw AssertionError(str('+this.tree[1].to_js()+'))'
+        }
+        new $NodeJSCtx(new_node,js)
         node.add(new_node)
     }
 }
@@ -1397,10 +1401,15 @@ function $transition(context,token){
 
     }else if(context.type==='assert'){
     
-        if($expr_starters.indexOf(token)>-1&&context.init===undefined){
-            context.init = true
+        if($expr_starters.indexOf(token)>-1&&context.expect===undefined){
+            context.expect = 'cond'
             return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
-        }else if(token==='eol'&&context.init===true){
+        }else if(token===',' && context.expect==='cond'){
+            context.expect = 'arg'
+            return context
+        }else if($expr_starters.indexOf(token)>-1 && context.expect==='arg'){
+            return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+        }else if(token==='eol' && context.expect){
             return $transition(context.parent,token)
         }else{$_SyntaxError(context,token)}
         
