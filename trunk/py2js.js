@@ -2373,6 +2373,7 @@ function brython(debug){
     document.$py_src = {}
     document.$py_module_path = {}
     document.$py_module_alias = {}
+    document.$py_next_hash = -Math.pow(2,53)
     document.$debug = debug
     document.$exc_stack = []
     var elts = document.getElementsByTagName("script")

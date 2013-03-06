@@ -16,6 +16,8 @@ function $Date(args){
 
     this.__getattr__ = function(attr){return $getattr(this,attr)}
     
+    this.__hash__ = function() {return hash((this.year,this.month,this.day))}
+
     this.__str__ = function(){return this.strftime('%Y-%m-%d')}
 
     this.strftime = function(fmt){return this.$dt.strftime(fmt)}
@@ -70,6 +72,10 @@ function $DateTime(args){
         
     this.__getattr__ = function(attr){return $getattr(this,attr)}
     
+    this.__hash__ = function() {
+       return hash((this.year,this.month,this.day,this.hour,this.min,this.second,this.microsecond))
+    }
+
     this.__str__ = function(){return !this.microsecond?
         this.strftime('%Y-%m-%d %H:%M:%S'):this.strftime('%Y-%m-%d %H:%M:%S.%f')}
     
@@ -130,6 +136,10 @@ function $Time(args){
     this.$js_date = new Date(hour,minute,second,microsecond/1000)
 
     this.__getattr__ = function(attr){return $getattr(this,attr)}
+
+    this.__hash__ = function() {
+       return hash((this.hour,this.min,this.second,this.microsecond))
+    }
 
     this.__str__ = function(){return !!this.microsecond?this.strftime('%H:%M:%S.%f'):this.strftime('%H:%M:%S')}
 
