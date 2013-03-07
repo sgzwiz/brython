@@ -751,7 +751,8 @@ function $print(){
     document.$stdout.__getattr__('write')(res)
 }
 
-log = $print // compatibility with previous versions
+// compatibility with previous versions
+log = function(arg){console.log(arg)} 
 
 function $prompt(text,fill){return prompt(text,fill || '')}
 
