@@ -83,6 +83,7 @@ function $isEvent(obj){
 // class for all DOM objects
 function DOMObject(){}
 DOMObject.__class__ = $type
+DOMObject.__str__ = function(){return "<class 'DOMObject'>"}
 DOMObject.toString = function(){return "<class 'DOMObject'>"}
 
 $DOMtoString = function(){
