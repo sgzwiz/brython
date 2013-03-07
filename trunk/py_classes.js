@@ -17,6 +17,9 @@ function all(iterable){
 }
 
 function any(iterable){
+    if(iterable.__item__===undefined){
+        throw TypeError("'"+iterable.__class__.__name__+"' object is not iterable")
+    }
     while(true){
         try{
             var elt = next(iterable)
@@ -43,6 +46,7 @@ function assert_raises(){
 
 function bool(obj){ // return true or false
     if(obj===null){return False}
+    else if(obj===undefined){return False}
     else if(isinstance(obj,dict)){return obj.keys.length>0}
     else if(isinstance(obj,tuple)){return obj.items.length>0}
     else if(typeof obj==="boolean"){return obj}
@@ -73,6 +77,9 @@ function $confirm(src){return confirm(src)}
 // dictionary
 function dict(){
     if(arguments.length==0){return new $DictClass([],[])}
+    else if(arguments.length===1 && isinstance(arguments[0],dict)){
+        return arguments[0]
+    }
     var $ns=$MakeArgs('dict',arguments,[],{},'args','kw')
     var args = $ns['args']
     var kw = $ns['kw']
@@ -241,7 +248,7 @@ function $eval(src){
     try{return eval(__BRYTHON__.py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){throw RuntimeError(err.message)}
-        if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
+        if(document.$stderr){document.$stderr.__getattr__('write')(document.$stderr_buff+'\n')}
         else{throw(err)}
     }
 }         
@@ -251,7 +258,7 @@ function exec(src){
     catch(err){
         if(err.py_error===undefined){err = RuntimeError(err.message)}
         var trace = err.__name__+': '+err.message+err.info
-        if(document.$stderr){document.$stderr.write(trace)}
+        if(document.$stderr){document.$stderr.__getattr__('write')(trace)}
         else{console.log(trace)}
         throw err
     }
@@ -271,6 +278,7 @@ function filter(){
 }
 
 function float(value){
+    if(value===undefined){return new $FloatClass(0.0)}
     if(typeof value=="number" || (typeof value=="string" && !isNaN(value))){
         return new $FloatClass(parseFloat(value))
     }
@@ -434,7 +442,8 @@ function input(src){
 }
 
 function int(value){
-    if(isinstance(value,int)){return value}
+    if(value===undefined){return 0}
+    else if(isinstance(value,int)){return value}
     else if(value===True){return 1}
     else if(value===False){return 0}
     else if(typeof value=="number" ||
