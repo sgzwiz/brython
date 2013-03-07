@@ -72,7 +72,7 @@ function $AjaxClass(){
             "send() argument must be dictonary, not '"+str(params.__class__)+"'")}
         var res = ''
         for(i=0;i<params.$keys.length;i++){
-            res += str(params.$keys[i])+'='+str(params.$values[i])+'&'
+            res +=encodeURIComponent(str(params.$keys[i]))+'='+encodeURIComponent(str(params.$values[i]))+'&'
         }
         res = res.substr(0,res.length-1)
         $xmlhttp.send(res)
