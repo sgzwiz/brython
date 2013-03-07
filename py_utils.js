@@ -211,6 +211,13 @@ function $resolve_attr(obj,factory,attr){
                     return func.apply(obj,args)
                 }
             })(res)
+            res.__str__ = (function(x){
+                return function(){
+                    var res = "<bound method "+factory.__name__+'.'+x
+                    res += ' of '+obj.__str__()+'>'
+                    return res
+                }
+            })(attr)
         }
         return res
     }else{ // inheritance
@@ -233,6 +240,7 @@ function $class_constructor(class_name,factory){
         parent_classes.push(arguments[i])
     }
     factory.parents = parent_classes
+    factory.__name__ = class_name
     var f = function(){
         var obj = new Object()
         obj.__class__ = f
@@ -252,10 +260,10 @@ function $class_constructor(class_name,factory){
                 obj[attr].__str__ = (function(x){
                     return function(){
                         var res = "<bound method "+class_name+'.'+x
-                        res += 'of '+obj.__str__()+'>'
+                        res += ' of '+obj.__str__()+'>'
                         return res
                     }
-                    })(attr)
+                })(attr)
             }else{obj[attr] = factory[attr]}
         }
         obj.__getattr__ = function(attr){
