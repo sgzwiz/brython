@@ -538,7 +538,11 @@ function $DefCtx(context){
         node.parent.insert(rank+1,ret_node)
         
         // add function name
-        js = this.name+'.__name__="'+this.name+'"'
+        js = this.name+'.__name__'
+        if(scope !==null && scope.ntype==='class'){
+            js += '=$class.'+this.name+'.__name__'
+        }
+        js += '="'+this.name+'"'
         var name_decl = new $Node('expression')
         new $NodeJSCtx(name_decl,js)
         node.parent.children.splice(rank+2,0,name_decl)
@@ -554,10 +558,12 @@ function $DefCtx(context){
     }
     this.add_generator_declaration = function(){
         // if generator, add line 'foo = $generator($foo)
-        console.log('in transform, type '+this.type)
+        var scope = $get_scope(this)
         var node = this.parent.node
         if(this.type==='generator'){
-            js = this.name+'=$generator($'+this.name+')'
+            js = this.name
+            if(scope.ntype==='class'){js += "=$class."+this.name}
+            js += '=$generator($'+this.name+')'
             var gen_node = new $Node('expression')
             new $NodeJSCtx(gen_node,js)
             node.parent.children.splice(this.rank+2,0,gen_node)        
@@ -934,7 +940,6 @@ function $ListOrTupleCtx(context,real){
     this.tree = []
     context.tree.push(this)
     this.to_js = function(){
-        console.log('list or tuple '+this.real)
         if(this.real==='list'){return '['+$to_js(this.tree)+']'}
         else if(this.real==='list_comp'||this.real==='gen_expr'){
             var res_env=[],local_env=[],env=[]
@@ -2132,7 +2137,7 @@ function $transition(context,token){
     }
 }
 
-function $py2js(src,module){
+__BRYTHON__.py2js = function(src,module){
     src = src.replace(/\r\n/gm,'\n')
     while (src.length>0 && (src.charAt(0)=="\n" || src.charAt(0)=="\r")){
         src = src.substr(1)
@@ -2493,7 +2498,7 @@ function brython(debug){
                 var src = (elt.innerHTML || elt.textContent)
                 document.$py_module_path['__main__']='.' 
             }
-            var root = $py2js(src,'__main__')
+            var root = __BRYTHON__.py2js(src,'__main__')
             var js = root.to_js()
             if(debug===2){console.log(js)}
             eval(js)

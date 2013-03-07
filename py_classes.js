@@ -238,7 +238,7 @@ function enumerate(iterator){
 
 function $eval(src){
     if(src===""){throw SyntaxError("unexpected EOF while parsing")}
-    try{return eval($py2js(src).to_js())}
+    try{return eval(__BRYTHON__.py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){throw RuntimeError(err.message)}
         if(document.$stderr){document.$stderr.write(document.$stderr_buff+'\n')}
@@ -247,7 +247,7 @@ function $eval(src){
 }         
 
 function exec(src){
-    try{eval($py2js(src).to_js())}
+    try{eval(__BRYTHON__.py2js(src).to_js())}
     catch(err){
         if(err.py_error===undefined){err = RuntimeError(err.message)}
         var trace = err.__name__+': '+err.message+err.info
