@@ -32,7 +32,7 @@ function $import_js(module,alias,names){
             }
         }
     }
-    $xmlhttp.open('GET',document.$brython_path+'libs/'+module+'.js'+fake_qs,false)
+    $xmlhttp.open('GET',__BRYTHON__.brython_path+'libs/'+module+'.js'+fake_qs,false)
     if('overrideMimeType' in $xmlhttp){$xmlhttp.overrideMimeType("text/plain")}
     $xmlhttp.send()
     if(res.constructor===Error){throw res} // module not found
@@ -65,7 +65,32 @@ function $import_js(module,alias,names){
     }catch(err){throw ImportError(err.message)}
 }
 
-function $import_py(module,alias,names,relpath){
+function $import_py(module,alias,names){
+    // try all paths in __BRYTHON__.path
+    var flag = false
+    for(var i=0;i<__BRYTHON__.path.length;i++){
+        relpath = __BRYTHON__.path[i]
+        try{
+            $import_py1(module,alias,names,relpath)
+            flag = true
+        }catch(err){
+            void(0)
+        }
+        if(flag){break}
+        relpath = __BRYTHON__.path[i]+'/'+module
+        try{
+            $import_py1('__init__',alias,names,relpath)
+            flag = true
+        }catch(err){ console.log(err)
+            void(0)
+        }
+        if(flag){break}
+    }
+    if(!flag){throw ImportError("No module named '"+module+"'")}
+    
+}
+
+function $import_py1(module,alias,names,relpath){
     // import Python modules, in the same folder as the HTML page with
     // the Brython script
     var imp = $importer()
@@ -82,17 +107,9 @@ function $import_py(module,alias,names,relpath){
         }
     }
    
-    if (relpath !== undefined) {
-      module_path=relpath+"/"+ module + ".py";
-      $xmlhttp.open('GET',module_path+fake_qs,false)
-      $xmlhttp.send()
-    } else {
-      // fix me..  tests should not be hardcoded and we should
-      // use sys.path to find modules
-      module_path=document.$brython_path+"tests/"+ module + ".py";
-      $xmlhttp.open('GET',module+'.py'+fake_qs,false)
-      $xmlhttp.send()
-    }
+    module_path=relpath+"/"+ module + ".py";
+    $xmlhttp.open('GET',module_path+fake_qs,false)
+    $xmlhttp.send()
 
     // patch by Bill Earney
     if (relpath === undefined && res.constructor===Error){
@@ -118,7 +135,9 @@ function $import_py(module,alias,names,relpath){
     var mod_names = []
     for(var i=1;i<mod_node.children.length;i++){
         var node = mod_node.children[i]
-        var ctx = node.context.tree[0]
+        // use function get_ctx() 
+        // because attribute 'context' is renamed by make_dist...
+        var ctx = node.get_ctx().tree[0]
         if(ctx.type==='def'||ctx.type==='class'){
             if(mod_names.indexOf(ctx.name)===-1){mod_names.push(ctx.name)}
             

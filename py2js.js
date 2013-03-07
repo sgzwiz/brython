@@ -98,7 +98,7 @@ function $Node(type){
             }
         }
         return res
-   }
+    }
     this.transform = function(rank){
         var res = ''
         if(this.type==='module'){
@@ -119,7 +119,8 @@ function $Node(type){
                 i++
             }
         }
-   }
+    }
+    this.get_ctx = function(){return this.context}
 }
 
 function $last(src){return src[src.length-1]}
@@ -457,6 +458,14 @@ function $ConditionCtx(context,token){
     }
 }
 
+function $DecoratorCtx(context){
+    this.type = 'decorator'
+    this.parent = context
+    context.tree.push(this)
+    this.tree = []
+    this.toString = function(){return '(decorator) '+this.tree}
+    this.to_js = function(){return $to_js(this.tree)}
+}
 function $DefCtx(context){
     this.type = 'def'
     this.name = null
@@ -1311,7 +1320,6 @@ function $YieldCtx(context){ // subscription or slicing
     context.tree.push(this)
     this.transform = function(node,rank){
         if(this.transformed!==undefined){return}
-        console.log('yield transform, node '+node.context)
         var scope = $get_scope(node.context.tree[0])
         // change type of function to generator
         scope.context.tree[0].type = 'generator'
@@ -1571,6 +1579,13 @@ function $transition(context,token){
             context.parent.node.add(new_node)
             return new $NodeCtx(new_node)
         }
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
+
+    }else if(context.type==='decorator'){
+    
+        if(token==='id' && context.tree.length===0){
+            return $transition(new $AbstractExprCtx(context,false),token,arguments[2])
+        }else if(token==='eol'){return $transition(context.parent,token)}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='def'){
@@ -1989,6 +2004,7 @@ function $transition(context,token){
             var yield = new $YieldCtx(context)
             return new $AbstractExprCtx(yield,true)
         }else if(token==='del'){return new $AbstractExprCtx(new $DelCtx(context),true)}
+        else if(token==='@'){return new $DecoratorCtx(context)}
         else if(token===':'){ // end of if,def,for etc.
             var tree_node = context.node
             var new_node = new $Node('expression')
@@ -2450,6 +2466,11 @@ function $tokenize(src,module){
         if(car=='\\' && src.charAt(pos+1)=='\n'){
             lnum++;pos+=2;continue
         }
+        if(car=='@'){
+            $pos = pos
+            context = $transition(context,car)
+            pos++;continue
+        }
         if(car!=' '&&car!=='\t'){$pos=pos;$_SyntaxError(context,'unknown token ['+car+']')}
         pos += 1
     }
@@ -2472,6 +2493,11 @@ function brython(debug){
     document.$debug = debug
     document.$exc_stack = []
     var elts = document.getElementsByTagName("script")
+    var href = window.location.href
+    var href_elts = href.split('/')
+    href_elts.pop()
+    var script_path = href_elts.join('/')
+    __BRYTHON__.path = [script_path]
     
     for(var $i=0;$i<elts.length;$i++){
         var elt = elts[$i]
@@ -2493,7 +2519,7 @@ function brython(debug){
                 $xmlhttp.open('GET',elt.src,false)
                 $xmlhttp.send()
                 document.$py_module_path['__main__']=elt.src 
-
+                __BRYTHON__.path = [elt.src]
             }else{
                 var src = (elt.innerHTML || elt.textContent)
                 document.$py_module_path['__main__']='.' 
@@ -2509,7 +2535,9 @@ function brython(debug){
                 if(elt.src.substr(elt.src.length-bs.length)==bs){
                     if(elt.src.length===bs.length ||
                         elt.src.charAt(elt.src.length-bs.length-1)=='/'){
-                            document.$brython_path = elt.src.substr(0,elt.src.length-bs.length)
+                            var path = elt.src.substr(0,elt.src.length-bs.length)
+                            __BRYTHON__.brython_path = path
+                            __BRYTHON__.path.push(path+'Lib')
                             break
                     }
                 }
