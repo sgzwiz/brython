@@ -79,7 +79,7 @@ function $list_comp(){
     }
     for(var j=0;j<indent;j++){$py += ' '}
     $py += $res+'.append('+arguments[1]+')'
-    var $js = $py2js($py).to_js()
+    var $js = __BRYTHON__.py2js($py).to_js()
     eval($js)
     return eval($res)    
 }
@@ -112,7 +112,7 @@ function $lambda(args,body){
     var $res = 'res'+Math.random().toString(36).substr(2,8)
     var $py = 'def '+$res+'('+args+'):\n'
     $py += '    return '+body
-    var $js = $py2js($py).to_js()
+    var $js = __BRYTHON__.py2js($py).to_js()
     eval($js)
     return eval($res)    
 }
