@@ -3,18 +3,28 @@
 <head>
 <meta charset="iso-8859-1">
 <script src="../brython.js"></script>
-<script src="../py_dom.js"></script>
+<script src="../py_utils.js"></script>
 </head>
 <body onload="brython(1)">
 <script type="text/python">
-w = win.open('','','')
-w.document.open("text/plain")
-w.document.write('coucou')
-w.document.close()
-w.document.title = "DB DUMP"
+import sys
+class cons_out:
+
+    def __init__(self,target):
+        self.target = doc[target]
+    def write(self,data):
+        self.target.text += str(data)
+
+sys.stdout = cons_out("console")
+sys.stderr = cons_out("console")
+log(sys.stdout.write)
+
+x = [7]
+print('essi')
+print(x[6])
 </script>
 
-<canvas id="zone" width="80" height="80"></canvas>
+<textarea id="console" cols="80" rows="10"></textarea>
 </body>
 </html>
 
