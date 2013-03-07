@@ -3,7 +3,7 @@
 <head>
 <meta charset="iso-8859-1">
 <script src="../brython.js"></script>
-
+<script src='../py_import.js'></script>
 
 </head>
 <body onLoad="brython(1)">
@@ -12,12 +12,14 @@
 import datetime
 import sidebar
 from html import P
+import std_dist
 
 menu_items = [('The Brython site','http://www.brython.info'),
     ('Development site','http://code.google.com/p/brython/'),
     ('Group (en)','https://groups.google.com/forum/?fromgroups=#!forum/brython')]
 doc <= sidebar.menu('Brython',menu_items)
 doc <= P()+str(datetime.date.today())
+doc <= P()+std_dist.info
 </script>
 </body>
 </html>

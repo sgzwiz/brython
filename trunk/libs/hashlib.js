@@ -33,7 +33,7 @@ function $get_CryptoJS_lib(alg) {
         }
    }
 
-   $xmlhttp.open('GET', document.$brython_path+'libs/crypto_js/rollups/'+alg+'.js'+fake_qs,false)
+   $xmlhttp.open('GET', __BRYTHON__.brython_path+'libs/crypto_js/rollups/'+alg+'.js'+fake_qs,false)
    if('overrideMimeType' in $xmlhttp){$xmlhttp.overrideMimeType("text/plain")}
    $xmlhttp.send()
    if(res.constructor===Error){throw res} // module not found
