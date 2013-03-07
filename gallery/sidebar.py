@@ -1,3 +1,4 @@
+x=0
 from html import A,B,BR
 
 def menu(title,links):
