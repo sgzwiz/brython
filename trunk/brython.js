@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130307-142443
+// version 1.1.20130307-174150
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -12,7 +12,7 @@ arguments[4],arguments[5],arguments[6]))}
 }
 __BRYTHON__.has_local_storage=typeof(Storage)!=="undefined"
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130307-142443"]
+__BRYTHON__.version_info=[1,1,"20130307-174150"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -646,7 +646,7 @@ res +=str(args[i])
 if(i<args.length-1){res +=' '}
 }
 res +=end
-document.$stdout.write(res)
+document.$stdout.__getattr__('write')(res)
 }
 log=$print 
 function $prompt(text,fill){return prompt(text,fill || '')}
@@ -1387,7 +1387,6 @@ else{this.mapping_key=null}
 this.flag=res[2]
 this.min_width=res[3]
 this.precision=res[4]
-if(this.precision!==undefined){this.precision=parseInt(res[4].substr(1))}
 this.length_modifier=res[5]
 this.type=res[6]
 this.toString=function(){
@@ -1409,22 +1408,6 @@ return str(int(src))
 if(!isinstance(src,[int,float])){throw TypeError(
 "%"+this.type+" format : a number is required, not "+str(src.__class__))}
 return str(float(src))
-}else if(this.type=="g" || this.type=="G"){
-if(!isinstance(src,[int,float])){throw TypeError(
-"%"+this.type+" format : a number is required, not "+str(src.__class__))}
-console.log('precision '+this.precision)
-var pr=this.precision
-if(src<0.0001){
-if(pr!==undefined){
-var res=str(Number(src).toExponential(parseInt(pr.substr(1))))
-}else{
-var res=str(Number(src).toExponential())
-}
-if(this.type==='g'){return res}
-else{return res.replace('e','E')}
-}
-if(pr!==undefined){return Number(src).toPrecision(pr)}
-else{return str(Number(src))}
 }
 }
 }
@@ -1895,6 +1878,7 @@ function $import_from(module,names,parent_module){
 var relpath
 var alias=module
 if(parent_module !=="undefined"){
+throw ImportError('from .. import .. not supported yet')
 relpath=document.$py_module_path[parent_module]
 var i=relpath.lastIndexOf('/')
 relpath=relpath.substring(0, i)
@@ -2240,7 +2224,11 @@ js='var '+this.name
 }else{
 js='var '+this.name+' = $class.'+this.name
 }
-js +='=$class_constructor("'+this.name+'",$'+this.name+')'
+js +='=$class_constructor("'+this.name+'",$'+this.name
+if(this.tree.length>0 && this.tree[0].tree.length>0){
+js +=','+$to_js(this.tree[0].tree)
+}
+js +=')'
 var cl_cons=new $Node('expression')
 new $NodeJSCtx(cl_cons,js)
 node.parent.insert(rank+2,cl_cons)
@@ -3559,6 +3547,7 @@ C.parent.parent.type==='call_arg'){
 return new $AbstractExprCtx(new $KwArgCtx(C.parent),false)
 }else{return $transition(C.parent,token,arguments[2])}
 }else if(token==='op'){return $transition(C.parent,token,arguments[2])}
+else if(token=='id'){$_SyntaxError(C,'token '+token+' after '+C)}
 else{return $transition(C.parent,token,arguments[2])}
 }else if(C.type==='import'){
 if(token==='id' && C.expect==='id'){
@@ -3625,7 +3614,6 @@ if(C.real==='tuple'){C.has_comma=true}
 C.expect='id'
 return C
 }else if(token==='for'){
-console.log('token for, real '+C.real)
 if(C.real==='list'){C.real='list_comp'}
 else{C.real='gen_expr'}
 C.intervals=[C.start+1]
@@ -4322,10 +4310,50 @@ $src_error('SyntaxError',module,msg,pos)
 function $IndentationError(module,msg,pos){
 $src_error('IndentationError',module,msg,pos)
 }
+function $resolve_attr(obj,factory,attr){
+if(obj[attr]!==undefined){return obj[attr]}
+if(factory[attr]!==undefined){
+var res=factory[attr]
+if(typeof res==='function'){
+res=(function(func){
+return function(){
+var args=[obj]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return func.apply(obj,args)
+}
+})(res)
+res.__str__=(function(x){
+return function(){
+var res="<bound method "+factory.__name__+'.'+x
+res +=' of '+obj.__str__()+'>'
+return res
+}
+})(attr)
+}
+return res
+}else{
+for(var i=0;i<factory.parents.length;i++){
+try{
+return $resolve_attr(obj,factory.parents[i],attr)
+}catch(err){
+console.log(err)
+}
+}
+throw AttributeError('object has no attribute '+attr)
+}
+}
 function $class_constructor(class_name,factory){
+var parent_classes=[]
+for(var i=2;i<arguments.length;i++){
+parent_classes.push(arguments[i])
+}
+factory.parents=parent_classes
+factory.__name__=class_name
 var f=function(){
 var obj=new Object()
+obj.__class__=f
 for(var attr in factory){
+if(attr.substr(0,2)!=='__'){continue}
 if(typeof factory[attr]==="function"){
 var func=factory[attr]
 obj[attr]=(function(func){
@@ -4335,12 +4363,17 @@ for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
 return func.apply(obj,args)
 }
 })(func)
+obj[attr].__str__=(function(x){
+return function(){
+var res="<bound method "+class_name+'.'+x
+res +=' of '+obj.__str__()+'>'
+return res
+}
+})(attr)
 }else{obj[attr]=factory[attr]}
 }
-obj.__class__=f
 obj.__getattr__=function(attr){
-if(obj[attr]!==undefined){return obj[attr]}
-else{throw AttributeError(obj+" has no attribute '"+attr+"'")}
+return $resolve_attr(obj,factory,attr)
 }
 obj.__setattr__=function(attr,value){obj[attr]=value}
 if(obj.__str__===undefined){
@@ -4349,7 +4382,7 @@ return "<object '"+class_name+"'>"
 }
 }
 obj.toString=obj.__str__
-if(obj.__init__ !==undefined){
+if(factory.__init__ !==undefined){
 var args=[obj]
 for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
 factory.__init__.apply(obj,args)
