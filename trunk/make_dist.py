@@ -5,17 +5,18 @@ import datetime
 
 now = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
 
-sources = ['py_classes','py_list','py_string','py_import',
+sources = ['brython_builtins',
+    'py_classes','py_list','py_string','py_import',
     'py2js','py_utils',
     'py_ajax','py_dom','py_local_storage']
 
 # update version number in module sys
-sys_src = open('libs/sys.js').read()
+bltins_src = open('brython_builtins.js').read()
 
-sys_src = re.sub('version_info:\[1,1,".*?"\]',
-    'version_info:[1,1,"%s"]' %now,sys_src)
-out = open('libs/sys.js','w')
-out.write(sys_src)
+bltins_src = re.sub('version_info = \[1,1,".*?"\]',
+    'version_info = [1,1,"%s"]' %now,bltins_src)
+out = open('brython_builtins.js','w')
+out.write(bltins_src)
 out.close()
 
 res = '// brython.js www.brython.info\n'
@@ -24,8 +25,6 @@ res += '// version compiled from commented, indented source files at http://code
 src_size = 0
 for fname in sources:
     src = open(fname+'.js').read()
-    if fname=='py2js':
-        src = src.replace('context','C')
     src_size += len(src)
     pos = 0
     while pos<len(src):
@@ -70,6 +69,8 @@ for fname in sources:
 
 while '\n\n' in res:
     res = res.replace('\n\n','\n')
+
+res = res.replace('context','C')
 
 out = open('brython.js','w')
 out.write(res)

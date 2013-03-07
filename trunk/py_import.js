@@ -105,7 +105,7 @@ function $import_py(module,alias,names,relpath){
 
     if(res.constructor===Error){res.name='ImportError';throw res} // module not found
     document.$py_module_path[module]=module_path
-    var root = $py2js(res,module)
+    var root = __BRYTHON__.py2js(res,module)
     var body = root.children
     root.children = []
     // use the module pattern : module name returns the results of an anonymous function

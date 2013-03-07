@@ -3,5 +3,5 @@ $module = {
         if(attr in this){return this[attr]}
         else{$raise('AttributeError','module sys has no attribute '+attr)}
     },
-    dis : function(src){return $py2js(src).to_js()}
+    dis : function(src){return __BRYTHON__.py2js(src).to_js()}
 }
