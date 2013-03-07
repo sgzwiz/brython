@@ -198,11 +198,48 @@ function $IndentationError(module,msg,pos) {
     $src_error('IndentationError',module,msg,pos)
 }
 
+// resolve instance attribute from its class factory
+function $resolve_attr(obj,factory,attr){
+    if(obj[attr]!==undefined){return obj[attr]}
+    if(factory[attr]!==undefined){
+        var res = factory[attr]
+        if(typeof res==='function'){
+            res = (function(func){
+                return function(){
+                    var args = [obj]
+                    for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+                    return func.apply(obj,args)
+                }
+            })(res)
+        }
+        return res
+    }else{ // inheritance
+        for(var i=0;i<factory.parents.length;i++){
+            try{
+                return $resolve_attr(obj,factory.parents[i],attr)
+            }catch(err){
+                console.log(err)
+            }
+        }
+        throw AttributeError('object has no attribute '+attr)
+    }
+}
+
 // generic code for class constructor
-function $class_constructor(class_name,factory){  
+function $class_constructor(class_name,factory){
+    // function can have additional arguments : the parent classes
+    var parent_classes = []
+    for(var i=2;i<arguments.length;i++){
+        parent_classes.push(arguments[i])
+    }
+    factory.parents = parent_classes
     var f = function(){
         var obj = new Object()
+        obj.__class__ = f
+        // attributes beginning with __ must be set here
+        // because __getattr__ is not used to resolve them
         for(var attr in factory){
+            if(attr.substr(0,2)!=='__'){continue}
             if(typeof factory[attr]==="function"){
                 var func = factory[attr]
                 obj[attr] = (function(func){
@@ -212,12 +249,17 @@ function $class_constructor(class_name,factory){
                         return func.apply(obj,args)
                     }
                 })(func)
+                obj[attr].__str__ = (function(x){
+                    return function(){
+                        var res = "<bound method "+class_name+'.'+x
+                        res += 'of '+obj.__str__()+'>'
+                        return res
+                    }
+                    })(attr)
             }else{obj[attr] = factory[attr]}
         }
-        obj.__class__ = f
         obj.__getattr__ = function(attr){
-            if(obj[attr]!==undefined){return obj[attr]}
-            else{throw AttributeError(obj+" has no attribute '"+attr+"'")}
+            return $resolve_attr(obj,factory,attr)
         }
         obj.__setattr__ = function(attr,value){obj[attr]=value}
         if(obj.__str__===undefined){
@@ -226,7 +268,7 @@ function $class_constructor(class_name,factory){
             }
         }
         obj.toString = obj.__str__
-        if(obj.__init__ !== undefined){
+        if(factory.__init__ !== undefined){
             var args = [obj]
             for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
             factory.__init__.apply(obj,args)

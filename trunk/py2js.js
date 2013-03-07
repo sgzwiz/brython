@@ -374,7 +374,11 @@ function $ClassCtx(context){
         }else{
             js = 'var '+this.name+' = $class.'+this.name
         }
-        js += '=$class_constructor("'+this.name+'",$'+this.name+')'
+        js += '=$class_constructor("'+this.name+'",$'+this.name
+        if(this.tree.length>0 && this.tree[0].tree.length>0){
+            js += ','+$to_js(this.tree[0].tree)
+        }
+        js += ')'
         var cl_cons = new $Node('expression')
         new $NodeJSCtx(cl_cons,js)
         node.parent.insert(rank+2,cl_cons)
@@ -1867,6 +1871,7 @@ function $transition(context,token){
                     return new $AbstractExprCtx(new $KwArgCtx(context.parent),false)
             }else{return $transition(context.parent,token,arguments[2])}             
         }else if(token==='op'){return $transition(context.parent,token,arguments[2])}
+        else if(token=='id'){$_SyntaxError(context,'token '+token+' after '+context)}
         else{return $transition(context.parent,token,arguments[2])}
 
     }else if(context.type==='import'){
@@ -1945,7 +1950,6 @@ function $transition(context,token){
                     return context
                 }else if(token==='for'){
                     // comprehension
-                    console.log('token for, real '+context.real)
                     if(context.real==='list'){context.real = 'list_comp'}
                     else{context.real='gen_expr'}
                     context.intervals = [context.start+1]

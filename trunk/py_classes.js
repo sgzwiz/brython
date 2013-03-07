@@ -739,7 +739,7 @@ function $print(){
         if(i<args.length-1){res += ' '}
     }
     res += end
-    document.$stdout.write(res)
+    document.$stdout.__getattr__('write')(res)
 }
 
 log = $print // compatibility with previous versions
