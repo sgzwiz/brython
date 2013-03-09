@@ -315,7 +315,7 @@ function $AttrCtx(context){
     this.to_js = function(){
         var name = this.name
         if(name.substr(0,2)==='$$'){name=name.substr(2)}
-        if(name.substr(0,2)!=='__'){name='__'+this.func+'__("'+name+'")'}
+        if(name!=='__getattr__'){name='__'+this.func+'__("'+name+'")'}
         return this.value.to_js()+'.'+name
     }
 }
