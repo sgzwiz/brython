@@ -48,7 +48,7 @@ function bool(obj){ // return true or false
     if(obj===null){return False}
     else if(obj===undefined){return False}
     else if(isinstance(obj,dict)){return obj.keys.length>0}
-    else if(isinstance(obj,tuple)){return obj.items.length>0}
+    else if(isinstance(obj,tuple)){return obj.length>0}
     else if(typeof obj==="boolean"){return obj}
     else if(typeof obj==="number" || typeof obj==="string"){
         if(obj){return true}else{return false}
@@ -748,7 +748,7 @@ function $print(){
         if(i<args.length-1){res += ' '}
     }
     res += end
-    document.$stdout.write(res)
+    document.$stdout.__getattr__('write')(res)
 }
 
 // compatibility with previous versions
