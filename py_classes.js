@@ -748,7 +748,7 @@ function $print(){
         if(i<args.length-1){res += ' '}
     }
     res += end
-    document.$stdout.__getattr__('write')(res)
+    document.$stdout.write(res)
 }
 
 // compatibility with previous versions
