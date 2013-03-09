@@ -5,7 +5,7 @@ function str(arg){
     else if(arg.__str__!==undefined){return arg.__str__()}
     else{return arg.toString()}
 }
-str.__class__ = $type
+
 str.__name__ = 'str'
 str.__str__ = function(){return "<class 'str'>"}
 str.toString = str.__str__
@@ -22,6 +22,7 @@ str.__add__ = function(self,other){
     }
 }
 
+str.__class__ = $type
 
 str.__contains__ = function(self,item){
     if(!(typeof item==="string")){throw TypeError(
@@ -498,6 +499,7 @@ str.upper = function(self){return self.toUpperCase()}
 String.prototype.__class__ = str
 
 String.prototype.__getattr__ = function(attr){
+    if(attr==='__class__'){return str}
     var obj = this
     var res = function(){
         var args = [obj]
