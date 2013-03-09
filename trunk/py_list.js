@@ -355,6 +355,7 @@ function $ListClass(items){
 Array.prototype.__class__ = list
 
 Array.prototype.__getattr__ = function(attr){
+    if(attr==='__class__'){return this.__class__} // may be list or tuple
     var obj = this
     var res = function(){
         var args = [obj]
