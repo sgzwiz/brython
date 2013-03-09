@@ -65,37 +65,32 @@ function $import_js(module,alias,names){
     }catch(err){throw ImportError(err.message)}
 }
 
-function $import_py(module,alias,names){
+function $import_py_search_path(module,alias,names){
     // try all paths in __BRYTHON__.path
-    var flag = false
+    var modnames = [module, '__init__']
     for(var i=0;i<__BRYTHON__.path.length;i++){
-        relpath = __BRYTHON__.path[i]
-        try{
-            $import_py1(module,alias,names,relpath)
-            flag = true
-        }catch(err){
-            if(err.name!=='ImportError'){throw err}
-        }
-        if(flag){break}
-        relpath = __BRYTHON__.path[i]+'/'+module
-        try{
-            $import_py1('__init__',alias,names,relpath)
-            flag = true
-        }catch(err){ 
-            if(err.name!=='ImportError'){throw err}
-        }
-        if(flag){break}
+       for(var j=0; j < modnames.length; j++) {
+           var path = __BRYTHON__.path[i]
+           if (modnames[j] == '__init__') path += '/' + module
+
+           try {
+             $import_py(module,alias,names,path)
+             return
+           }catch(err){
+             if(err.name!=='ImportError'){throw err}
+           }
+       }
     }
-    if(!flag){throw ImportError("No module named '"+module+"'")}
-    
+    // if we get here, we couldn't import the module
+    throw ImportError("No module named '"+module+"'")
 }
 
-function $import_py1(module,alias,names,relpath){
+function $import_py(module,alias,names,path){
     // import Python modules, in the same folder as the HTML page with
     // the Brython script
     var imp = $importer()
     var $xmlhttp = imp[0],fake_qs=imp[1],timer=imp[2],res=null
-    var module_path;
+
     $xmlhttp.onreadystatechange = function(){
         if($xmlhttp.readyState==4){
             window.clearTimeout(timer)
@@ -107,20 +102,13 @@ function $import_py1(module,alias,names,relpath){
         }
     }
    
-    module_path=relpath+"/"+ module + ".py";
-    $xmlhttp.open('GET',module_path+fake_qs,false)
+    
+    var module_path= path+'/'+module+'.py'
+    $xmlhttp.open('GET', module_path+fake_qs,false)
     $xmlhttp.send()
 
-    // patch by Bill Earney
-    if (relpath === undefined && res.constructor===Error){
-      // try seeing if import candidate is really a dir name with __init__.py
-      module_path=document.$brython_path+"tests/"+module + "/__init__.py";
-      res=null
-      $xmlhttp.open('GET',module+'/__init__.py'+fake_qs,false)
-      $xmlhttp.send()
-    }
-
     if(res.constructor===Error){res.name='ImportError';throw res} // module not found
+
     document.$py_module_path[module]=module_path
     var root = __BRYTHON__.py2js(res,module)
     var body = root.children
@@ -195,7 +183,7 @@ function $import_py1(module,alias,names,relpath){
     }
 }
 
-$import_funcs = [$import_js,$import_py]
+$import_funcs = [$import_js,$import_py_search_path]
 
 function $import_single(name,alias,names){
     for(var j=0;j<$import_funcs.length;j++){
