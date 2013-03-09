@@ -75,6 +75,18 @@ function $class(obj,info){
 function $confirm(src){return confirm(src)}
 
 // dictionary
+
+function $DictClass($keys,$values){
+    // JS dict objects are indexed by strings, not by arbitrary objects
+    // so we must use 2 arrays, one for keys and one for values
+    var x = null;
+    var i = null;
+    this.iter = null
+    this.__class__ = dict
+    this.$keys = $keys // JS Array
+    this.$values = $values // idem
+}
+
 function dict(){
     if(arguments.length==0){return new $DictClass([],[])}
     else if(arguments.length===1 && isinstance(arguments[0],dict)){
@@ -95,67 +107,46 @@ function dict(){
         return kw
     }
 }
-dict.__class__ = $type
+
 dict.__name__ = 'dict'
 dict.toString = function(){return "<class 'dict'>"}
 
-function $DictClass($keys,$values){
-    // JS dict objects are indexed by strings, not by arbitrary objects
-    // so we must use 2 arrays, one for keys and one for values
-    var x = null;
-    var i = null;
-    this.iter = null
-    this.__class__ = dict
-    this.$keys = $keys // JS Array
-    this.$values = $values // idem
-}
 
-$DictClass.prototype.toString = function(){
-    if(this.$keys.length==0){return '{}'}
-    var res = "{",key=null,value=null,i=null        
-    var qesc = new RegExp('"',"g") // to escape double quotes in arguments
-    for(var i=0;i<this.$keys.length;i++){
-        if(typeof this.$keys[i]==="string"){key='"'+$escape_dq(this.$keys[i])+'"'}
-        else{key = str(this.$keys[i])}
-        if(typeof this.$values[i]==="string"){value='"'+$escape_dq(this.$values[i])+'"'}
-        else{value = str(this.$values[i])}
-        res += key+':'+value+','
-    }
-    return res.substr(0,res.length-1)+'}'
-}
-
-$DictClass.prototype.__add__ = function(other){
+dict.__add__ = function(self,other){
     var msg = "unsupported operand types for +:'dict' and "
     throw TypeError(msg+"'"+(str(other.__class__) || typeof other)+"'")
 }
 
-$DictClass.prototype.__class__ = dict
+dict.__class__ = $type
 
-$DictClass.prototype.__contains__ = function(item){
-    return this.$keys.__contains__(item)
+dict.__contains__ = function(self,item){
+    return self.$keys.__contains__(item)
 }
 
-$DictClass.prototype.__delitem__ = function(arg){
+dict.__delitem__ = function(self,arg){
     // search if arg is in the keys
-    for(var i=0;i<this.$keys.length;i++){
-        if(arg.__eq__(this.$keys[i])){
-            this.$keys.splice(i,1)
-            this.$values.splice(i,1)
+    for(var i=0;i<self.$keys.length;i++){
+        if(arg.__eq__(self.$keys[i])){
+            self.$keys.splice(i,1)
+            self.$values.splice(i,1)
             return
         }
     }
     throw KeyError(str(arg))
 }
 
-$DictClass.prototype.__eq__ = function(other){
+dict.__eq__ = function(self,other){
+    if(other===undefined){ // compare self to class "dict"
+        return self===dict
+    }
     if(!isinstance(other,dict)){return False}
-    if(other.$keys.length!==this.$keys.length){return False}
-    for(var i=0;i<this.$keys.length;i++){
-        var key = this.$keys[i]
+    if(other.$keys.length!==self.$keys.length){return False}
+    for(var i=0;i<self.$keys.length;i++){
+        var key = self.$keys[i]
         for(j=0;j<other.$keys.length;j++){
             try{
                 if(other.$keys[j].__eq__(key)){
-                    if(!other.$values[j].__eq__(this.$values[i])){
+                    if(!other.$values[j].__eq__(self.$values[i])){
                         return False
                     }
                 }
@@ -165,46 +156,47 @@ $DictClass.prototype.__eq__ = function(other){
     return True
 }
 
-$DictClass.prototype.__getattr__ = function(attr){
-    return $getattr(this,attr)
+dict.__getattr__ = function(attr){
+    if(this[attr]!==undefined){return this[attr]}
+    else{throw AttributeError("'dict' object has no attribute '"+attr+"'")}
 }
 
-$DictClass.prototype.__getitem__ = function(arg){
+dict.__getitem__ = function(self,arg){
     // search if arg is in the keys
-    for(var i=0;i<this.$keys.length;i++){
-        if(arg.__eq__(this.$keys[i])){return this.$values[i]}
+    for(var i=0;i<self.$keys.length;i++){
+        if(arg.__eq__(self.$keys[i])){return self.$values[i]}
     }
     throw KeyError(str(arg))
 }
 
-$DictClass.prototype.__hash__ = function() {throw TypeError("unhashable type: 'dict'");}
+dict.__hash__ = function(self) {throw TypeError("unhashable type: 'dict'");}
 
-$DictClass.prototype.__in__ = function(item){return item.__contains__(this)}
+dict.__in__ = function(self,item){return item.__contains__(self)}
 
-$DictClass.prototype.__item__ = function(i){return this.$keys[i]}
+dict.__item__ = function(self,i){return self.$keys[i]}
 
-$DictClass.prototype.__len__ = function() {return this.$keys.length}
+dict.__len__ = function(self) {return self.$keys.length}
 
-$DictClass.prototype.__ne__ = function(other){return !this.__eq__(other)}
+dict.__ne__ = function(self,other){return !dict.__eq__(self,other)}
 
-$DictClass.prototype.__next__ = function(){
-    if(this.iter==null){this.iter==0}
-    if(this.iter<this.$keys.length){
-        this.iter++
-        return this.$keys[this.iter-1]
+dict.__next__ = function(self){
+    if(self.iter==null){self.iter==0}
+    if(self.iter<self.$keys.length){
+        self.iter++
+        return self.$keys[self.iter-1]
     } else {
-        this.iter = null
+        self.iter = null
         throw StopIteration()
     }
 }
 
-$DictClass.prototype.__not_in__ = function(item){return !(item.__contains__(this))}
+dict.__not_in__ = function(self,item){return !(item.__contains__(self))}
 
-$DictClass.prototype.__setitem__ = function(key,value){
-    for(var i=0;i<this.$keys.length;i++){
+dict.__setitem__ = function(self,key,value){
+    for(var i=0;i<self.$keys.length;i++){
         try{
-            if(key.__eq__(this.$keys[i])){ // reset value
-                this.$values[i]=value
+            if(key.__eq__(self.$keys[i])){ // reset value
+                self.$values[i]=value
                 return
             }
         }catch(err){ // if __eq__ throws an exception
@@ -212,21 +204,64 @@ $DictClass.prototype.__setitem__ = function(key,value){
         }
     }
     // create a new key/value
-    this.$keys.push(key)
-    this.$values.push(value)
+    self.$keys.push(key)
+    self.$values.push(value)
 }
 
-$DictClass.prototype.items = function(){
-    return new $iterator(zip(this.$keys,this.$values),"dict_items")
+dict.__str__ = function(self){
+    if(self===undefined){return "<class 'dict'>"}
+    if(self.$keys.length==0){return '{}'}
+    var res = "{",key=null,value=null,i=null        
+    var qesc = new RegExp('"',"g") // to escape double quotes in arguments
+    for(var i=0;i<self.$keys.length;i++){
+        if(typeof self.$keys[i]==="string"){key='"'+$escape_dq(self.$keys[i])+'"'}
+        else{key = str(self.$keys[i])}
+        if(typeof self.$values[i]==="string"){value='"'+$escape_dq(self.$values[i])+'"'}
+        else{value = str(self.$values[i])}
+        res += key+':'+value+','
+    }
+    return res.substr(0,res.length-1)+'}'
 }
 
-$DictClass.prototype.keys = function(){
-    return new $iterator(this.$keys,"dict keys")
+dict.items = function(self){
+    return new $iterator(zip(self.$keys,self.$values),"dict_items")
 }
 
-$DictClass.prototype.values = function(){
-    return new $iterator(this.$values,"dict values")
+dict.keys = function(self){
+    return new $iterator(self.$keys,"dict keys")
 }
+
+dict.values = function(self){
+    return new $iterator(self.$values,"dict values")
+}
+
+$DictClass.prototype.__class__ = dict
+
+$DictClass.prototype.__getattr__ = function(attr){
+    if(attr==='__class__'){return this.__class__}
+    var obj = this
+    var res = function(){
+        var args = [obj]
+        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+        return dict[attr].apply(obj,args)
+    }
+    res.__str__ = function(){return "<built-in method "+attr+" of dict object>"}
+    return res
+}
+
+// set other $DictClass.prototype attributes
+for(var attr in dict){
+    if($DictClass.prototype[attr]===undefined){
+        $DictClass.prototype[attr]=(function(attr){
+            return function(){
+                var args = [this]
+                for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+                return dict[attr].apply(this,args)
+            }
+        })(attr)
+    }
+}
+
 
 function dir(obj){
     var res = []
@@ -256,7 +291,7 @@ function $eval(src){
 function exec(src){
     try{eval(__BRYTHON__.py2js(src).to_js())}
     catch(err){
-        if(err.py_error===undefined){err = RuntimeError(err.message)}
+        if(err.py_error===undefined){console.log(err);err = RuntimeError(err+'')}
         var trace = err.__name__+': '+err.message+err.info
         if(document.$stderr){document.$stderr.__getattr__('write')(trace)}
         else{console.log(trace)}
@@ -343,6 +378,11 @@ $FloatClass.prototype.__floordiv__ = function(other){
     }else{throw TypeError(
         "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
     }
+}
+
+$FloatClass.prototype.__getattr__ = function(attr){
+    if(this[attr]!==undefined){return this[attr]}
+    else{throw AttributeError("'float' object has no attribute '"+attr+"'")}
 }
 
 $FloatClass.prototype.__hash__=float.__hash__;
@@ -471,8 +511,10 @@ Number.prototype.__floordiv__ = function(other){
     }else{$UnsupportedOpType("//","int",other.__class__)}
 }
 
-Number.prototype.__getattr__ = function(attr){throw AttributeError(
-    "'int' object has no attribute '"+attr+"'")}
+Number.prototype.__getattr__ = function(attr){
+    if(this[attr]!==undefined){return this[attr]}
+    throw AttributeError("'int' object has no attribute '"+attr+"'")
+}
 
 Number.prototype.__hash__ = function(){return this.valueOf()}
 
@@ -742,7 +784,7 @@ function $print(){
     var kw = $ns['kw']
     var end = '\n'
     var res = ''
-    if(kw.__contains__('end')){end=kw.__getitem__('end')}
+    if(kw['end']!==undefined){end=kw['end']}
     for(var i=0;i<args.length;i++){
         res += str(args[i])
         if(i<args.length-1){res += ' '}
@@ -878,6 +920,11 @@ $SetClass.prototype.__eq__ = function(other){
         }
     }
     return False
+}
+
+$SetClass.prototype.__getattr__ = function(attr){
+    if(this[attr]!==undefined){return this[attr]}
+    else{throw AttributeError("'set' object has no attribute '"+attr+"'")}
 }
 
 $SetClass.prototype.__hash__ = set.__hash__
