@@ -16,3 +16,7 @@ HelloWorld
 [GetRequest Send a GET request]
 
 [LoadFile Load a file content]
+
+= SVG =
+
+[CreateSvg Create a simple SVG graphic]
