@@ -16,6 +16,7 @@ assert x == ['a','tail',[0,1]]
 
 assert x.count('a')==1
 x.extend(['u','v'])
+
 assert x==['a','tail',[0,1],'u','v']
 
 assert x.index('u')==3
@@ -32,5 +33,15 @@ assert x==['a','u']
 x = ['a','r','bg','Z']
 x.reverse()
 assert x==['Z','bg','r','a']
+
+del x[0]
+assert x == ['bg','r','a']
+del x[-1]
+assert x == ['bg','r']
+
+x += ['zz']
+assert x == ['bg','r','zz']
+
+assert x[1] == 'r'
 
 print("passed all tests..")
