@@ -14,13 +14,16 @@
 <script src="../py_ajax.js"></script>
 <script src="../py_local_storage.js"></script>
 
-
 <script type="text/python">
 import sys
 import time
 import random
 import dis
 
+_rand=random.random()   #do we need to have a new random number each time
+                        #we load a module, during a single execution?
+                        #probably okay to use cached module if module is 
+                        #needed again during a single execution.
 output = ''
 
 sys.stdout = object()
@@ -31,8 +34,12 @@ sys.stdout.write = write
 sys.stderr = object()
 sys.stderr.write = write
 
-def to_str(x):
-    return str(x)
+#def to_str(x):     # we aren't using this function
+#    return str(x)
+
+def clear_text():
+    doc["src"].value=''
+    doc["console"].value=''
 
 # override log to send output to textarea
 def log(data):
@@ -45,7 +52,14 @@ def on_complete(req):
 def load(_name):
     req = ajax()
     req.on_complete = on_complete
-    req.open('GET',_name+'?foo=%s' %random.random(),False)
+    req.open('GET',_name+'?foo=%s' % random.random(),False)
+    req.send()
+
+def load1(evt):
+    _name=evt.target.value
+    req = ajax()
+    req.on_complete = on_complete
+    req.open('GET',_name+'?foo=%s' % _rand,False)
     req.send()
 
 def show_console():
@@ -60,12 +74,11 @@ def run():
     t0 = time.time()
     exec(src)
     output = doc["console"].value
-    print('<done in %s ms>' %(time.time()-t0))
+    print('<completed in %s ms>' %(time.time()-t0))
 
 def show_js():
     src = doc["src"].value
     doc["console"].value = dis.dis(src)
-
 </script>
 </head>
 <body onload="brython(1)">
@@ -82,6 +95,26 @@ def show_js():
 </tr>
 </table>
 
+<div style="text-align:center">
+<img src="../brython.png"></img><br><b>browser python</b>
+</div>
+
+<p>
+Choose a test suite:
+<select name="filename" onChange="load1(event)">
+  <option value="test_suite.py">general test suite</option>
+  <option value="classes_tests.py">built-in classes</option>
+  <option value="test_classes.py">classes</option>
+  <option value="test_datetime.py">datetime</option>
+  <option value="dom_objects.py">DOM</option>
+  <option value="issues.py">issues</option>
+  <option value="test_list_methods.py">list methods</option>
+  <option value="test_math.py">math</option>
+  <option value="test_hashlib.py">hashlib</option>
+  <option value="test_strings.py">strings</option>
+</select>
+
+<!--
 <button onClick="load('test_suite.py')">test_suite.py</button>
 <button onClick="load('classes_tests.py')">built-in classes</button>
 <button onClick="load('test_strings.py')">strings</button>
@@ -92,10 +125,8 @@ def show_js():
 <button onClick="load('test_classes.py')">classes</button>
 <button onClick="load('issues.py')">issues</button>
 <button onClick="load('dom_objects.py')">dom_objects.py</button>
+-->
 
-<div style="text-align:center">
-<img src="../brython.png"></img><br><b>browser python</b>
-</div>
 <p>
 <table width=80%>
 <tr><td style="text-align:center"><b>Python</b>
@@ -107,6 +138,8 @@ def show_js():
 <tr>
 <td colspan><textarea id="src" cols=60 rows=20></textarea></td>
 <td><button onClick="run()">run</button>
+<p>
+<button onClick="clear_text()">clear</button></td>
 <td colspan=2><textarea id="console" cols=60 rows=20></textarea></td>
 </tr>
 </table>
