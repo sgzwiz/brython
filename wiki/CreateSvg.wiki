@@ -20,13 +20,14 @@ Here is how you can insert a SVG graphic in the "panel" :
 
 {{{
 import svg
-svg_window = svg.svg(width="800", height="100")
-svg_text = svg.text('old',x=350,y=45,
+svg_text = svg.text('old',x=20,y=45,
             font_size=20,text_anchor="middle",
             style={"stroke":"navy", 'fill':"navy"})
+svg_rect = svg.rect(x=10,y=60,width=30,height=50,
+    style={"fill":"rgb(0,0,255)","stroke-width":1,"stroke":"rgb(0,0,0)"})
+    
 panel = doc['panel']
-svg_window <= svg_text
-panel<= svg_window
+panel <= svg_text + svg_rect # add SVG elements to panel
 # reset text
 svg_text.text = "new"
 }}}
