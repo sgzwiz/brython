@@ -308,6 +308,7 @@ document.$stderr = {'write':function(data){void(0)}}
 document.$stderr_buff = '' // buffer for standard output
 
 document.$stdout = {
+    __getattr__:function(attr){return this[attr]},
     write: function(data){console.log(data)}
 }
 
