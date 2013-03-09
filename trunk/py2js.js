@@ -793,7 +793,12 @@ function $FromCtx(context){
     context.tree.push(this)
     this.expect = 'module'
     this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module}
-    this.to_js = function(){ return '$import_from("'+this.module+'",'+this.names+', "' + this.parent_module +'");\n'}
+    this.to_js = function(){ 
+        var res = '$import_from("'+this.module+'",['+this.names+']'
+        if(this.parent_module!==undefined){res+=', "' + this.parent_module +'"'}
+        res += ')\n'
+        return res
+    }
 }
 
 function $FuncArgs(context){
@@ -1777,13 +1782,13 @@ function $transition(context,token){
             context.expect = 'id'
             return context
         }else if(token==='id' && context.expect==='id'){
-            context.names.push(arguments[2])
+            context.names.push('"'+arguments[2]+'"')
             context.expect = ','
             return context
         }else if(token==='op' && arguments[2]==='*' 
             && context.expect==='id'
             && context.names.length ===0){
-            context.names.push(arguments[2])
+            context.names.push('"*"')
             context.expect = 'eol'
             return context
         }else if(token===',' && context.expect===','){

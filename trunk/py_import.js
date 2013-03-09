@@ -74,15 +74,15 @@ function $import_py(module,alias,names){
             $import_py1(module,alias,names,relpath)
             flag = true
         }catch(err){
-            void(0)
+            if(err.name!=='ImportError'){throw err}
         }
         if(flag){break}
         relpath = __BRYTHON__.path[i]+'/'+module
         try{
             $import_py1('__init__',alias,names,relpath)
             flag = true
-        }catch(err){ console.log(err)
-            void(0)
+        }catch(err){ 
+            if(err.name!=='ImportError'){throw err}
         }
         if(flag){break}
     }
@@ -224,12 +224,12 @@ function $import_from(module,names,parent_module){
     var relpath;
     var alias=module;
 
-    if (parent_module !== "undefined") {
+    if (parent_module !== undefined) {
        //this is a relative path import
        // ie,  from .mymodule import a,b,c
        //get parent module
 
-       throw ImportError('from .. import .. not supported yet');
+       //throw ImportError('from .. import .. not supported yet');
 
        relpath=document.$py_module_path[parent_module];
        var i=relpath.lastIndexOf('/');
