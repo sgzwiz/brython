@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130309-081246
+// version 1.1.20130309-102509
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -12,7 +12,7 @@ arguments[4],arguments[5],arguments[6]))}
 }
 __BRYTHON__.has_local_storage=typeof(Storage)!=="undefined"
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130309-081246"]
+__BRYTHON__.version_info=[1,1,"20130309-102509"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -56,7 +56,7 @@ function bool(obj){
 if(obj===null){return False}
 else if(obj===undefined){return False}
 else if(isinstance(obj,dict)){return obj.keys.length>0}
-else if(isinstance(obj,tuple)){return obj.items.length>0}
+else if(isinstance(obj,tuple)){return obj.length>0}
 else if(typeof obj==="boolean"){return obj}
 else if(typeof obj==="number" || typeof obj==="string"){
 if(obj){return true}else{return false}
@@ -1784,32 +1784,25 @@ eval(names[i]+'=$module[names[i]]')
 }
 }catch(err){throw ImportError(err.message)}
 }
-function $import_py(module,alias,names){
-var flag=false
+function $import_py_search_path(module,alias,names){
+var modnames=[module, '__init__']
 for(var i=0;i<__BRYTHON__.path.length;i++){
-relpath=__BRYTHON__.path[i]
+for(var j=0;j < modnames.length;j++){
+var path=__BRYTHON__.path[i]
+if(modnames[j]=='__init__')path +='/' + module
 try{
-$import_py1(module,alias,names,relpath)
-flag=true
+$import_py(module,alias,names,path)
+return
 }catch(err){
 if(err.name!=='ImportError'){throw err}
 }
-if(flag){break}
-relpath=__BRYTHON__.path[i]+'/'+module
-try{
-$import_py1('__init__',alias,names,relpath)
-flag=true
-}catch(err){
-if(err.name!=='ImportError'){throw err}
 }
-if(flag){break}
 }
-if(!flag){throw ImportError("No module named '"+module+"'")}
+throw ImportError("No module named '"+module+"'")
 }
-function $import_py1(module,alias,names,relpath){
+function $import_py(module,alias,names,path){
 var imp=$importer()
 var $xmlhttp=imp[0],fake_qs=imp[1],timer=imp[2],res=null
-var module_path
 $xmlhttp.onreadystatechange=function(){
 if($xmlhttp.readyState==4){
 window.clearTimeout(timer)
@@ -1819,15 +1812,9 @@ res=Error('ImportError',"No module named '"+module+"'")
 }
 }
 }
-module_path=relpath+"/"+ module + ".py"
-$xmlhttp.open('GET',module_path+fake_qs,false)
+var module_path=path+'/'+module+'.py'
+$xmlhttp.open('GET', module_path+fake_qs,false)
 $xmlhttp.send()
-if(relpath===undefined && res.constructor===Error){
-module_path=document.$brython_path+"tests/"+module + "/__init__.py"
-res=null
-$xmlhttp.open('GET',module+'/__init__.py'+fake_qs,false)
-$xmlhttp.send()
-}
 if(res.constructor===Error){res.name='ImportError';throw res}
 document.$py_module_path[module]=module_path
 var root=__BRYTHON__.py2js(res,module)
@@ -1891,7 +1878,7 @@ eval(alias+'.__file__ = "' + module_path + '"')
 eval('throw '+err.name+'(err.message)')
 }
 }
-$import_funcs=[$import_js,$import_py]
+$import_funcs=[$import_js,$import_py_search_path]
 function $import_single(name,alias,names){
 for(var j=0;j<$import_funcs.length;j++){
 try{$import_funcs[j](name,alias,names);return}
@@ -4451,12 +4438,14 @@ function $escape_dq(arg){return arg.replace($dq_regexp,'\\"')}
 document.$stderr={'write':function(data){void(0)}}
 document.$stderr_buff='' 
 document.$stdout={
+__getattr__:function(attr){return this[attr]},
 write: function(data){console.log(data)}
 }
 function $type(){}
 $type.__class__=$type
 $type.__name__='type'
-$type.toString=function(){return "<class 'type'>"}
+$type.__str__=function(){return "<class 'type'>"}
+$type.toString=$type.__str__
 function $UnsupportedOpType(op,class1,class2){
 $raise('TypeError',
 "unsupported operand type(s) for "+op+": '"+class1+"' and '"+class2+"'")
