@@ -19,80 +19,75 @@ function list(){
     return res
 }
 
-list.__add__ = function(Self){
-    return function(other){
-        var res = Self.valueOf().concat(other.valueOf())
-        if(isinstance(Self,tuple)){res = tuple.apply(Self,res)}
-        return res
-    }
+list.__add__ = function(self,other){
+    var res = self.valueOf().concat(other.valueOf())
+    if(isinstance(self,tuple)){res = tuple.apply(self,res)}
+    return res
 }
 
 list.__class__ = $type
 
-list.__contains__ = function(Self){
-    return function(item){
-        for(var i=0;i<Self.length;i++){
-            try{if(Self[i].__eq__(item)){return true}
-            }catch(err){void(0)}
-        }
-        return false
+list.__contains__ = function(self,item){
+    for(var i=0;i<self.length;i++){
+        try{if(self[i].__eq__(item)){return true}
+        }catch(err){void(0)}
     }
+    return false
 }
 
-list.__delitem__ = function(Self){
-    return function(arg){
-        if(isinstance(arg,int)){
-            var pos = arg
-            if(arg<0){pos=Self.length+pos}
-            if(pos>=0 && pos<Self.length){
-                Self.splice(pos,1)
-                return
-            }
-            else{throw IndexError('list index out of range')}
-        } else if(isinstance(arg,slice)) {
-            var start = arg.start || 0
-            var stop = arg.stop || Self.length
-            var step = arg.step || 1
-            if(start<0){start=Self.length+start}
-            if(stop<0){stop=Self.length+stop}
-            var res = [],i=null
-            if(step>0){
-                if(stop>start){
-                    for(i=start;i<stop;i+=step){
-                        if(Self[i]!==undefined){res.push(i)}
-                    }
-                }
-            } else {
-                if(stop<start){
-                    for(i=start;i>stop;i+=step.value){
-                        if(Self[i]!==undefined){res.push(i)}
-                    }
-                    res.reverse() // must be in ascending order
-                }
-            }
-            // delete items from left to right
-            for(var i=res.length-1;i>=0;i--){
-                Self.splice(res[i],1)
-            }
+list.__delitem__ = function(self,arg){
+    if(isinstance(arg,int)){
+        var pos = arg
+        if(arg<0){pos=self.length+pos}
+        if(pos>=0 && pos<self.length){
+            self.splice(pos,1)
             return
-        } else {
-            throw TypeError('list indices must be integer, not '+str(arg.__class__))
         }
+        else{throw IndexError('list index out of range')}
+    } else if(isinstance(arg,slice)) {
+        var start = arg.start || 0
+        var stop = arg.stop || self.length
+        var step = arg.step || 1
+        if(start<0){start=self.length+start}
+        if(stop<0){stop=self.length+stop}
+        var res = [],i=null
+        if(step>0){
+            if(stop>start){
+                for(i=start;i<stop;i+=step){
+                    if(self[i]!==undefined){res.push(i)}
+                }
+            }
+        } else {
+            if(stop<start){
+                for(i=start;i>stop;i+=step.value){
+                    if(self[i]!==undefined){res.push(i)}
+                }
+                res.reverse() // must be in ascending order
+            }
+        }
+        // delete items from left to right
+        for(var i=res.length-1;i>=0;i--){
+            self.splice(res[i],1)
+        }
+        return
+    } else {
+        throw TypeError('list indices must be integer, not '+str(arg.__class__))
     }
 }
 
-list.__eq__ = function(Self){
-    return function(other){
-        if(isinstance(other,Self.__class__)){
-            if(other.length==Self.length){
-                for(var i=0;i<Self.length;i++){
-                    if(!Self[i].__eq__(other[i])){return False}
-                }
-                return True
-            }
-        }
-        return False
+list.__eq__ = function(self,other){
+    if(other===undefined){ // compare object "self" to class "list"
+        return self===list
     }
+    if(isinstance(other,self.__class__)){
+        if(other.length==self.length){
+            for(var i=0;i<self.length;i++){
+                if(!self[i].__eq__(other[i])){return False}
+            }
+            return True
+        }
+    }
+    return False
 }
 
 list.__getattr__ = function(attr){
@@ -112,212 +107,188 @@ list.__getattr__ = function(attr){
     }
 }
 
-list.__getitem__ = function(Self){
-    return function(arg){
-        if(isinstance(arg,int)){
-            var items=Self.valueOf()
-            var pos = arg
-            if(arg<0){pos=items.length+pos}
-            if(pos>=0 && pos<items.length){return items[pos]}
-            else{
-                throw IndexError('list index out of range')
-            }
-        } else if(isinstance(arg,slice)) {
-            var step = arg.step===None ? 1 : arg.step
-            if(step>0){
-                var start = arg.start===None ? 0 : arg.start
-                var stop = arg.stop===None ? Self.__len__() : arg.stop
-            }else{
-                var start = arg.start===None ? Self.__len__()-1 : arg.start
-                var stop = arg.stop===None ? 0 : arg.stop
-            }
-            if(start<0){start=int(Self.length+start)}
-            if(stop<0){stop=Self.length+stop}
-            var res = [],i=null,items=Self.valueOf()
-            if(step>0){
-                if(stop<=start){return res}
-                else {
-                    for(i=start;i<stop;i+=step){
-                        if(items[i]!==undefined){res.push(items[i])}
-                    }
-                    return res
-                }
-            } else {
-                if(stop>=start){return res}
-                else {
-                    for(i=start;i>=stop;i+=step){
-                        if(items[i]!==undefined){res.push(items[i])}
-                    }
-                    return res
-                }
-            } 
-        } else if(isinstance(arg,bool)){
-            return Self.__getitem__(int(arg))
-        } else {
-            throw TypeError('list indices must be integer, not '+str(arg.__class__))
+list.__getitem__ = function(self,arg){
+    if(isinstance(arg,int)){
+        var items=self.valueOf()
+        var pos = arg
+        if(arg<0){pos=items.length+pos}
+        if(pos>=0 && pos<items.length){return items[pos]}
+        else{
+            throw IndexError('list index out of range')
         }
+    } else if(isinstance(arg,slice)) {
+        var step = arg.step===None ? 1 : arg.step
+        if(step>0){
+            var start = arg.start===None ? 0 : arg.start
+            var stop = arg.stop===None ? self.__len__() : arg.stop
+        }else{
+            var start = arg.start===None ? self.__len__()-1 : arg.start
+            var stop = arg.stop===None ? 0 : arg.stop
+        }
+        if(start<0){start=int(self.length+start)}
+        if(stop<0){stop=self.length+stop}
+        var res = [],i=null,items=self.valueOf()
+        if(step>0){
+            if(stop<=start){return res}
+            else {
+                for(i=start;i<stop;i+=step){
+                    if(items[i]!==undefined){res.push(items[i])}
+                }
+                return res
+            }
+        } else {
+            if(stop>=start){return res}
+            else {
+                for(i=start;i>=stop;i+=step){
+                    if(items[i]!==undefined){res.push(items[i])}
+                }
+                return res
+            }
+        } 
+    } else if(isinstance(arg,bool)){
+        return self.__getitem__(int(arg))
+    } else {
+        throw TypeError('list indices must be integer, not '+str(arg.__class__))
     }
 }
 
-list.__hash__ = function(Self){return function(){throw TypeError("unhashable type: 'list'")}}
+list.__hash__ = function(self){throw TypeError("unhashable type: 'list'")}
 
-list.__in__ = function(Self){return function(item){return item.__contains__(Self)}}
+list.__in__ = function(self,item){return item.__contains__(self)}
 
-list.__init__ = function(Self){
-    return function(){
-        Self.splice(0,Self.length)
-        if(arguments.length===0){return}
-        var arg = arguments[0]
-        for(var i=0;i<arg.__len__();i++){Self.push(arg.__item__(i))}
-    }
+list.__init__ = function(self){
+    self.splice(0,self.length)
+    if(arguments.length===1){return}
+    var arg = arguments[1]
+    for(var i=0;i<arg.__len__();i++){self.push(arg.__item__(i))}
 }
 
-list.__item__ = function(Self){return function(i){return Self[i]}}
+list.__item__ = function(self,i){return self[i]}
 
-list.__len__ = function(Self){return function(){return Self.length}}
+list.__len__ = function(self){return self.length}
 
-list.__mul__ = function(Self){
-    return function(other){
-        if(isinstance(other,int)){return other.__mul__(Self)}
-        else{throw TypeError("can't multiply sequence by non-int of type '"+other.__name+"'")}
-    }
+list.__mul__ = function(self,other){
+    if(isinstance(other,int)){return other.__mul__(self)}
+    else{throw TypeError("can't multiply sequence by non-int of type '"+other.__name+"'")}
 }
 
 list.__name__ = 'list'
 
-list.__ne__ = function(Self){return function(other){return !Self.__eq__(other)}}
+list.__ne__ = function(self,other){return !self.__eq__(other)}
 
-list.__next__ = function(Self){
-    return function(){
-        if(Self.iter===null){Self.iter=0}
-        if(Self.iter<Self.valueOf().length){
-            Self.iter++
-            return Self.valueOf()[Self.iter-1]
-        } else {
-            Self.iter = null
-            throw StopIteration()
-        }
+list.__next__ = function(self){
+    if(self.iter===null){self.iter=0}
+    if(self.iter<self.valueOf().length){
+        self.iter++
+        return self.valueOf()[self.iter-1]
+    } else {
+        self.iter = null
+        throw StopIteration()
     }
 }
 
-list.__not_in__ = function(Self){return function(item){return !item.__contains__(Self)}}
+list.__not_in__ = function(self,item){return !item.__contains__(self)}
 
-list.__setitem__ = function(Self){
-    return function(arg,value){
-        if(isinstance(arg,int)){
-            var pos = arg
-            if(arg<0){pos=Self.length+pos}
-            if(pos>=0 && pos<Self.length){Self[pos]=value}
-            else{throw IndexError('list index out of range')}
-        } else if(isinstance(arg,slice)){
-            var start = arg.start===None ? 0 : arg.start
-            var stop = arg.stop===None ? Self.__len__() : arg.stop
-            var step = arg.step===None ? 1 : arg.step
-            if(start<0){start=Self.length+start}
-            if(stop<0){stop=Self.length+stop}
-            Self.splice(start,stop-start)
-            // copy items in a temporary JS array
-            // otherwise, a[:0]=a fails
-            if(hasattr(value,'__item__')){
-                var $temp = list(value)
-                for(var i=$temp.length-1;i>=0;i--){
-                    Self.splice(start,0,$temp[i])
-                }
-            }else{
-                throw TypeError("can only assign an iterable")
+list.__setitem__ = function(self,arg,value){
+    if(isinstance(arg,int)){
+        var pos = arg
+        if(arg<0){pos=self.length+pos}
+        if(pos>=0 && pos<self.length){self[pos]=value}
+        else{throw IndexError('list index out of range')}
+    } else if(isinstance(arg,slice)){
+        var start = arg.start===None ? 0 : arg.start
+        var stop = arg.stop===None ? self.__len__() : arg.stop
+        var step = arg.step===None ? 1 : arg.step
+        if(start<0){start=self.length+start}
+        if(stop<0){stop=self.length+stop}
+        self.splice(start,stop-start)
+        // copy items in a temporary JS array
+        // otherwise, a[:0]=a fails
+        if(hasattr(value,'__item__')){
+            var $temp = list(value)
+            for(var i=$temp.length-1;i>=0;i--){
+                self.splice(start,0,$temp[i])
             }
-        }else {
-            throw TypeError('list indices must be integer, not '+str(arg.__class__))
+        }else{
+            throw TypeError("can only assign an iterable")
         }
+    }else {
+        throw TypeError('list indices must be integer, not '+str(arg.__class__))
     }
 }
 
-list.__str__ = function(Self){
-    if(Self===undefined){return "<class 'list'>"}
-    return function(){
-        var res = "[",i=null,items=Self.valueOf()
-        for(i=0;i<items.length;i++){
-            var x = items[i]
-            if(isinstance(x,str)){res += "'"+x+"'"} 
-            else{res += x.toString()}
-            if(i<items.length-1){res += ','}
-        }
-        return res+']'
+
+list.__str__ = function(self){
+    if(self===undefined){return "<class 'list'>"}
+    var res = "[",i=null,items=self.valueOf()
+    for(var i=0;i<items.length;i++){
+        var x = items[i]
+        if(isinstance(x,str)){res += "'"+x+"'"} 
+        else{res += x.__str__()}
+        if(i<items.length-1){res += ','}
+    }
+    return res+']'
+}
+
+list.append = function(self,other){self.push(other)}
+
+list.count = function(self,elt){
+    var res = 0
+    for(var i=0;i<self.length;i++){
+        if(self[i].__eq__(elt)){res++}
+    }
+    return res
+}
+
+list.extend = function(self,other){
+    if(arguments.length!=2){throw TypeError(
+        "extend() takes exactly one argument ("+arguments.length+" given)")}
+    try{
+        for(var i=0;i<other.__len__();i++){self.push(other.__item__(i))}
+    }catch(err){
+        throw TypeError("object is not iterable")
     }
 }
 
-list.append = function(Self){return function (other){Self.push(other)}}
+list.index = function(self,elt){
+    for(var i=0;i<self.length;i++){
+        if(self[i].__eq__(elt)){return i}
+    }
+    throw ValueError(str(elt)+" is not in list")
+}
 
-list.count = function(Self){
-    return function(elt){
-        var res = 0
-        for(var i=0;i<Self.length;i++){
-            if(Self[i].__eq__(elt)){res++}
+list.insert = function(self,i,item){self.splice(i,0,item)}
+
+list.remove = function(self,elt){
+    for(var i=0;i<self.length;i++){
+        if(self[i].__eq__(elt)){
+            self.splice(i,1)
+            return
         }
-        return res
+    }
+    throw ValueError(str(elt)+" is not in list")
+}
+
+list.pop = function(self,pos){
+    if(pos===undefined){return self.pop()}
+    else if(arguments.length==2){
+        if(isinstance(pos,int)){
+            var res = self[pos]
+            self.splice(pos,1)
+            return res
+        }else{
+            throw TypeError(pos.__class__+" object cannot be interpreted as an integer")
+        }
+    }else{ 
+        throw TypeError("pop() takes at most 1 argument ("+(arguments.length-1)+' given)')
     }
 }
 
-list.extend = function(Self){
-    return function(other){
-        if(arguments.length!=1){throw TypeError(
-            "extend() takes exactly one argument ("+arguments.length+" given)")}
-        try{
-            for(var i=0;i<other.__len__();i++){Self.push(other.__item__(i))}
-        }catch(err){
-            throw TypeError("object is not iterable")
-        }
-    }
-}
-
-list.index = function(Self){
-    return function(elt){
-        for(var i=0;i<Self.length;i++){
-            if(Self[i].__eq__(elt)){return i}
-        }
-        throw ValueError(str(elt)+" is not in list")
-    }
-}
-
-list.insert = function(Self){return function(i,item){Self.splice(i,0,item)}}
-
-list.remove = function(Self){
-    return function(elt){
-        for(var i=0;i<Self.length;i++){
-            if(Self[i].__eq__(elt)){
-                Self.splice(i,1)
-                return
-            }
-        }
-        throw ValueError(str(elt)+" is not in list")
-    }
-}
-
-list.pop = function(Self){
-    return function(elt){
-        if(arguments.length===0){return Self.pop()}
-        else if(arguments.length==1){
-            var pos = arguments[0]
-            if(isinstance(pos,int)){
-                var res = Self[pos]
-                Self.splice(pos,1)
-                return res
-            }else{
-                throw TypeError(pos.__class__+" object cannot be interpreted as an integer")
-            }
-        }else{ 
-            throw TypeError("pop() takes at most 1 argument ("+arguments.length+' given)')
-        }
-    }
-}
-
-list.reverse = function(Self){
-    return function(){
-        for(var i=0;i<parseInt(Self.length/2);i++){
-            var buf = Self[i]
-            Self[i] = Self[Self.length-i-1]
-            Self[Self.length-i-1] = buf
-        }
+list.reverse = function(self){
+    for(var i=0;i<parseInt(self.length/2);i++){
+        var buf = self[i]
+        self[i] = self[self.length-i-1]
+        self[self.length-i-1] = buf
     }
 }
     
@@ -354,21 +325,19 @@ function $qsort(arg,array, begin, end)
     }
 }
 
-list.sort = function(Self){
-    return function(){
-        var func=function(x){return x}
-        var reverse = false
-        for(var i=0;i<arguments.length;i++){
-            var arg = arguments[i]
-            if(isinstance(arg,$Kw)){
-                if(arg.name==='key'){func=arg.value}
-                else if(arg.name==='reverse'){reverse=arg.value}
-            }
+list.sort = function(self){
+    var func=function(x){return x}
+    var reverse = false
+    for(var i=1;i<arguments.length;i++){
+        var arg = arguments[i]
+        if(isinstance(arg,$Kw)){
+            if(arg.name==='key'){func=arg.value}
+            else if(arg.name==='reverse'){reverse=arg.value}
         }
-        if(Self.length==0){return}
-        $qsort(func,Self,0,Self.length)
-        if(reverse){list.reverse(Self)()}
     }
+    if(self.length==0){return}
+    $qsort(func,self,0,self.length)
+    if(reverse){list.reverse(self)}
 }
 
 list.toString = list.__str__
@@ -386,17 +355,27 @@ function $ListClass(items){
 Array.prototype.__class__ = list
 
 Array.prototype.__getattr__ = function(attr){
-    var res = list.__getattr__(attr)(this)
-    if(res.__name__===undefined){
-        res.__str__ = function(){return "<built-in method "+attr+" of list object>"}
+    var obj = this
+    var res = function(){
+        var args = [obj]
+        for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+        return list[attr].apply(obj,args)
     }
+    res.__str__ = function(){return "<built-in method "+attr+" of list object>"}
     return res
 }
 
 // set other Array.prototype attributes
+
 for(var attr in list){
-    if(attr.substr(0,2)==='__' && Array.prototype[attr]===undefined){
-        Array.prototype[attr]=(function(a){return function(){return list[a](this).apply(this,arguments)}})(attr)
+    if(Array.prototype[attr]===undefined){
+        Array.prototype[attr]=(function(attr){
+            return function(){
+                var args = [this]
+                for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+                return list[attr].apply(this,args)
+            }
+        })(attr)
     }
 }
 
