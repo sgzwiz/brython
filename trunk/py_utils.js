@@ -316,7 +316,8 @@ document.$stdout = {
 function $type(){}
 $type.__class__ = $type
 $type.__name__ = 'type'
-$type.toString = function(){return "<class 'type'>"}
+$type.__str__ = function(){return "<class 'type'>"}
+$type.toString = $type.__str__
 
 function $UnsupportedOpType(op,class1,class2){
     $raise('TypeError',
