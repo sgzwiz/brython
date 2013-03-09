@@ -363,4 +363,8 @@ cards('nes')
 x='aZjhkhZyuy'
 assert x.split('h',1) == ['aZj', 'khZyuy']
 
+# issue 92
+t = (1,2)
+assert t and t, 'Failed short circuit with tuple'
+
 print('passed all tests..')
