@@ -10,5 +10,5 @@ __BRYTHON__.date = function(){
 }
 __BRYTHON__.has_local_storage = typeof(Storage)!=="undefined"
 __BRYTHON__.has_json = typeof(JSON)!=="undefined"
-__BRYTHON__.version_info = [1,1,"20130307-174150"]
+__BRYTHON__.version_info = [1,1,"20130309-081246"]
 __BRYTHON__.path = [] // path for .py modules
