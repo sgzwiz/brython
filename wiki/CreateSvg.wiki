@@ -1,0 +1,32 @@
+== Problem ==
+----
+Create a simple SVG graphic
+
+
+== Solution ==
+--------------
+
+Suppose you have defined a SVG zone in your HTML document with
+
+{{{
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+    width="400" height="300" style="border-style:solid;border-width:1;border-color:#000;">
+  <g id="panel">
+  </g>
+</svg>
+}}}
+
+Here is how you can insert a SVG graphic in the "panel" :
+
+{{{
+import svg
+svg_window = svg.svg(width="800", height="100")
+svg_text = svg.text('old',x=350,y=45,
+            font_size=20,text_anchor="middle",
+            style={"stroke":"navy", 'fill':"navy"})
+panel = doc['panel']
+svg_window <= svg_text
+panel<= svg_window
+# reset text
+svg_text.text = "new"
+}}}
