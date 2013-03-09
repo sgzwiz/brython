@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130309-102509
+// version 1.1.20130309-192522
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -12,7 +12,7 @@ arguments[4],arguments[5],arguments[6]))}
 }
 __BRYTHON__.has_local_storage=typeof(Storage)!=="undefined"
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130309-102509"]
+__BRYTHON__.version_info=[1,1,"20130309-192522"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -79,6 +79,14 @@ this.__class__=Object
 this.toString=function(){return "<class '"+info+"'>"}
 }
 function $confirm(src){return confirm(src)}
+function $DictClass($keys,$values){
+var x=null
+var i=null
+this.iter=null
+this.__class__=dict
+this.$keys=$keys 
+this.$values=$values 
+}
 function dict(){
 if(arguments.length==0){return new $DictClass([],[])}
 else if(arguments.length===1 && isinstance(arguments[0],dict)){
@@ -99,57 +107,38 @@ return obj
 return kw
 }
 }
-dict.__class__=$type
 dict.__name__='dict'
 dict.toString=function(){return "<class 'dict'>"}
-function $DictClass($keys,$values){
-var x=null
-var i=null
-this.iter=null
-this.__class__=dict
-this.$keys=$keys 
-this.$values=$values 
-}
-$DictClass.prototype.toString=function(){
-if(this.$keys.length==0){return '{}'}
-var res="{",key=null,value=null,i=null 
-var qesc=new RegExp('"',"g")
-for(var i=0;i<this.$keys.length;i++){
-if(typeof this.$keys[i]==="string"){key='"'+$escape_dq(this.$keys[i])+'"'}
-else{key=str(this.$keys[i])}
-if(typeof this.$values[i]==="string"){value='"'+$escape_dq(this.$values[i])+'"'}
-else{value=str(this.$values[i])}
-res +=key+':'+value+','
-}
-return res.substr(0,res.length-1)+'}'
-}
-$DictClass.prototype.__add__=function(other){
+dict.__add__=function(self,other){
 var msg="unsupported operand types for +:'dict' and "
 throw TypeError(msg+"'"+(str(other.__class__)|| typeof other)+"'")
 }
-$DictClass.prototype.__class__=dict
-$DictClass.prototype.__contains__=function(item){
-return this.$keys.__contains__(item)
+dict.__class__=$type
+dict.__contains__=function(self,item){
+return self.$keys.__contains__(item)
 }
-$DictClass.prototype.__delitem__=function(arg){
-for(var i=0;i<this.$keys.length;i++){
-if(arg.__eq__(this.$keys[i])){
-this.$keys.splice(i,1)
-this.$values.splice(i,1)
+dict.__delitem__=function(self,arg){
+for(var i=0;i<self.$keys.length;i++){
+if(arg.__eq__(self.$keys[i])){
+self.$keys.splice(i,1)
+self.$values.splice(i,1)
 return
 }
 }
 throw KeyError(str(arg))
 }
-$DictClass.prototype.__eq__=function(other){
+dict.__eq__=function(self,other){
+if(other===undefined){
+return self===dict
+}
 if(!isinstance(other,dict)){return False}
-if(other.$keys.length!==this.$keys.length){return False}
-for(var i=0;i<this.$keys.length;i++){
-var key=this.$keys[i]
+if(other.$keys.length!==self.$keys.length){return False}
+for(var i=0;i<self.$keys.length;i++){
+var key=self.$keys[i]
 for(j=0;j<other.$keys.length;j++){
 try{
 if(other.$keys[j].__eq__(key)){
-if(!other.$values[j].__eq__(this.$values[i])){
+if(!other.$values[j].__eq__(self.$values[i])){
 return False
 }
 }
@@ -158,53 +147,91 @@ return False
 }
 return True
 }
-$DictClass.prototype.__getattr__=function(attr){
-return $getattr(this,attr)
+dict.__getattr__=function(attr){
+if(this[attr]!==undefined){return this[attr]}
+else{throw AttributeError("'dict' object has no attribute '"+attr+"'")}
 }
-$DictClass.prototype.__getitem__=function(arg){
-for(var i=0;i<this.$keys.length;i++){
-if(arg.__eq__(this.$keys[i])){return this.$values[i]}
+dict.__getitem__=function(self,arg){
+for(var i=0;i<self.$keys.length;i++){
+if(arg.__eq__(self.$keys[i])){return self.$values[i]}
 }
 throw KeyError(str(arg))
 }
-$DictClass.prototype.__hash__=function(){throw TypeError("unhashable type: 'dict'");}
-$DictClass.prototype.__in__=function(item){return item.__contains__(this)}
-$DictClass.prototype.__item__=function(i){return this.$keys[i]}
-$DictClass.prototype.__len__=function(){return this.$keys.length}
-$DictClass.prototype.__ne__=function(other){return !this.__eq__(other)}
-$DictClass.prototype.__next__=function(){
-if(this.iter==null){this.iter==0}
-if(this.iter<this.$keys.length){
-this.iter++
-return this.$keys[this.iter-1]
+dict.__hash__=function(self){throw TypeError("unhashable type: 'dict'");}
+dict.__in__=function(self,item){return item.__contains__(self)}
+dict.__item__=function(self,i){return self.$keys[i]}
+dict.__len__=function(self){return self.$keys.length}
+dict.__ne__=function(self,other){return !dict.__eq__(self,other)}
+dict.__next__=function(self){
+if(self.iter==null){self.iter==0}
+if(self.iter<self.$keys.length){
+self.iter++
+return self.$keys[self.iter-1]
 }else{
-this.iter=null
+self.iter=null
 throw StopIteration()
 }
 }
-$DictClass.prototype.__not_in__=function(item){return !(item.__contains__(this))}
-$DictClass.prototype.__setitem__=function(key,value){
-for(var i=0;i<this.$keys.length;i++){
+dict.__not_in__=function(self,item){return !(item.__contains__(self))}
+dict.__setitem__=function(self,key,value){
+for(var i=0;i<self.$keys.length;i++){
 try{
-if(key.__eq__(this.$keys[i])){
-this.$values[i]=value
+if(key.__eq__(self.$keys[i])){
+self.$values[i]=value
 return
 }
 }catch(err){
 void(0)
 }
 }
-this.$keys.push(key)
-this.$values.push(value)
+self.$keys.push(key)
+self.$values.push(value)
 }
-$DictClass.prototype.items=function(){
-return new $iterator(zip(this.$keys,this.$values),"dict_items")
+dict.__str__=function(self){
+if(self===undefined){return "<class 'dict'>"}
+if(self.$keys.length==0){return '{}'}
+var res="{",key=null,value=null,i=null 
+var qesc=new RegExp('"',"g")
+for(var i=0;i<self.$keys.length;i++){
+if(typeof self.$keys[i]==="string"){key='"'+$escape_dq(self.$keys[i])+'"'}
+else{key=str(self.$keys[i])}
+if(typeof self.$values[i]==="string"){value='"'+$escape_dq(self.$values[i])+'"'}
+else{value=str(self.$values[i])}
+res +=key+':'+value+','
 }
-$DictClass.prototype.keys=function(){
-return new $iterator(this.$keys,"dict keys")
+return res.substr(0,res.length-1)+'}'
 }
-$DictClass.prototype.values=function(){
-return new $iterator(this.$values,"dict values")
+dict.items=function(self){
+return new $iterator(zip(self.$keys,self.$values),"dict_items")
+}
+dict.keys=function(self){
+return new $iterator(self.$keys,"dict keys")
+}
+dict.values=function(self){
+return new $iterator(self.$values,"dict values")
+}
+$DictClass.prototype.__class__=dict
+$DictClass.prototype.__getattr__=function(attr){
+if(attr==='__class__'){return this.__class__}
+var obj=this
+var res=function(){
+var args=[obj]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return dict[attr].apply(obj,args)
+}
+res.__str__=function(){return "<built-in method "+attr+" of dict object>"}
+return res
+}
+for(var attr in dict){
+if($DictClass.prototype[attr]===undefined){
+$DictClass.prototype[attr]=(function(attr){
+return function(){
+var args=[this]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return dict[attr].apply(this,args)
+}
+})(attr)
+}
 }
 function dir(obj){
 var res=[]
@@ -231,7 +258,7 @@ else{throw(err)}
 function exec(src){
 try{eval(__BRYTHON__.py2js(src).to_js())}
 catch(err){
-if(err.py_error===undefined){err=RuntimeError(err.message)}
+if(err.py_error===undefined){console.log(err);err=RuntimeError(err+'')}
 var trace=err.__name__+': '+err.message+err.info
 if(document.$stderr){document.$stderr.__getattr__('write')(trace)}
 else{console.log(trace)}
@@ -305,6 +332,10 @@ else{return float(Math.floor(this.value/other.value))}
 }else{throw TypeError(
 "unsupported operand type(s) for //: 'int' and '"+other.__class__+"'")
 }
+}
+$FloatClass.prototype.__getattr__=function(attr){
+if(this[attr]!==undefined){return this[attr]}
+else{throw AttributeError("'float' object has no attribute '"+attr+"'")}
 }
 $FloatClass.prototype.__hash__=float.__hash__
 $FloatClass.prototype.__in__=function(item){return item.__contains__(this)}
@@ -414,8 +445,10 @@ if(!other.value){throw ZeroDivisionError('division by zero')}
 else{return float(Math.floor(this/other.value))}
 }else{$UnsupportedOpType("//","int",other.__class__)}
 }
-Number.prototype.__getattr__=function(attr){throw AttributeError(
-"'int' object has no attribute '"+attr+"'")}
+Number.prototype.__getattr__=function(attr){
+if(this[attr]!==undefined){return this[attr]}
+throw AttributeError("'int' object has no attribute '"+attr+"'")
+}
 Number.prototype.__hash__=function(){return this.valueOf()}
 Number.prototype.__in__=function(item){return item.__contains__(this)}
 Number.prototype.__int__=function(){return this}
@@ -649,7 +682,7 @@ var args=$ns['args']
 var kw=$ns['kw']
 var end='\n'
 var res=''
-if(kw.__contains__('end')){end=kw.__getitem__('end')}
+if(kw['end']!==undefined){end=kw['end']}
 for(var i=0;i<args.length;i++){
 res +=str(args[i])
 if(i<args.length-1){res +=' '}
@@ -766,6 +799,10 @@ return True
 }
 }
 return False
+}
+$SetClass.prototype.__getattr__=function(attr){
+if(this[attr]!==undefined){return this[attr]}
+else{throw AttributeError("'set' object has no attribute '"+attr+"'")}
 }
 $SetClass.prototype.__hash__=set.__hash__
 $SetClass.prototype.__in__=function(item){return item.__contains__(this)}
@@ -943,75 +980,70 @@ var res=[]
 res.__init__(arguments[0])
 return res
 }
-list.__add__=function(Self){
-return function(other){
-var res=Self.valueOf().concat(other.valueOf())
-if(isinstance(Self,tuple)){res=tuple.apply(Self,res)}
+list.__add__=function(self,other){
+var res=self.valueOf().concat(other.valueOf())
+if(isinstance(self,tuple)){res=tuple.apply(self,res)}
 return res
 }
-}
 list.__class__=$type
-list.__contains__=function(Self){
-return function(item){
-for(var i=0;i<Self.length;i++){
-try{if(Self[i].__eq__(item)){return true}
+list.__contains__=function(self,item){
+for(var i=0;i<self.length;i++){
+try{if(self[i].__eq__(item)){return true}
 }catch(err){void(0)}
 }
 return false
 }
-}
-list.__delitem__=function(Self){
-return function(arg){
+list.__delitem__=function(self,arg){
 if(isinstance(arg,int)){
 var pos=arg
-if(arg<0){pos=Self.length+pos}
-if(pos>=0 && pos<Self.length){
-Self.splice(pos,1)
+if(arg<0){pos=self.length+pos}
+if(pos>=0 && pos<self.length){
+self.splice(pos,1)
 return
 }
 else{throw IndexError('list index out of range')}
 }else if(isinstance(arg,slice)){
 var start=arg.start || 0
-var stop=arg.stop || Self.length
+var stop=arg.stop || self.length
 var step=arg.step || 1
-if(start<0){start=Self.length+start}
-if(stop<0){stop=Self.length+stop}
+if(start<0){start=self.length+start}
+if(stop<0){stop=self.length+stop}
 var res=[],i=null
 if(step>0){
 if(stop>start){
 for(i=start;i<stop;i+=step){
-if(Self[i]!==undefined){res.push(i)}
+if(self[i]!==undefined){res.push(i)}
 }
 }
 }else{
 if(stop<start){
 for(i=start;i>stop;i+=step.value){
-if(Self[i]!==undefined){res.push(i)}
+if(self[i]!==undefined){res.push(i)}
 }
 res.reverse()
 }
 }
 for(var i=res.length-1;i>=0;i--){
-Self.splice(res[i],1)
+self.splice(res[i],1)
 }
 return
 }else{
 throw TypeError('list indices must be integer, not '+str(arg.__class__))
 }
 }
+list.__eq__=function(self,other){
+if(other===undefined){
+return self===list
 }
-list.__eq__=function(Self){
-return function(other){
-if(isinstance(other,Self.__class__)){
-if(other.length==Self.length){
-for(var i=0;i<Self.length;i++){
-if(!Self[i].__eq__(other[i])){return False}
+if(isinstance(other,self.__class__)){
+if(other.length==self.length){
+for(var i=0;i<self.length;i++){
+if(!self[i].__eq__(other[i])){return False}
 }
 return True
 }
 }
 return False
-}
 }
 list.__getattr__=function(attr){
 switch(attr){
@@ -1029,10 +1061,9 @@ default:
 return list[attr]
 }
 }
-list.__getitem__=function(Self){
-return function(arg){
+list.__getitem__=function(self,arg){
 if(isinstance(arg,int)){
-var items=Self.valueOf()
+var items=self.valueOf()
 var pos=arg
 if(arg<0){pos=items.length+pos}
 if(pos>=0 && pos<items.length){return items[pos]}
@@ -1043,14 +1074,14 @@ throw IndexError('list index out of range')
 var step=arg.step===None ? 1 : arg.step
 if(step>0){
 var start=arg.start===None ? 0 : arg.start
-var stop=arg.stop===None ? Self.__len__(): arg.stop
+var stop=arg.stop===None ? self.__len__(): arg.stop
 }else{
-var start=arg.start===None ? Self.__len__()-1 : arg.start
+var start=arg.start===None ? self.__len__()-1 : arg.start
 var stop=arg.stop===None ? 0 : arg.stop
 }
-if(start<0){start=int(Self.length+start)}
-if(stop<0){stop=Self.length+stop}
-var res=[],i=null,items=Self.valueOf()
+if(start<0){start=int(self.length+start)}
+if(stop<0){stop=self.length+stop}
+var res=[],i=null,items=self.valueOf()
 if(step>0){
 if(stop<=start){return res}
 else{
@@ -1069,63 +1100,55 @@ return res
 }
 }
 }else if(isinstance(arg,bool)){
-return Self.__getitem__(int(arg))
+return self.__getitem__(int(arg))
 }else{
 throw TypeError('list indices must be integer, not '+str(arg.__class__))
 }
 }
+list.__hash__=function(self){throw TypeError("unhashable type: 'list'")}
+list.__in__=function(self,item){return item.__contains__(self)}
+list.__init__=function(self){
+self.splice(0,self.length)
+if(arguments.length===1){return}
+var arg=arguments[1]
+for(var i=0;i<arg.__len__();i++){self.push(arg.__item__(i))}
 }
-list.__hash__=function(Self){return function(){throw TypeError("unhashable type: 'list'")}}
-list.__in__=function(Self){return function(item){return item.__contains__(Self)}}
-list.__init__=function(Self){
-return function(){
-Self.splice(0,Self.length)
-if(arguments.length===0){return}
-var arg=arguments[0]
-for(var i=0;i<arg.__len__();i++){Self.push(arg.__item__(i))}
-}
-}
-list.__item__=function(Self){return function(i){return Self[i]}}
-list.__len__=function(Self){return function(){return Self.length}}
-list.__mul__=function(Self){
-return function(other){
-if(isinstance(other,int)){return other.__mul__(Self)}
+list.__item__=function(self,i){return self[i]}
+list.__len__=function(self){return self.length}
+list.__mul__=function(self,other){
+if(isinstance(other,int)){return other.__mul__(self)}
 else{throw TypeError("can't multiply sequence by non-int of type '"+other.__name+"'")}
 }
-}
 list.__name__='list'
-list.__ne__=function(Self){return function(other){return !Self.__eq__(other)}}
-list.__next__=function(Self){
-return function(){
-if(Self.iter===null){Self.iter=0}
-if(Self.iter<Self.valueOf().length){
-Self.iter++
-return Self.valueOf()[Self.iter-1]
+list.__ne__=function(self,other){return !self.__eq__(other)}
+list.__next__=function(self){
+if(self.iter===null){self.iter=0}
+if(self.iter<self.valueOf().length){
+self.iter++
+return self.valueOf()[self.iter-1]
 }else{
-Self.iter=null
+self.iter=null
 throw StopIteration()
 }
 }
-}
-list.__not_in__=function(Self){return function(item){return !item.__contains__(Self)}}
-list.__setitem__=function(Self){
-return function(arg,value){
+list.__not_in__=function(self,item){return !item.__contains__(self)}
+list.__setitem__=function(self,arg,value){
 if(isinstance(arg,int)){
 var pos=arg
-if(arg<0){pos=Self.length+pos}
-if(pos>=0 && pos<Self.length){Self[pos]=value}
+if(arg<0){pos=self.length+pos}
+if(pos>=0 && pos<self.length){self[pos]=value}
 else{throw IndexError('list index out of range')}
 }else if(isinstance(arg,slice)){
 var start=arg.start===None ? 0 : arg.start
-var stop=arg.stop===None ? Self.__len__(): arg.stop
+var stop=arg.stop===None ? self.__len__(): arg.stop
 var step=arg.step===None ? 1 : arg.step
-if(start<0){start=Self.length+start}
-if(stop<0){stop=Self.length+stop}
-Self.splice(start,stop-start)
+if(start<0){start=self.length+start}
+if(stop<0){stop=self.length+stop}
+self.splice(start,stop-start)
 if(hasattr(value,'__item__')){
 var $temp=list(value)
 for(var i=$temp.length-1;i>=0;i--){
-Self.splice(start,0,$temp[i])
+self.splice(start,0,$temp[i])
 }
 }else{
 throw TypeError("can only assign an iterable")
@@ -1134,85 +1157,69 @@ throw TypeError("can only assign an iterable")
 throw TypeError('list indices must be integer, not '+str(arg.__class__))
 }
 }
-}
-list.__str__=function(Self){
-if(Self===undefined){return "<class 'list'>"}
-return function(){
-var res="[",i=null,items=Self.valueOf()
-for(i=0;i<items.length;i++){
+list.__str__=function(self){
+if(self===undefined){return "<class 'list'>"}
+var res="[",i=null,items=self.valueOf()
+for(var i=0;i<items.length;i++){
 var x=items[i]
 if(isinstance(x,str)){res +="'"+x+"'"}
-else{res +=x.toString()}
+else{res +=x.__str__()}
 if(i<items.length-1){res +=','}
 }
 return res+']'
 }
-}
-list.append=function(Self){return function(other){Self.push(other)}}
-list.count=function(Self){
-return function(elt){
+list.append=function(self,other){self.push(other)}
+list.count=function(self,elt){
 var res=0
-for(var i=0;i<Self.length;i++){
-if(Self[i].__eq__(elt)){res++}
+for(var i=0;i<self.length;i++){
+if(self[i].__eq__(elt)){res++}
 }
 return res
 }
-}
-list.extend=function(Self){
-return function(other){
-if(arguments.length!=1){throw TypeError(
+list.extend=function(self,other){
+if(arguments.length!=2){throw TypeError(
 "extend() takes exactly one argument ("+arguments.length+" given)")}
 try{
-for(var i=0;i<other.__len__();i++){Self.push(other.__item__(i))}
+for(var i=0;i<other.__len__();i++){self.push(other.__item__(i))}
 }catch(err){
 throw TypeError("object is not iterable")
 }
 }
-}
-list.index=function(Self){
-return function(elt){
-for(var i=0;i<Self.length;i++){
-if(Self[i].__eq__(elt)){return i}
+list.index=function(self,elt){
+for(var i=0;i<self.length;i++){
+if(self[i].__eq__(elt)){return i}
 }
 throw ValueError(str(elt)+" is not in list")
 }
-}
-list.insert=function(Self){return function(i,item){Self.splice(i,0,item)}}
-list.remove=function(Self){
-return function(elt){
-for(var i=0;i<Self.length;i++){
-if(Self[i].__eq__(elt)){
-Self.splice(i,1)
+list.insert=function(self,i,item){self.splice(i,0,item)}
+list.remove=function(self,elt){
+for(var i=0;i<self.length;i++){
+if(self[i].__eq__(elt)){
+self.splice(i,1)
 return
 }
 }
 throw ValueError(str(elt)+" is not in list")
 }
-}
-list.pop=function(Self){
-return function(elt){
-if(arguments.length===0){return Self.pop()}
-else if(arguments.length==1){
-var pos=arguments[0]
+list.pop=function(self,pos){
+if(pos===undefined){return self.pop()}
+else if(arguments.length==2){
 if(isinstance(pos,int)){
-var res=Self[pos]
-Self.splice(pos,1)
+var res=self[pos]
+self.splice(pos,1)
 return res
 }else{
 throw TypeError(pos.__class__+" object cannot be interpreted as an integer")
 }
 }else{
-throw TypeError("pop() takes at most 1 argument ("+arguments.length+' given)')
+throw TypeError("pop() takes at most 1 argument ("+(arguments.length-1)+' given)')
 }
 }
-}
-list.reverse=function(Self){
-return function(){
-for(var i=0;i<parseInt(Self.length/2);i++){
-var buf=Self[i]
-Self[i]=Self[Self.length-i-1]
-Self[Self.length-i-1]=buf
-}
+list.reverse=function(self){
+for(var i=0;i<parseInt(self.length/2);i++){
+var buf=self[i]
+self[i]=self[self.length-i-1]
+self[self.length-i-1]=buf
 }
 }
 function $partition(arg,array,begin,end,pivot)
@@ -1244,21 +1251,19 @@ $qsort(arg,array, begin, pivot)
 $qsort(arg,array, pivot+1, end)
 }
 }
-list.sort=function(Self){
-return function(){
+list.sort=function(self){
 var func=function(x){return x}
 var reverse=false
-for(var i=0;i<arguments.length;i++){
+for(var i=1;i<arguments.length;i++){
 var arg=arguments[i]
 if(isinstance(arg,$Kw)){
 if(arg.name==='key'){func=arg.value}
 else if(arg.name==='reverse'){reverse=arg.value}
 }
 }
-if(Self.length==0){return}
-$qsort(func,Self,0,Self.length)
-if(reverse){list.reverse(Self)()}
-}
+if(self.length==0){return}
+$qsort(func,self,0,self.length)
+if(reverse){list.reverse(self)}
 }
 list.toString=list.__str__
 function $ListClass(items){
@@ -1269,148 +1274,113 @@ this.items=items
 }
 Array.prototype.__class__=list
 Array.prototype.__getattr__=function(attr){
-var res=list.__getattr__(attr)(this)
-if(res.__name__===undefined){
-res.__str__=function(){return "<built-in method "+attr+" of list object>"}
+if(attr==='__class__'){return this.__class__}
+var obj=this
+var res=function(){
+var args=[obj]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return list[attr].apply(obj,args)
 }
+res.__str__=function(){return "<built-in method "+attr+" of list object>"}
 return res
 }
 for(var attr in list){
-if(attr.substr(0,2)==='__' && Array.prototype[attr]===undefined){
-Array.prototype[attr]=(function(a){return function(){return list[a](this).apply(this,arguments)}})(attr)
+if(Array.prototype[attr]===undefined){
+Array.prototype[attr]=(function(attr){
+return function(){
+var args=[this]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return list[attr].apply(this,args)
+}
+})(attr)
 }
 }
 return list
 }()
+str=function(){
 function str(arg){
 if(arg===undefined){return '<undefined>'}
 else if(arg.__str__!==undefined){return arg.__str__()}
 else{return arg.toString()}
 }
-str.__class__=$type
 str.__name__='str'
 str.__str__=function(){return "<class 'str'>"}
 str.toString=str.__str__
-String.prototype.__add__=function(other){
+str.__add__=function(self,other){
 if(!(typeof other==="string")){
-try{return other.__radd__(this)}
+try{return other.__radd__(self)}
 catch(err){throw TypeError(
 "Can't convert "+other.__class__+" to str implicitely")}
 }else{
-return this+other
+return self+other
 }
 }
-String.prototype.__class__=str
-String.prototype.__contains__=function(item){
+str.__class__=$type
+str.__contains__=function(self,item){
 if(!(typeof item==="string")){throw TypeError(
 "'in <string>' requires string as left operand, not "+item.__class__)}
 var nbcar=item.length
-for(var i=0;i<this.length;i++){
-if(this.substr(i,nbcar)==item){return True}
+for(var i=0;i<self.length;i++){
+if(self.substr(i,nbcar)==item){return True}
 }
 return False
 }
-String.prototype.__eq__=function(other){return other===this.valueOf()}
-String.prototype.__getattr__=function(attr){
-var obj=this
-return function(){
-args=[obj]
-for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-return str.__getattr__(attr).apply(obj,args)
+str.__eq__=function(self,other){
+if(other===undefined){
+return self===str
 }
+return other===self.valueOf()
 }
-str.__getattr__=function(attr){
-switch(attr){
-case 'capitalize':
-return $string_capitalize
-case 'center': 
-return $string_center
-case 'count': 
-return $string_count
-case 'endswith': 
-return $string_endswith
-case 'find': 
-return $string_find
-case 'index': 
-return $string_index
-case 'join':
-return $string_join
-case 'lower':
-return $string_lower
-case 'lstrip': 
-return $string_lstrip
-case 'replace': 
-return $string_replace
-case 'rfind': 
-return $string_rfind
-case 'rindex': 
-return $string_rindex
-case 'rstrip': 
-return $string_rstrip
-case 'split':
-case 'splitfields':
-return $string_split
-case 'splitlines':
-return $string_splitlines
-case 'startswith': 
-return $string_startswith
-case 'strip':
-return $string_strip
-case 'upper':
-return $string_upper
-default:
-return this[attr]
-}
-}
-String.prototype.__getitem__=function(arg){
+str.__getattr__=function(attr){return this[attr]}
+str.__getitem__=function(self,arg){
 if(isinstance(arg,int)){
 var pos=arg
-if(arg<0){pos=this.length+pos}
-if(pos>=0 && pos<this.length){return this.charAt(pos)}
+if(arg<0){pos=self.length+pos}
+if(pos>=0 && pos<self.length){return self.charAt(pos)}
 else{throw IndexError('string index out of range')}
 }else if(isinstance(arg,slice)){
 var step=arg.step===None ? 1 : arg.step
 if(step>0){
 var start=arg.start===None ? 0 : arg.start
-var stop=arg.stop===None ? this.__len__(): arg.stop
+var stop=arg.stop===None ? self.__len__(): arg.stop
 }else{
-var start=arg.start===None ? this.__len__()-1 : arg.start
+var start=arg.start===None ? self.__len__()-1 : arg.start
 var stop=arg.stop===None ? 0 : arg.stop
 }
-if(start<0){start=this.length+start}
-if(stop<0){stop=this.length+stop}
+if(start<0){start=self.length+start}
+if(stop<0){stop=self.length+stop}
 var res='',i=null
 if(step>0){
 if(stop<=start){return ''}
 else{
 for(i=start;i<stop;i+=step){
-res +=this.charAt(i)
+res +=self.charAt(i)
 }
 }
 }else{
 if(stop>=start){return ''}
 else{
 for(i=start;i>=stop;i+=step){
-res +=this.charAt(i)
+res +=self.charAt(i)
 }
 }
 }
 return res
 }else if(isinstance(arg,bool)){
-return this.__getitem__(int(arg))
+return self.__getitem__(int(arg))
 }
 }
-String.prototype.__hash__=function(){
+str.__hash__=function(self){
 var hash=1
-for(var i=0;i < this.length;i++){
-hash=(101*hash + this.charCodeAt(i))& 0xFFFFFFFF
+for(var i=0;i < self.length;i++){
+hash=(101*hash + self.charCodeAt(i))& 0xFFFFFFFF
 }
 return hash
 }
-String.prototype.__in__=function(item){return item.__contains__(this.valueOf())}
-String.prototype.__item__=function(i){return this.charAt(i)}
-String.prototype.__len__=function(){return this.length}
-String.prototype.__mod__=function(args){
+str.__in__=function(self,item){return item.__contains__(self.valueOf())}
+str.__item__=function(self,i){return self.charAt(i)}
+str.__len__=function(self){return self.length}
+str.__mod__=function(self,args){
 var flags=$List2Dict('#','0','-',' ','+')
 var ph=[]
 function format(s){
@@ -1452,7 +1422,7 @@ return str(float(src))
 }
 var elts=[]
 var pos=0, start=0, nb_repl=0
-var val=this.valueOf()
+var val=self.valueOf()
 while(pos<val.length){
 if(val.charAt(pos)=='%'){
 var f=new format(val.substr(pos))
@@ -1484,80 +1454,81 @@ for(var i=0;i<elts.length;i++){res+=elts[i]}
 res=res.replace(/%%/g,'%')
 return res
 }
-String.prototype.__mul__=function(other){
+str.__mul__=function(self,other){
 if(!isinstance(other,int)){throw TypeError(
 "Can't multiply sequence by non-int of type '"+str(other.__class__)+"'")}
 $res=''
-for(var i=0;i<other;i++){$res+=this.valueOf()}
+for(var i=0;i<other;i++){$res+=self.valueOf()}
 return $res
 }
-String.prototype.__ne__=function(other){return other!==this.valueOf()}
-String.prototype.__next__=function(){
-if(this.iter==null){this.iter==0}
-if(this.iter<this.value.length){
-this.iter++
-return str(this.value.charAt(this.iter-1))
+str.__ne__=function(self,other){return other!==self.valueOf()}
+str.__next__=function(self){
+if(self.iter==null){self.iter==0}
+if(self.iter<self.value.length){
+self.iter++
+return str(self.value.charAt(self.iter-1))
 }else{
-this.iter=null
+self.iter=null
 throw StopIteration()
 }
 }
-String.prototype.__not_in__=function(item){return !item.__contains__(this.valueOf())}
-String.prototype.__setattr__=function(attr,value){setattr(this,attr,value)}
-String.prototype.__setitem__=function(attr,value){
+str.__not_in__=function(self,item){return !item.__contains__(self.valueOf())}
+str.__setattr__=function(self,attr,value){setattr(self,attr,value)}
+self.__setitem__=function(self,attr,value){
 throw TypeError("'str' object does not support item assignment")
 }
-String.prototype.__str__=function(){
-return this.toString()
+str.__str__=function(self){
+if(self===undefined){return "<class 'str'>"}
+else{return self.toString()}
 }
-var $comp_func=function(other){
+var $comp_func=function(self,other){
 if(typeof other !=="string"){throw TypeError(
 "unorderable types: 'str' > "+other.__class__+"()")}
-return this > other
+return self > other
 }
 $comp_func +='' 
 var $comps={'>':'gt','>=':'ge','<':'lt','<=':'le'}
 for($op in $comps){
-eval("String.prototype.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
+eval("str.__"+$comps[$op]+'__ = '+$comp_func.replace(/>/gm,$op))
 }
-var $notimplemented=function(other){
+var $notimplemented=function(self,other){
 throw TypeError(
-"unsupported operand types for OPERATOR: '"+str(this.__class__)+"' and '"+str(other.__class__)+"'")
+"unsupported operand types for OPERATOR: '"+str(self.__class__)+"' and '"+str(other.__class__)+"'")
 }
 $notimplemented +='' 
 for($op in $operators){
 var $opfunc='__'+$operators[$op]+'__'
-if(!($opfunc in String.prototype)){
-eval('String.prototype.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
+if(!($opfunc in str)){
+eval('str.'+$opfunc+"="+$notimplemented.replace(/OPERATOR/gm,$op))
 }
 }
-function $string_capitalize(obj){
-if(obj.length==0){return ''}
-return obj.charAt(0).toUpperCase()+obj.substr(1).toLowerCase()
+str.capitalize=function(self){
+if(self.length==0){return ''}
+return self.charAt(0).toUpperCase()+self.substr(1).toLowerCase()
 }
-function $string_center(obj,width,fillchar){
+str.center=function(self,width,fillchar){
 if(fillchar===undefined){fillchar=' '}else{fillchar=fillchar}
-if(width<=obj.length){return obj}
+if(width<=self.length){return self}
 else{
-var pad=parseInt((width-obj.length)/2)
+var pad=parseInt((width-self.length)/2)
 res=''
 for(var i=0;i<pad;i++){res+=fillchar}
-res +=obj
+res +=self
 for(var i=0;i<pad;i++){res+=fillchar}
 if(res.length<width){res +=fillchar}
 return res
 }
 }
-function $string_count(obj,elt){
+str.count=function(self,elt){
 if(!(typeof elt==="string")){throw TypeError(
 "Can't convert '"+str(elt.__class__)+"' object to str implicitly")}
 var res=0
-for(var i=0;i<obj.length-elt.length+1;i++){
-if(obj.substr(i,elt.length)===elt){res++}
+for(var i=0;i<self.length-elt.length+1;i++){
+if(self.substr(i,elt.length)===elt){res++}
 }
 return res
 }
-function $string_endswith(obj){
+str.endswith=function(self){
 var args=[]
 for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
 var $ns=$MakeArgs("str.endswith",args,['suffix'],
@@ -1565,8 +1536,8 @@ var $ns=$MakeArgs("str.endswith",args,['suffix'],
 var suffixes=$ns['suffix']
 if(!isinstance(suffixes,tuple)){suffixes=[suffixes]}
 var start=$ns['start']|| 0
-var end=$ns['end']|| obj.length-1
-var s=obj.substr(start,end+1)
+var end=$ns['end']|| self.length-1
+var s=self.substr(start,end+1)
 for(var i=0;i<suffixes.length;i++){
 suffix=suffixes[i]
 if(suffix.length<=s.length &&
@@ -1574,17 +1545,15 @@ s.substr(s.length-suffix.length)==suffix){return True}
 }
 return False
 }
-function $string_find(obj){
-var args=[]
-for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
-var $ns=$MakeArgs("str.find",args,['sub'],
-{'start':0,'end':obj.length},null,null)
+str.find=function(self){
+var $ns=$MakeArgs("str.find",arguments,['self','sub'],
+{'start':0,'end':self.length},null,null)
 var sub=$ns['sub'],start=$ns['start'],end=$ns['end']
 if(!isinstance(sub,str)){throw TypeError(
 "Can't convert '"+str(sub.__class__)+"' object to str implicitly")}
 if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
 "slice indices must be integers or None or have an __index__ method")}
-var s=obj.substring(start,end)
+var s=self.substring(start,end)
 var escaped=list("[.*+?|()$^")
 var esc_sub=''
 for(var i=0;i<sub.length;i++){
@@ -1595,14 +1564,12 @@ var res=s.search(esc_sub)
 if(res==-1){return -1}
 else{return start+res}
 }
-function $string_index(obj){
-var args=[]
-for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-var res=$string_find.apply(obj,args)
+str.index=function(self){
+var res=str.find.apply(self,arguments)
 if(res===-1){throw ValueError("substring not found")}
 else{return res}
 }
-function $string_join(obj,iterable){
+str.join=function(self,iterable){
 if(!'__item__' in iterable){throw TypeError(
 "'"+str(iterable.__class__)+"' object is not iterable")}
 var res='',count=0
@@ -1610,20 +1577,20 @@ for(var i=0;i<iterable.length;i++){
 var obj2=iterable.__getitem__(i)
 if(!isinstance(obj2,str)){throw TypeError(
 "sequence item "+count+": expected str instance, "+obj2.__class__+"found")}
-res +=obj2+obj
+res +=obj2+self
 count++
 }
 if(count==0){return ''}
-res=res.substr(0,res.length-obj.length)
+res=res.substr(0,res.length-self.length)
 return res
 }
-function $string_lower(obj){return obj.toLowerCase()}
-function $string_lstrip(obj,x){
+str.lower=function(self){return self.toLowerCase()}
+str.lstrip=function(self,x){
 var pattern=null
 if(x==undefined){pattern="\\s*"}
 else{pattern="["+x+"]*"}
 var sp=new RegExp("^"+pattern)
-return obj.replace(sp,"")
+return self.replace(sp,"")
 }
 function $re_escape(str)
 {
@@ -1634,54 +1601,50 @@ str=str.replace(re, "\\"+specials.charAt(i))
 }
 return str
 }
-function $string_replace(obj,old,_new,count){
+str.replace=function(self,old,_new,count){
 if(count!==undefined){
 if(!isinstance(count,[int,float])){throw TypeError(
 "'"+str(count.__class__)+"' object cannot be interpreted as an integer")}
 var re=new RegExp($re_escape(old),'g')
-var res=obj.valueOf()
+var res=self.valueOf()
 while(count>0){
-if(obj.search(re)==-1){return res}
+if(self.search(re)==-1){return res}
 res=res.replace(re,_new)
 count--
 }
 return res
 }else{
 var re=new RegExp($re_escape(old),"g")
-return obj.replace(re,_new)
+return self.replace(re,_new)
 }
 }
-function $string_rfind(obj){
-var args=[]
-for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
-var $ns=$MakeArgs("str.find",args,['sub'],
-{'start':0,'end':obj.length},null,null)
+str.rfind=function(self){
+var $ns=$MakeArgs("str.find",arguments,['self','sub'],
+{'start':0,'end':self.length},null,null)
 var sub=$ns['sub'],start=$ns['start'],end=$ns['end']
 if(!isinstance(sub,str)){throw TypeError(
 "Can't convert '"+str(sub.__class__)+"' object to str implicitly")}
 if(!isinstance(start,int)||!isinstance(end,int)){throw TypeError(
 "slice indices must be integers or None or have an __index__ method")}
-var s=obj.substring(start,end)
+var s=self.substring(start,end)
 var reversed=''
 for(var i=s.length-1;i>=0;i--){reversed +=s.charAt(i)}
 var res=reversed.search(sub)
 if(res==-1){return -1}
 else{return start+s.length-1-res}
 }
-function $string_rindex(obj){
-var args=[]
-for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-var res=$string_rfind.apply(obj,arguments)
+str.rindex=function(){
+var res=str.rfind.apply(this,arguments)
 if(res==-1){throw ValueError("substring not found")}
 else{return res}
 }
-function $string_rstrip(obj,x){
+str.rstrip=function(self,x){
 if(x==undefined){pattern="\\s*"}
 else{pattern="["+x+"]*"}
 sp=new RegExp(pattern+'$')
-return str(obj.replace(sp,""))
+return str(self.replace(sp,""))
 }
-function $string_split(obj){
+str.split=function(self){
 var args=[]
 for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
 var $ns=$MakeArgs("str.split",args,[],{},'args','kw')
@@ -1698,24 +1661,22 @@ esc_sep +=sep.charAt(i)
 }
 var re=new RegExp(esc_sep)
 }
-if(maxsplit==-1)return obj.split(re,maxsplit)
-var l=obj.split(re,-1)
+if(maxsplit==-1)return self.split(re,maxsplit)
+var l=self.split(re,-1)
 var a=l.splice(0, maxsplit)
 var b=l.splice(maxsplit-1, l.length)
 a.push(b.join(sep))
 return a
 }
-function $string_splitlines(obj){return $string_split(obj,'\n')}
-function $string_startswith(obj){
-var args=[]
-for(var i=1;i<arguments.length;i++){args.push(arguments[i])}
-$ns=$MakeArgs("str.startswith",args,['prefix'],
+str.splitlines=function(self){return str.split(self,'\n')}
+str.startswith=function(self){
+$ns=$MakeArgs("str.startswith",arguments,['self','prefix'],
 {'start':null,'end':null},null,null)
 var prefixes=$ns['prefix']
 if(!isinstance(prefixes,tuple)){prefixes=[prefixes]}
 var start=$ns['start']|| 0
-var end=$ns['end']|| obj.length-1
-var s=obj.substr(start,end+1)
+var end=$ns['end']|| self.length-1
+var s=self.substr(start,end+1)
 for(var i=0;i<prefixes.length;i++){
 prefix=prefixes[i]
 if(prefix.length<=s.length &&
@@ -1723,12 +1684,37 @@ s.substr(0,prefix.length)==prefix){return True}
 }
 return False
 }
-function $string_strip(obj,x){
+str.strip=function(self,x){
 if(x==undefined){x="\\s"}
 pattern="["+x+"]"
-return $string_rstrip($string_lstrip(obj,x),x)
+return str.rstrip(str.lstrip(self,x),x)
 }
-function $string_upper(obj){return obj.toUpperCase()}
+str.upper=function(self){return self.toUpperCase()}
+String.prototype.__class__=str
+String.prototype.__getattr__=function(attr){
+if(attr==='__class__'){return str}
+var obj=this
+var res=function(){
+var args=[obj]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return str[attr].apply(obj,args)
+}
+res.__str__=function(){return "<built-in method "+attr+" of str object>"}
+return res
+}
+for(var attr in str){
+if(String.prototype[attr]===undefined){
+String.prototype[attr]=(function(attr){
+return function(){
+var args=[this]
+for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+return str[attr].apply(this,args)
+}
+})(attr)
+}
+}
+return str
+}()
 function $importer(){
 if(window.XMLHttpRequest){
 var $xmlhttp=new XMLHttpRequest()
@@ -2203,7 +2189,7 @@ this.toString=function(){return '(attr) '+this.value+'.'+this.name}
 this.to_js=function(){
 var name=this.name
 if(name.substr(0,2)==='$$'){name=name.substr(2)}
-if(name.substr(0,2)!=='__'){name='__'+this.func+'__("'+name+'")'}
+if(name!=='__getattr__'){name='__'+this.func+'__("'+name+'")'}
 return this.value.to_js()+'.'+name
 }
 }
@@ -4893,9 +4879,12 @@ else if('$brython_id' in this){return this.$brython_id===other.$brython_id}
 else{throw NotImplementedError('__eq__ is not implemented')}
 }
 DOMNode.prototype.__getattr__=function(attr){
+if(attr==='__class__'){return DOMObject}
 if('get_'+attr in this){return this['get_'+attr]()}
+if(this.getAttribute!==undefined){
 var res=this.getAttribute(attr)
 if(res){return res}
+}
 return $getattr(this,attr)
 }
 DOMNode.prototype.__getitem__=function(key){

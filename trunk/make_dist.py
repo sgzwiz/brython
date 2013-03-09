@@ -24,7 +24,7 @@ res += '// version 1.1.%s\n' %now
 res += '// version compiled from commented, indented source files at http://code.google.com/p/brython/\n'
 src_size = 0
 for fname in sources:
-    src = open(fname+'.js').read()
+    src = open(fname+'.js').read()+'\n'
     src_size += len(src)
     pos = 0
     while pos<len(src):
