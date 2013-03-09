@@ -949,7 +949,7 @@ function tuple(){
     var obj = list(args)
     obj.__class__ = tuple
     obj.toString = function(){
-        var res = args.toString()
+        var res = args.__str__()
         res = '('+res.substr(1,res.length-2)
         if(obj.length===1){res+=','}
         return res+')'
@@ -964,6 +964,7 @@ function tuple(){
       }
       return x
     }
+    obj.__str__ = obj.toString
 
     return obj
 }
