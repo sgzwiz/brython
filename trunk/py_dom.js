@@ -360,9 +360,12 @@ DOMNode.prototype.__eq__ = function(other){
 }
 
 DOMNode.prototype.__getattr__ = function(attr){
+    if(attr==='__class__'){return DOMObject}
     if('get_'+attr in this){return this['get_'+attr]()}
-    var res = this.getAttribute(attr)
-    if(res){return res}
+    if(this.getAttribute!==undefined){
+        var res = this.getAttribute(attr)
+        if(res){return res}
+    }
     return $getattr(this,attr)
 }
 
