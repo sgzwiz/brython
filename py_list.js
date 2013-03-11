@@ -183,7 +183,7 @@ list.__next__ = function(self){
         return self.valueOf()[self.iter-1]
     } else {
         self.iter = null
-        throw StopIteration()
+        throw StopIteration('')
     }
 }
 

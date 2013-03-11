@@ -704,7 +704,7 @@ function $extreme(args,op){ // used by min() and max()
                 var x = next($iter)
                 if(res===null || bool(func(x)[op](func(res)))){res = x}
             }catch(err){
-                if(err.name=="StopIteration"){return res}
+                if(err.__name__=="StopIteration"){return res}
                 throw err
             }
         }
@@ -735,7 +735,7 @@ function next(obj){
         if(obj.__counter__===undefined){obj.__counter__=0}
         var res = obj.__item__(obj.__counter__)
         if(res!==undefined){obj.__counter__++;return res}
-        throw StopIteration()
+        throw StopIteration('')
     }
     throw TypeError("'"+str(obj.__class__)+"' object is not iterable")
 }
