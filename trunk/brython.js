@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130309-192522
+// version 1.1.20130312-163528
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -12,11 +12,12 @@ arguments[4],arguments[5],arguments[6]))}
 }
 __BRYTHON__.has_local_storage=typeof(Storage)!=="undefined"
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130309-192522"]
+__BRYTHON__.version_info=[1,1,"20130312-163528"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
 else if(isinstance(obj,float)){return float(Math.abs(obj.value))}
+else if('__abs__' in obj){return obj.__abs__()}
 else{throw TypeError("Bad operand type for abs(): '"+str(obj.__class__)+"'")}
 }
 function $alert(src){alert(str(src))}
@@ -616,7 +617,7 @@ try{
 var x=next($iter)
 if(res===null || bool(func(x)[op](func(res)))){res=x}
 }catch(err){
-if(err.name=="StopIteration"){return res}
+if(err.__name__=="StopIteration"){return res}
 throw err
 }
 }
@@ -644,7 +645,7 @@ if('__item__' in obj){
 if(obj.__counter__===undefined){obj.__counter__=0}
 var res=obj.__item__(obj.__counter__)
 if(res!==undefined){obj.__counter__++;return res}
-throw StopIteration()
+throw StopIteration('')
 }
 throw TypeError("'"+str(obj.__class__)+"' object is not iterable")
 }
@@ -1128,7 +1129,7 @@ self.iter++
 return self.valueOf()[self.iter-1]
 }else{
 self.iter=null
-throw StopIteration()
+throw StopIteration('')
 }
 }
 list.__not_in__=function(self,item){return !item.__contains__(self)}
@@ -4793,7 +4794,7 @@ this.__class__=JSObject
 this.__str__=function(){return "<object 'JSObject' wraps "+this.js+">"}
 this.toString=this.__str__
 }
-$JSObject.prototype.__bool__=function(){return new Boolean(this.js)}
+$JSObject.prototype.__bool__=function(){return(new Boolean(this.js)).valueOf()}
 $JSObject.prototype.__getitem__=function(rank){
 if(this.js.item!==undefined){return this.js.item(rank)}
 else{throw AttributeError,this+' has no attribute __getitem__'}
