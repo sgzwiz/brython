@@ -2,6 +2,7 @@
 function abs(obj){
     if(isinstance(obj,int)){return int(Math.abs(obj))}
     else if(isinstance(obj,float)){return float(Math.abs(obj.value))}
+    else if('__abs__' in obj){return obj.__abs__()}
     else{throw TypeError("Bad operand type for abs(): '"+str(obj.__class__)+"'")}
 }
 

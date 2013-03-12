@@ -1,3 +1,166 @@
+var msecPerMin = 60000;
+var msecPerHr = msecPerMin*60;
+var msecPerDay = msecPerHr*24;
+var msecPerWk = msecPerDay*24*7;
+
+var from_msecs=function(msecs) {
+    var weeks= ~~(msecs/msecPerWk)
+    msecs %= msecPerWk
+
+    var days= ~~(msecs/msecPerDay)
+    msecs %= msecPerDay
+
+    var hours = ~~(msecs/msecPerHr)
+    msecs %= msecPerHr
+
+    var minutes = ~~(msecs/msecPerMin)
+    msecs %= msecPerMin
+
+    var seconds = Math.floor(msecs/1000)            
+    msecs %= 1000
+
+    return [weeks, days, hours, minutes, seconds, msecs]
+}
+
+var to_msecs=function(weeks, days, hours, minutes, seconds, msecs) {
+    return weeks*msecPerWk+days*msecPerDay+hours*msecPerHr+minutes*msecPerMin+msecs
+}
+
+function $TimeDeltaClass(){return new $TimeDelta(arguments)}
+$TimeDeltaClass.__class__ = $type
+$TimeDeltaClass.__str__ = function(){return "<class 'datetime.timedelta'>"}
+
+$TimeDeltaClass.__getattr__=function(attr) {
+      if (attr == 'min') return new timedelta(-999999999)
+      if (attr == 'max') return new timedelta(999999999, 24*3600-1, 1e6-1)
+      if (attr == 'resolution') return new timedelta(0,0,1)
+}
+
+function $TimeDelta(args) {
+   var $ns=$MakeArgs("timedelta",args,[],
+        {'days':0, 'seconds':0, 'microseconds':0, 'milliseconds':0,
+         'minutes':0, 'hours':0, 'weeks': 0}, null, null)
+
+   this.days=$ns['days']
+   this.secs=$ns['seconds']
+   this.us=$ns['microseconds']
+
+   var msecs=$ns['milliseconds']
+   this.us+=msecs*1000
+
+   var minutes=$ns['minutes']
+   this.secs+=minutes*60
+
+   var hours=$ns['hours']
+   this.secs+=hours*3600
+
+   var weeks=$ns['weeks']
+   this.days+=weeks*7
+
+   this.secs+= ~~(this.us/1000000)
+   this.us%=1000000
+
+   this.days+= ~~(this.secs/86400)
+   this.secs%=86400
+
+   if (this.days < -999999999 || this.days > 999999999) {
+      $raise('OverflowError', 'days is an invalid value: days=' + this.days);
+   }
+
+   this.__abs__ = function() {
+      return new timedelta(abs(this.days), abs(this.secs), abs(this.us))
+   }
+
+   this.__class__ = $TimeDeltaClass
+
+   this.__msecs__ = function() {
+       return this.us/1000 + this.secs*1000 + this.days*msecPerDay
+   }
+
+   this.__add__ = function(other) {
+      if (isinstance(other, $Date) || isinstance(other, $DateTime)) {
+         var d=new Date();
+         
+         d.settime(this.__msecs__() + other.$js_date.getTime())
+         
+         return new $DateTime(d.year, d.month, d.day, d.hour, d.minute,
+                              d.second, d.milliseconds*1000);
+      } else if (isinstance(other, timedelta)) {
+         return new timedelta(0,0,0,this.__msecs__() + other.__msecs__())
+      }
+      $raise('TypeError', "unsupported operand type(s) for +: 'datetime.timedelta' and '" + other.__class__ + "'");
+   }
+
+   this.__div__ = function (other) {
+      if (isinstance(other, int) || isinstance(other, float)) {
+         return new timedelta(0,0,0,this.__msecs__() / other.valueOf())
+      } else if (isinstance(other, timedelta)) {
+         return new timedelta(0,0,0,this.__msecs__() / other.__msecs__())
+      }
+      $raise('TypeError', "unsupported operand type(s) for /: 'datetime.timedelta' and '" + other.__class__ + "'");
+   }
+
+   this.__eq__ = function(other) {
+      return this.__msecs__() == other.__msecs__();
+   }
+
+   this.__getattr__ = function(attr){
+      if (attr == 'microseconds') return $getattr(this, 'us')
+      if (attr == 'seconds') return $getattr(this, 'secs')
+
+      return $getattr(this,attr)
+   }
+
+   this.__gt__ = function(other) {
+      return this.__msecs__() > other.__msecs__()
+   }
+
+   this.__lt__ = function(other) {
+      return this.__msecs__() < other.__msecs__()
+   }
+
+   this.__mul__ = function (other) {
+      if (isinstance(other, int) || isinstance(other, float)) {
+         return new timedelta(0,0,0,this.__msecs__() * other.valueOf())
+      } else if (isinstance(other, timedelta)) {
+         return new timedelta(0,0,0,this.__msecs__() * other.__msecs__())
+      }
+      $raise('TypeError', "unsupported operand type(s) for *: 'datetime.timedelta' and '" + other.__class__ + "'");
+   }
+
+   this.__neg__ = function() {
+      return new timedelta(-this.days, -this.secs, -this.us)
+   }
+
+   this.total_seconds=function() {return this.__msecs__()/1000}
+
+   this.__sub__ = function(other) {
+      if (isinstance(other, timedelta)) {
+         return new timedelta(0,0,0, this.__msecs__() - other.__msecs__())
+      }
+
+      $raise('TypeError', "unsupported operand type(s) for -: 'datetime.timedelta' and '" + other.__class__ + "'");
+   }
+
+   this.__str__= function() {
+      var weeks,days,hours,minutes,seconds,msecs
+      //[weeks,days,hours,minutes,seconds,msecs]=from_msecs(this.__msecs__())
+      var a=from_msecs(this.__msecs__())
+      console.log(a);
+      var a=new Array(days,seconds,0,msecs,minutes,hours,weeks)
+      var pos=0;
+      if (weeks > 0) {pos=7}
+      else if (hours > 0) {pos=6}
+      else if (minutes > 0) {pos=5}
+      else if (msecs > 0) {pos=4}
+      else if (seconds > 0) {pos=3}
+      else if (days > 0) {pos=1}
+      var myargs=a.splice(0,pos)
+      console.log(myargs);
+      return 'datetime.timedelta(' + myargs.join(',') + ')';
+   }
+}
+
 function $DateClass(){return new $Date(arguments)}
 $DateClass.__class__ = $type
 $DateClass.__str__ = function(){return "<class 'datetime.date'>"}
@@ -13,8 +176,13 @@ function $Date(args){
     this.$dt = obj
 
     this.__add__ = function(other) {
-        //if (isinstance(other, timedelta)) {}
-        $raise('TypeError', "unsupported operand type(s) for +: 'datetime.date' and '" + other.__class__ + "'");
+         if (isinstance(other, timedelta)) {
+            var d=new Date();
+            d.setTime(obj.$js_date.getTime() + other.__msecs__());
+            return new datetime(d.getFullYear(), d.getMonth()+1, d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+         }
+
+         $raise('TypeError', "unorderable types: datetime.date() < " + other.__class__ + "()");
     }
     
     this.__class__ = $DateClass
@@ -26,10 +194,10 @@ function $Date(args){
     this.__getattr__ = function(attr){return $getattr(this,attr)}
 
     this.__gt__ = function(other) {
-         if (!isinstance(other, $Date)) {
+         if (!isinstance(other, date)) {
             $raise('TypeError', "unorderable types: datetime.date() < " + other.__class__ + "()");
          }
-         return this.$js_date.getTime() > other.$js_date.getTime();
+         return obj.$js_date.getTime() > other.$js_date.getTime();
     }
 
     this.__hash__ = function() {return hash(tuple(this.year,this.month,this.day))}
@@ -38,14 +206,30 @@ function $Date(args){
          if (!isinstance(other, $Date)) {
             $raise('TypeError', "unorderable types: datetime.date() < " + other.__class__ + "()");
          }
-         return this.$js_date.getTime() < other.$js_date.getTime();
+         return obj.$js_date.getTime() < other.$js_date.getTime();
     }
-    
+
     this.__mul__ = function(other) {
         $raise('TypeError', "unsupported operand type(s) for *: 'datetime.date' and '" + other.__class__ + "'");
     }
 
     this.__str__ = function(){return this.strftime('%Y-%m-%d')}
+
+    this.__sub__ = function(other) {
+         if (isinstance(other, date)) {
+            var msecs=obj.$js_date.getTime() - other.$js_date.getTime();
+
+            var weeks,days,hours,minutes,seconds,msecs=from_msecs(msecs)
+            return new timedelta(days,seconds,0,msecs,minutes,hours,weeks);
+         }
+         if (isinstance(other, timedelta)) {
+            var d=new Date();
+            d.setTime(obj.$js_date.getTime() - other.__msecs__());
+            return new datetime(d.getFullYear(), d.getMonth()+1, d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+         }
+
+         $raise('TypeError', "unorderable types: datetime.date() < " + other.__class__ + "()");
+    }
 
     this.strftime = function(fmt){return this.$dt.strftime(fmt)}
 
@@ -101,6 +285,10 @@ function $DateTime(args){
     
     this.__hash__ = function() {
        return hash(tuple(this.year,this.month,this.day,this.hour,this.minute,this.second,this.microsecond));
+    }
+
+    this.__eq__=function(other) {
+       return this.$js_date.getTime() == other.$js_date.getTime()
     }
 
     this.__str__ = function(){return !this.microsecond?
@@ -210,8 +398,9 @@ $module = {
     date : $DateClass,
     datetime : $DateTimeClass,
     time : $TimeClass,
+    timedelta : $TimeDeltaClass,
     MAXYEAR : 9999,
-    MINYEAR : 1    
+    MINYEAR : 1
 }
 
 $module.datetime.__getattr__= function(attr){
