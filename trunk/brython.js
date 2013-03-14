@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130312-163528
+// version 1.1.20130313-190414
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -12,7 +12,7 @@ arguments[4],arguments[5],arguments[6]))}
 }
 __BRYTHON__.has_local_storage=typeof(Storage)!=="undefined"
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130312-163528"]
+__BRYTHON__.version_info=[1,1,"20130313-190414"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -1887,14 +1887,15 @@ $import_single(modules[i][0],modules[i][1])
 document.$py_module_alias[modules[i][0]]=modules[i][1]
 }
 }
-function $import_from(module,names,parent_module){
+function $import_from(module,names,parent_module,alias){
 var relpath
-var alias=module
 if(parent_module !==undefined){
 relpath=document.$py_module_path[parent_module]
 var i=relpath.lastIndexOf('/')
 relpath=relpath.substring(0, i)
 alias=document.$py_module_alias[parent_module]
+}else if(alias !==undefined){
+$import_single(module,alias,names)
 }else{
 $import_single(module,module,names)
 }
@@ -2609,10 +2610,13 @@ this.parent=C
 this.names=[]
 C.tree.push(this)
 this.expect='module'
-this.toString=function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module}
+this.toString=function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module + '(as)' + this.alias}
 this.to_js=function(){
 var res='$import_from("'+this.module+'",['+this.names+']'
-if(this.parent_module!==undefined){res+=', "' + this.parent_module +'"'}
+if(this.parent_module!==undefined){res+=',"' + this.parent_module +'"'
+}else{res+=',undefined'}
+if(this.alias !=undefined){res+=',"' + this.alias + '"'
+}else{res+=',undefined'}
 res +=')\n'
 return res
 }
@@ -3500,6 +3504,14 @@ return $transition(C.parent,token)
 }else if(token==='.' && C.expect==='module'){
 C.expect='module'
 C.parent_module=C.parent.node.module
+return C
+}else if(token==='as' &&
+(C.expect===',' || C.expect==='eol')){
+C.expect='alias'
+return C
+}else if(token==='id' && C.expect==='alias'){
+C.alias=arguments[2]
+C.expect=','
 return C
 }else if(token==='(' && C.expect==='id'){
 C.expect='id'
