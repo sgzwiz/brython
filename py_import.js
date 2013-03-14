@@ -208,9 +208,8 @@ function $import_list(modules){ // list of objects with attributes name and alia
     }
 }
 
-function $import_from(module,names,parent_module){
+function $import_from(module,names,parent_module,alias){
     var relpath;
-    var alias=module;
 
     if (parent_module !== undefined) {
        //this is a relative path import
@@ -225,6 +224,8 @@ function $import_from(module,names,parent_module){
     
        alias=document.$py_module_alias[parent_module];
        //console.log(parent_module+','+alias+','+relpath);
+    } else if (alias !== undefined) {
+       $import_single(module,alias,names)
     } else {
        $import_single(module,module,names)
     }

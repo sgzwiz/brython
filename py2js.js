@@ -792,10 +792,14 @@ function $FromCtx(context){
     this.names = []
     context.tree.push(this)
     this.expect = 'module'
-    this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module}
+    this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module + '(as)' + this.alias}
     this.to_js = function(){ 
-        var res = '$import_from("'+this.module+'",['+this.names+']'
-        if(this.parent_module!==undefined){res+=', "' + this.parent_module +'"'}
+        var res = '$import_from("'+this.module+'",['+this.names+']';
+        if(this.parent_module!==undefined){res+=',"' + this.parent_module +'"'
+        } else { res+=',undefined'}
+        if(this.alias != undefined) {res+=',"' + this.alias + '"'
+        } else { res+=',undefined'}
+
         res += ')\n'
         return res
     }
@@ -1801,6 +1805,14 @@ function $transition(context,token){
             context.expect='module'
             // this is a relative import
             context.parent_module=context.parent.node.module;
+            return context
+        }else if (token==='as' &&
+            (context.expect ===',' || context.expect==='eol')){
+            context.expect='alias'
+            return context
+        }else if(token==='id' && context.expect==='alias'){
+            context.alias = arguments[2]
+            context.expect=','
             return context
         }else if (token==='(' && context.expect === 'id') {
             context.expect='id'
