@@ -790,14 +790,24 @@ function $FromCtx(context){
     this.type = 'from'
     this.parent = context
     this.names = []
+    this.aliases = {}
     context.tree.push(this)
     this.expect = 'module'
-    this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module + '(as)' + this.alias}
+    this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module + '(as)' + this.aliases}
     this.to_js = function(){ 
         var res = '$import_from("'+this.module+'",['+this.names+']';
         if(this.parent_module!==undefined){res+=',"' + this.parent_module +'"'
         } else { res+=',undefined'}
-        if(this.alias != undefined) {res+=',"' + this.alias + '"'
+        if(this.aliases != undefined) {
+          var a=[];
+          for (var i=0; i < this.names.length; i++) {
+              if (this.names[i] in this.aliases) {
+                 a.push(this.aliases[this.names[i]])
+              } else { 
+                 a.push(undefined)
+              }
+          }
+          res+=',[' + a + ']'
         } else { res+=',undefined'}
 
         res += ')\n'
@@ -1811,7 +1821,7 @@ function $transition(context,token){
             context.expect='alias'
             return context
         }else if(token==='id' && context.expect==='alias'){
-            context.alias = arguments[2]
+            context.aliases[context.names[context.names.length-1]]='"' + arguments[2] + '"'
             context.expect=','
             return context
         }else if (token==='(' && context.expect === 'id') {

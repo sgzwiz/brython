@@ -42,10 +42,11 @@ function $import_js(module,alias,names){
         if(eval('$module')===undefined){
             throw ImportError("name '$module' is not defined in module")
         }
-        if(alias===undefined){alias=module}
        
         if(names===undefined){
+            if(alias===undefined){alias=module}
             eval(alias+'=$module')
+
             // add class and __str__
             eval(alias+'.__class__ = $type')
             eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
@@ -57,8 +58,18 @@ function $import_js(module,alias,names){
                     eval(name+'=$module[name]')
                 }
             }else{
-                for(var i=0;i<names.length;i++){
+                if (alias !== undefined) {
+                  for(var i=0;i<names.length;i++){
+                    if (alias[i] !== undefined) {
+                       eval(alias[i]+'=$module[names[i]]')
+                    } else {
+                       eval(names[i]+'=$module[names[i]]')
+                    }
+                  }
+                } else {
+                  for(var i=0;i<names.length;i++){
                     eval(names[i]+'=$module[names[i]]')
+                  }
                 }
             }
         }
@@ -163,10 +174,18 @@ function $import_py(module,alias,names,path){
             new $NodeJSCtx(attr_node,'if($attr.charAt(0)!=="_"){eval($attr+"=$module[$attr]")}')
             new_node.add(attr_node)
         }else{
-            for(var i=0;i<names.length;i++){
-                var new_node = new $Node('expression')
-                new $NodeJSCtx(new_node,names[i]+'=$module.'+names[i])
-                root.add(new_node)
+            if (alias !== undefined) {
+              for(var i=0;i<names.length;i++){
+                 var new_node = new $Node('expression')
+                 new $NodeJSCtx(new_node,alias[i]+'=$module.'+names[i])
+                 root.add(new_node)
+              }
+            } else {
+              for(var i=0;i<names.length;i++){
+                 var new_node = new $Node('expression')
+                 new $NodeJSCtx(new_node,names[i]+'=$module.'+names[i])
+                 root.add(new_node)
+              }
             }
         }
     }
@@ -187,6 +206,7 @@ $import_funcs = [$import_js,$import_py_search_path]
 
 function $import_single(name,alias,names){
     for(var j=0;j<$import_funcs.length;j++){
+        console.log(names);
         try{$import_funcs[j](name,alias,names);return}
         catch(err){
             if(err.name==="NotFoundError"){
