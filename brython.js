@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130313-193909
+// version 1.1.20130313-211622
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -12,7 +12,7 @@ arguments[4],arguments[5],arguments[6]))}
 }
 __BRYTHON__.has_local_storage=typeof(Storage)!=="undefined"
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130313-193909"]
+__BRYTHON__.version_info=[1,1,"20130313-211622"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -1751,8 +1751,8 @@ eval(res)
 if(eval('$module')===undefined){
 throw ImportError("name '$module' is not defined in module")
 }
-if(alias===undefined){alias=module}
 if(names===undefined){
+if(alias===undefined){alias=module}
 eval(alias+'=$module')
 eval(alias+'.__class__ = $type')
 eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
@@ -1764,8 +1764,18 @@ if(name.substr(0,1)==='_'){continue}
 eval(name+'=$module[name]')
 }
 }else{
+if(alias !==undefined){
+for(var i=0;i<names.length;i++){
+if(alias[i]!==undefined){
+eval(alias[i]+'=$module[names[i]]')
+}else{
+eval(names[i]+'=$module[names[i]]')
+}
+}
+}else{
 for(var i=0;i<names.length;i++){
 eval(names[i]+'=$module[names[i]]')
+}
 }
 }
 }
@@ -1848,10 +1858,18 @@ var attr_node=new $Node('expression')
 new $NodeJSCtx(attr_node,'if($attr.charAt(0)!=="_"){eval($attr+"=$module[$attr]")}')
 new_node.add(attr_node)
 }else{
+if(alias !==undefined){
+for(var i=0;i<names.length;i++){
+var new_node=new $Node('expression')
+new $NodeJSCtx(new_node,alias[i]+'=$module.'+names[i])
+root.add(new_node)
+}
+}else{
 for(var i=0;i<names.length;i++){
 var new_node=new $Node('expression')
 new $NodeJSCtx(new_node,names[i]+'=$module.'+names[i])
 root.add(new_node)
+}
 }
 }
 }
@@ -1868,6 +1886,7 @@ eval('throw '+err.name+'(err.message)')
 $import_funcs=[$import_js,$import_py_search_path]
 function $import_single(name,alias,names){
 for(var j=0;j<$import_funcs.length;j++){
+console.log(names)
 try{$import_funcs[j](name,alias,names);return}
 catch(err){
 if(err.name==="NotFoundError"){
@@ -2608,14 +2627,24 @@ function $FromCtx(C){
 this.type='from'
 this.parent=C
 this.names=[]
+this.aliases={}
 C.tree.push(this)
 this.expect='module'
-this.toString=function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module + '(as)' + this.alias}
+this.toString=function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module + '(as)' + this.aliases}
 this.to_js=function(){
 var res='$import_from("'+this.module+'",['+this.names+']'
 if(this.parent_module!==undefined){res+=',"' + this.parent_module +'"'
 }else{res+=',undefined'}
-if(this.alias !=undefined){res+=',"' + this.alias + '"'
+if(this.aliases !=undefined){
+var a=[]
+for(var i=0;i < this.names.length;i++){
+if(this.names[i]in this.aliases){
+a.push(this.aliases[this.names[i]])
+}else{
+a.push(undefined)
+}
+}
+res+=',[' + a + ']'
 }else{res+=',undefined'}
 res +=')\n'
 return res
@@ -3510,7 +3539,7 @@ return C
 C.expect='alias'
 return C
 }else if(token==='id' && C.expect==='alias'){
-C.alias=arguments[2]
+C.aliases[C.names[C.names.length-1]]='"' + arguments[2]+ '"'
 C.expect=','
 return C
 }else if(token==='(' && C.expect==='id'){
