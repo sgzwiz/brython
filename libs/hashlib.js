@@ -39,7 +39,7 @@ function $get_CryptoJS_lib(alg) {
    if(res.constructor===Error){throw res} // module not found
 
    try{
-      eval(res + "; document.CryptoJS=CryptoJS;")
+      eval(res + "; __BRYTHON__.CryptoJS=CryptoJS;")
    } catch (err) { 
       throw Error("JS Eval Error", "Cannot eval CryptoJS algorithm '" + alg + "' : error:" + err);
    }
@@ -47,29 +47,29 @@ function $get_CryptoJS_lib(alg) {
 
 function $hashlib_new(alg) {
     if (alg == 'md5') {
-       if (document.Crypto === undefined || 
-           document.CryptoJS.algo.MD5 === undefined) $get_CryptoJS_lib('md5')
-       this.hash = document.CryptoJS.algo.MD5.create()
+       if (__BRYTHON__.Crypto === undefined || 
+           __BRYTHON__.CryptoJS.algo.MD5 === undefined) $get_CryptoJS_lib('md5')
+       this.hash = __BRYTHON__.CryptoJS.algo.MD5.create()
     } else if (alg == 'sha1') {
-       if (document.Crypto === undefined || 
-           document.CryptoJS.algo.SHA1 === undefined) $get_CryptoJS_lib('sha1')
-       this.hash = document.CryptoJS.algo.SHA1.create()
+       if (__BRYTHON__.Crypto === undefined || 
+           __BRYTHON__.CryptoJS.algo.SHA1 === undefined) $get_CryptoJS_lib('sha1')
+       this.hash = __BRYTHON__.CryptoJS.algo.SHA1.create()
     } else if (alg == 'sha224') {
-       if (document.Crypto === undefined || 
-           document.CryptoJS.algo.SHA224 === undefined) $get_CryptoJS_lib('sha224')
-       this.hash = document.CryptoJS.algo.SHA224.create()
+       if (__BRYTHON__.Crypto === undefined || 
+           __BRYTHON__.CryptoJS.algo.SHA224 === undefined) $get_CryptoJS_lib('sha224')
+       this.hash = __BRYTHON__.CryptoJS.algo.SHA224.create()
     } else if (alg == 'sha256') {
-       if (document.Crypto === undefined || 
-           document.CryptoJS.algo.SHA256 === undefined) $get_CryptoJS_lib('sha256')
-       this.hash = document.CryptoJS.algo.SHA256.create()
+       if (__BRYTHON__.Crypto === undefined || 
+           __BRYTHON__.CryptoJS.algo.SHA256 === undefined) $get_CryptoJS_lib('sha256')
+       this.hash = __BRYTHON__.CryptoJS.algo.SHA256.create()
     } else if (alg == 'sha384') {
-       if (document.Crypto === undefined || 
-           document.CryptoJS.algo.SHA384 === undefined) $get_CryptoJS_lib('sha384')
-       this.hash = document.CryptoJS.algo.SHA384.create()
+       if (__BRYTHON__.Crypto === undefined || 
+           __BRYTHON__.CryptoJS.algo.SHA384 === undefined) $get_CryptoJS_lib('sha384')
+       this.hash = __BRYTHON__.CryptoJS.algo.SHA384.create()
     } else if (alg == 'sha512') {
-       if (document.Crypto === undefined || 
-           document.CryptoJS.algo.SHA512 === undefined) $get_CryptoJS_lib('sha512')
-       this.hash = document.CryptoJS.algo.SHA512.create()
+       if (__BRYTHON__.Crypto === undefined || 
+           __BRYTHON__.CryptoJS.algo.SHA512 === undefined) $get_CryptoJS_lib('sha512')
+       this.hash = __BRYTHON__.CryptoJS.algo.SHA512.create()
     } else {
        $raise('AttributeError', 'Invalid hash algorithm:' + alg)
     }
