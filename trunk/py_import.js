@@ -50,7 +50,7 @@ function $import_js(module,alias,names){
             // add class and __str__
             eval(alias+'.__class__ = $type')
             eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
-            eval(alias+'.__file__ = "' +__BRYTHON__.$brython_path+'libs/'+ module + '.js"')
+            eval(alias+'.__file__ = "' +__BRYTHON__.brython_path+'libs/'+ module + '.js"')
         }else{
             if(names.length===1 && names[0]==='*'){
                 for(var name in $module){
