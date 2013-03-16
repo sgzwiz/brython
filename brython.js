@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130316-182259
+// version 1.1.20130316-184614
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -12,7 +12,7 @@ arguments[4],arguments[5],arguments[6]))}
 }
 __BRYTHON__.has_local_storage=typeof(Storage)!=="undefined"
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130316-182259"]
+__BRYTHON__.version_info=[1,1,"20130316-184614"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -1756,7 +1756,7 @@ if(alias===undefined){alias=module}
 eval(alias+'=$module')
 eval(alias+'.__class__ = $type')
 eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
-eval(alias+'.__file__ = "' +__BRYTHON__.$brython_path+'libs/'+ module + '.js"')
+eval(alias+'.__file__ = "' +__BRYTHON__.brython_path+'libs/'+ module + '.js"')
 }else{
 if(names.length===1 && names[0]==='*'){
 for(var name in $module){
