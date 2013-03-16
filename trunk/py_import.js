@@ -50,7 +50,7 @@ function $import_js(module,alias,names){
             // add class and __str__
             eval(alias+'.__class__ = $type')
             eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
-            eval(alias+'.__file__ = "' +document.$brython_path+'libs/'+ module + '.js"')
+            eval(alias+'.__file__ = "' +__BRYTHON__.$brython_path+'libs/'+ module + '.js"')
         }else{
             if(names.length===1 && names[0]==='*'){
                 for(var name in $module){
@@ -206,7 +206,7 @@ $import_funcs = [$import_js,$import_py_search_path]
 
 function $import_single(name,alias,names){
     for(var j=0;j<$import_funcs.length;j++){
-        console.log(names);
+        //console.log(names);
         try{$import_funcs[j](name,alias,names);return}
         catch(err){
             if(err.name==="NotFoundError"){

@@ -1,0 +1,209 @@
+<html>
+<head>
+<meta charset="iso-8859-1">
+<link rel="stylesheet" href="../brython.css">
+
+<style media="screen" type="text/css">
+
+textarea {
+     -webkit-box-sizing: border-box; /* Safari/Chrome, other WebKit */
+     -moz-box-sizing: border-box;    /* Firefox, other Gecko */
+     box-sizing: border-box;         /* Opera/IE 8+ */
+}
+
+#container {
+width:80%;
+height: 70%;
+position:relative;
+margin: auto;
+}
+
+#left-div {
+width:45%;
+height:100%;
+#position:relative;
+margin: auto;
+float:left;
+}
+
+#center-div {
+width:10%;
+height:100%;
+#position:relative;
+margin: auto;
+text-align: center;
+float:left;
+top:0;
+bottom:0;
+}
+
+#right-div {
+width:45%;
+height:100%;
+position:relative;
+margin: auto;
+float:right;
+}
+
+#editor {
+float:none;
+width:45%;
+height:100%;
+}
+
+#controls {
+width:10%;
+float:none;
+}
+
+#console {
+width:100%;
+height:100%;
+float:none;
+}
+</style>
+
+<script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript">
+</script>
+
+<script src="../brython_builtins.js"></script>
+<script src="../py2js.js"></script>
+<script src="../py_utils.js"></script>
+<script src="../py_classes.js"></script>
+<script src="../py_import.js"></script>
+<script src="../py_list.js"></script>
+<script src="../py_string.js"></script>
+<script src="../py_dom.js"></script>
+<script src="../py_ajax.js"></script>
+<script src="../py_local_storage.js"></script>
+
+<script type="text/python">
+import sys
+import time
+import random
+import dis
+import aceeditor
+
+_rand=random.random()   #do we need to have a new random number each time
+                        #we load a module, during a single execution?
+                        #probably okay to use cached module if module is 
+                        #needed again during a single execution.
+output = ''
+
+def write(data):
+    doc["console"].value += str(data)
+
+sys.stdout = object()
+sys.stdout.write = write
+
+sys.stderr = object()
+sys.stderr.write = write
+
+editor=aceeditor.aceeditor()
+editor.edit("editor")
+editor.setTheme("ace/theme/monokai")
+editor.setMode("ace/mode/python")
+
+def clear_text():
+    editor.setValue('')
+    doc["console"].value=''
+
+# override log to send output to textarea
+def log(data):
+    doc["console"].value = doc["console"].value+str(data)+'\n'
+
+# load a Python script
+def on_complete(req):
+    editor.setValue(req.text)
+    editor.scrollToRow(0)
+
+def load(evt):
+    _name=evt.target.value
+    req = ajax()
+    req.on_complete = on_complete
+    req.open('GET',_name+'?foo=%s' % _rand,False)
+    req.send()
+
+def show_console():
+    doc["console"].value = output
+
+def run():
+    global output
+    doc["console"].value=''
+    src = editor.getValue()
+    if sys.has_local_storage:
+        local_storage["py_src"]=src
+    t0 = time.time()
+    exec(src)
+    output = doc["console"].value
+    print('<completed in %s ms>' %(time.time()-t0))
+
+def show_js():
+    src = editor.getValue()
+    doc["console"].value = dis.dis(src)
+</script>
+</head>
+<body onload="brython(1)">
+<center>
+<table id="banner" cellpadding=0 cellspacing=0>
+<tr>
+<td><a class="banner" href="/index.html">Home</a></td>
+<td><a class="banner" href="/tests/console_en.html">Console</a></td>
+<td><a class="banner" href="/gallery/gallery_en.html">Gallery</a></td>
+<td><a class="banner" href="/doc/en/index.html">Documentation</a>
+<td><a class="banner" href="http://code.google.com/p/brython/downloads/list" target="_blank">Download</a></td>
+<td><a class="banner" href="http://code.google.com/p/brython/" target="_blank">Development</a></td>
+<td><a class="banner" href="/groups_en.html" target="_blank">Groups</a></td>
+</tr>
+</table>
+
+<div style="text-align:center">
+<img src="../brython.png"></img><br><b>browser python</b>
+</div>
+</center>
+
+<div id="container">
+<div id="left-div">
+<div style="padding: 3px 3px 3px 3px;">
+Choose a test suite:
+<select name="filename" onChange="load(event)">
+  <option value="test_suite.py">general test suite</option>
+  <option value="classes_tests.py">built-in classes</option>
+  <option value="test_classes.py">classes</option>
+  <option value="test_datetime.py">datetime</option>
+  <option value="dom_objects.py">DOM</option>
+  <option value="test_import.py">imports</option>
+  <option value="issues.py">issues</option>
+  <option value="test_list_methods.py">list methods</option>
+  <option value="test_math.py">math</option>
+  <option value="test_hashlib.py">hashlib</option>
+  <option value="test_strings.py">strings</option>
+</select>
+</div>
+  <div id="editor"></div>
+</div>
+
+<div id="center-div">
+<div style="float:left; height:50%"></div>
+<div style="clear:both;">
+<button onClick="run()">run</button>
+<p>
+<button onClick="clear_text()">clear</button>
+</div>
+</div>
+
+<div id="right-div">
+<div style="padding: 3px 3px 3px 3px;">
+  <button onClick="show_console()">Console</button>
+  <button onClick="show_js()">Javascript</button>
+</div>
+
+<div style="width:100%;height:100%;">
+<textarea id="console"></textarea>
+</div>
+
+</div>
+</div>
+
+</body>
+</html>
