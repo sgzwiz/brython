@@ -21,4 +21,4 @@ assert t.__class__ == tuple
 assert isinstance(t,tuple)
 assert str(t)=='(1,8)'
 
-print("passed all tests")
+print("passed all tests..")

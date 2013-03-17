@@ -17,8 +17,9 @@ assert z==0
 #not sure how to convert this to assert (raise)?
 try:
   print(n)
+  print("Failed.. n should be undefined, but n:", n)
 except:
-  print('n is not defined')
+  pass
 
 assert 3 * 3.75 / 1.5 == 7.5
 
@@ -34,15 +35,28 @@ hello = "This is a rather long string containing\n\
 several lines of text just as you would do in C.\n\
     Note that whitespace at the beginning of the line is\
  significant."
-print(hello)
-print("""\
+#print(hello)
+assert len(hello) == 158
+
+hello="""\
 Usage: thingy [OPTIONS]
      -h                        Display this usage message
      -H hostname               Hostname to connect to
-""")
+"""
+assert len(hello) == 136
+
+hello1="""This is a rather long string containing
+several lines of text just as you would do in C.
+    Note that whitespace at the beginning of the line is
+ significant."""
+
+assert len(hello1) == 159
+
 hello = r"This is a rather long string containing\n\
 several lines of text much as you would do in C."
-print(hello)
+
+#print(hello)
+assert len(hello) == 91
 
 word = 'Help' + 'A'
 assert word == 'HelpA'
@@ -63,17 +77,15 @@ assert x.lstrip('of') == 'ss'
 
 x='aZjhkhZyuy'
 
-#print(x.find('Z'))
-#print(x.rfind('Z'))
-#print(x.rindex('Z'))
 assert x.find('Z') == 1
 assert x.rfind('Z') == 6
 assert x.rindex('Z') == 6
 
 try:
-    print(x.rindex('K'))
+    x.rindex('K')
+    print("Failed.. Should have raised ValueError, instead returned %s" % x.rindex('K'))
 except ValueError:
-    print('erreur')
+    pass
 
 assert x.split('h') == ['aZj', 'k', 'Zyuy']
 assert x.split('h',1) == ['aZj', 'khZyuy']
@@ -120,3 +132,5 @@ assert g(10)==119
 x = [lambda x:x*2,lambda y:y*3]
 assert x[0](5)==10
 assert x[1](10)==30
+
+print("passed all tests..")
