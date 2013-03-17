@@ -117,6 +117,7 @@ def log(data):
 def on_complete(req):
     editor.setValue(req.text)
     editor.scrollToRow(0)
+    editor.gotoLine(0)
 
 def load(evt):
     _name=evt.target.value
