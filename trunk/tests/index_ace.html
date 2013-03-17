@@ -83,6 +83,7 @@ import time
 import random
 import dis
 import aceeditor
+from local_storage import storage
 
 _rand=random.random()   #do we need to have a new random number each time
                         #we load a module, during a single execution?
@@ -132,7 +133,7 @@ def run():
     doc["console"].value=''
     src = editor.getValue()
     if sys.has_local_storage:
-        local_storage["py_src"]=src
+        storage["py_src"]=src
     t0 = time.time()
     exec(src)
     output = doc["console"].value
