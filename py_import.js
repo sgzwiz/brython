@@ -112,7 +112,6 @@ function $import_py(module,alias,names,path){
             }
         }
     }
-   
     
     var module_path= path+'/'+module+'.py'
     $xmlhttp.open('GET', module_path+fake_qs,false)
@@ -247,6 +246,6 @@ function $import_from(module,names,parent_module,alias){
     } else if (alias !== undefined) {
        $import_single(module,alias,names)
     } else {
-       $import_single(module,module,names)
+       $import_single(module,names,names)
     }
 }

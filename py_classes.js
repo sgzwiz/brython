@@ -240,6 +240,7 @@ $DictClass.prototype.__class__ = dict
 
 $DictClass.prototype.__getattr__ = function(attr){
     if(attr==='__class__'){return this.__class__}
+    if(dict[attr]===undefined){throw AttributeError("'dict' object has no attribute '"+attr+"'")}
     var obj = this
     var res = function(){
         var args = [obj]
@@ -285,17 +286,18 @@ function $eval(src){
     catch(err){
         if(err.py_error===undefined){throw RuntimeError(err.message)}
         if(document.$stderr){document.$stderr.__getattr__('write')(document.$stderr_buff+'\n')}
-        else{throw(err)}
+        else{err.message += err.info;throw(err)}
     }
 }         
 
 function exec(src){
     try{eval(__BRYTHON__.py2js(src).to_js())}
     catch(err){
-        if(err.py_error===undefined){console.log(err);err = RuntimeError(err+'')}
-        var trace = err.__name__+': '+err.message+err.info
+        console.log(err)
+        if(err.py_error===undefined){err = RuntimeError(err+'')}
+        var trace = err.__name__+': '+err.message
         if(document.$stderr){document.$stderr.__getattr__('write')(trace)}
-        else{console.log(trace)}
+        else{err.message += err.info}
         throw err
     }
 }         
@@ -391,6 +393,8 @@ $FloatClass.prototype.__hash__=float.__hash__;
 $FloatClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
 $FloatClass.prototype.__not_in__ = function(item){return !(item.__contains__(this))}
+
+$FloatClass.prototype.__str__ = $FloatClass.prototype.toString
 
 $FloatClass.prototype.__truediv__ = function(other){
     if(isinstance(other,int)){
@@ -631,8 +635,9 @@ function isinstance(obj,arg){
             return ((typeof obj)=="number"||obj.constructor===Number)&&(obj.valueOf()%1===0)
         }
         if(arg===float){
-            return ((typeof obj=="number")&&(obj.valueOf()%1!==0))||
-                (obj.__class__===float)}
+            return ((typeof obj=="number" && obj.valueOf()%1!==0))||
+                (obj.__class__===float)
+        }
         if(arg===str){return (typeof obj=="string")}
         if(arg===list){return (obj.constructor===Array)}
         if(obj.__class__!==undefined){return obj.__class__===arg}
@@ -663,7 +668,11 @@ function $iterator(obj,info){
 
 function len(obj){
     try{return obj.__len__()}
-    catch(err){throw TypeError("object of type "+obj.__class__+" has no len()")}
+    catch(err){
+        try{return obj.__getattr__('__len__')()}
+        catch(err){
+            throw TypeError("object of type '"+obj.__class__.__name__+"' has no len()")}
+        }
 }
 
 function map(){
@@ -847,7 +856,8 @@ function round(arg,n){
     if(!isinstance(n,int)){throw TypeError(
         "'"+n.__class__+"' object cannot be interpreted as an integer")}
     var mult = Math.pow(10,n)
-    return Number(Math.round(arg*mult)).__truediv__(mult)
+    var res = Number(Math.round(arg*mult)).__truediv__(mult)
+    if(n==0){return int(res)}else{return float(res)}
 }
 
 // set
@@ -1046,8 +1056,14 @@ True = true
 False = false
 
 Boolean.prototype.__class__ = bool
+
 Boolean.prototype.__eq__ = function(other){
     if(this.valueOf()){return !!other}else{return !other}
+}
+
+Boolean.prototype.__getattr__ = function(attr){
+    if(this[attr]!==undefined){return this[attr]}
+    else{throw AttributeError("'bool' object has no attribute '"+attr+"'")}
 }
 
 Boolean.prototype.__hash__ = function() {
@@ -1070,11 +1086,17 @@ Boolean.prototype.toString = function(){
     return "False"
 }
 
+Boolean.prototype.__str__ = Boolean.prototype.toString
+
 function $NoneClass(){
     this.__class__ = new $class(this,"NoneType")
     this.value = null
     this.__bool__ = function(){return False}
     this.__eq__ = function(other){return other===None}
+    this.__getattr__ = function(attr){
+        if(this[attr]!==undefined){return this[attr]}
+        else{throw AttributeError("'NoneType' object has no attribute 'b'")}
+    }
     this.__hash__ = function(){return 0}
     this.__str__ = function(){return 'None'}
 }
@@ -1092,9 +1114,9 @@ Exception = function (msg){
         var lines = document.$py_src[module].split('\n')
         err.info += "\nmodule '"+module+"' line "+line_num
         err.info += '\n'+lines[line_num-1]
+        //msg += err.info
     }
-
-    err.message = msg
+    err.message = msg + err.info
 
     err.args = tuple(msg.split('\n')[0])
     err.__str__ = function(){return msg}
@@ -1103,7 +1125,7 @@ Exception = function (msg){
     err.__name__ = 'Exception'
     err.__class__ = Exception
     err.py_error = true
-    document.$exc_stack.push(err)
+    __BRYTHON__.exception_stack.push(err)
     return err
 }
 

@@ -79,9 +79,9 @@ function $list_comp(){
     }
     for(var j=0;j<indent;j++){$py += ' '}
     $py += $res+'.append('+arguments[1]+')'
-    var $js = __BRYTHON__.py2js($py).to_js()
+    var $js = __BRYTHON__.py2js($py,'list comprehension').to_js()
     eval($js)
-    return eval($res)    
+    return eval($res)
 }
 
 function $generator(func){
@@ -112,7 +112,7 @@ function $lambda(args,body){
     var $res = 'res'+Math.random().toString(36).substr(2,8)
     var $py = 'def '+$res+'('+args+'):\n'
     $py += '    return '+body
-    var $js = __BRYTHON__.py2js($py).to_js()
+    var $js = __BRYTHON__.py2js($py,'lambda').to_js()
     eval($js)
     return eval($res)    
 }
@@ -159,7 +159,7 @@ function $bind(func, thisValue) {
 function $raise(){
     // used for "raise" without specifying an exception
     // if there is an exception in the stack, use it, else throw a simple Exception
-    if(document.$exc_stack.length>0){throw $last(document.$exc_stack)}
+    if(__BRYTHON__.exception_stack.length>0){throw $last(__BRYTHON__.exception_stack)}
     else{throw Error('Exception')}
 }
 
@@ -200,7 +200,16 @@ function $IndentationError(module,msg,pos) {
 
 // resolve instance attribute from its class factory
 function $resolve_attr(obj,factory,attr){
-    if(obj[attr]!==undefined){return obj[attr]}
+    if(attr==='__class__'){return obj.__class__}
+    if(obj[attr]!==undefined){
+        if(typeof obj[attr]==='function'){
+            var res = function(){return obj[attr].apply(obj,arguments)}
+            res.__str__ = function(){
+                return "<bound method '"+attr+"' of "+obj.__class__.__name__+" object>"
+            }
+            return res
+        }else{return obj[attr]}
+    }
     if(factory[attr]!==undefined){
         var res = factory[attr]
         if(typeof res==='function'){
@@ -228,27 +237,39 @@ function $resolve_attr(obj,factory,attr){
                 console.log(err)
             }
         }
-        throw AttributeError('object has no attribute '+attr)
+        throw AttributeError("'"+factory.__name__+"' object has no attribute '"+attr+"'")
     }
 }
 
 // generic code for class constructor
-function $class_constructor(class_name,factory){
+function $class_constructor(class_name,factory,parents){
     // function can have additional arguments : the parent classes
     var parent_classes = []
-    for(var i=2;i<arguments.length;i++){
-        parent_classes.push(arguments[i])
+    if(parents!==undefined){
+        if(isinstance(parents,tuple)){
+            for(var i=0;i<parents.length;i++){
+                if(parents[i]!==object){ // don't heritate from "object"
+                    parent_classes.push(parents[i])
+                }
+            }
+        }else if(parents!==object){parent_classes=[parents]}
     }
     factory.parents = parent_classes
     factory.__name__ = class_name
     var f = function(){
+        
         var obj = new Object()
+        var initialized = false
+        if(factory.parents.length){
+            eval('var obj = '+factory.parents[0].__name__+'.apply(null,arguments)')
+            initialized = true
+        }
         obj.__class__ = f
-        // attributes beginning with __ must be set here
-        // because __getattr__ is not used to resolve them
+        // set attributes
         for(var attr in factory){
-            if(attr.substr(0,2)!=='__'){continue}
-            if(typeof factory[attr]==="function"){
+            if(attr=='__getattr__'){continue}
+            if(attr=='__class__'){return f}
+            else if(typeof factory[attr]==="function"){
                 var func = factory[attr]
                 obj[attr] = (function(func){
                     return function(){
@@ -269,20 +290,25 @@ function $class_constructor(class_name,factory){
         obj.__getattr__ = function(attr){
             return $resolve_attr(obj,factory,attr)
         }
-        obj.__setattr__ = function(attr,value){obj[attr]=value}
-        if(obj.__str__===undefined){
-            obj.__str__ = function(){
-                return "<object '"+class_name+"'>"
-            }
+        obj.__setattr__ = function(attr,value){
+            obj[attr]=value
+        }
+        try{$resolve_attr(obj,factory,'__str__')}
+        catch(err){
+            obj.__str__ = function(){return "<"+class_name+" object>"}
+            obj.__str__.__name__ = "<bound method __str__ of "+class_name+" object>"
         }
         obj.toString = obj.__str__
-        if(factory.__init__ !== undefined){
-            var args = [obj]
-            for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-            factory.__init__.apply(obj,args)
+        if(!initialized){
+            try{
+                var init_func = $resolve_attr(obj,factory,'__init__')
+                var args = [obj]
+                for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+                init_func.apply(null,arguments)
+            }catch(err){console.log(err)}
         }
         return obj
-        }
+    }
     f.__str__ = function(){return "<class '"+class_name+"'>"}
     for(var attr in factory){
         f[attr]=factory[attr]
