@@ -179,7 +179,7 @@ function $src_error(name,module,msg,pos) {
     info += '\n'+lines[line_num-1]+'\n'
     var lpos = pos-line_pos[line_num]
     for(var i=0;i<lpos;i++){info+=' '}
-    info += '^'
+    info += '^\n'
     err = new Error()
     err.name = name
     err.__name__ = name
