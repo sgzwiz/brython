@@ -3,7 +3,9 @@ str = function(){
 function str(arg){
     if(arg===undefined){return '<undefined>'}
     else if(arg.__str__!==undefined){return arg.__str__()}
-    else{return arg.toString()}
+    else if(arg.__getattr__('__str__')!==undefined){
+        return arg.__getattr__('__str__')()
+    }else{return arg.toString()}
 }
 
 str.__name__ = 'str'
@@ -500,6 +502,7 @@ String.prototype.__class__ = str
 
 String.prototype.__getattr__ = function(attr){
     if(attr==='__class__'){return str}
+    if(str[attr]===undefined){throw AttributeError("'str' object has no attribute '"+attr+"'")}
     var obj = this
     var res = function(){
         var args = [obj]

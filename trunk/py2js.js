@@ -27,14 +27,15 @@ var $augmented_assigns = {
     "%=":"imod","^=":"ipow"
 }
 
-function $_SyntaxError(context,msg){
+function $_SyntaxError(context,msg,indent){
     var ctx_node = context
     while(ctx_node.type!=='node'){ctx_node=ctx_node.parent}
     var tree_node = ctx_node.node
     var module = tree_node.module
     var line_num = tree_node.line_num
     document.$line_info = [line_num,module]
-    $SyntaxError(module,msg,$pos)
+    if(indent===undefined){throw SyntaxError(msg)}
+    else{throw IndentationError(msg)}
 }
 
 var $first_op_letter = {}
@@ -524,23 +525,25 @@ function $DefCtx(context){
         node.children.splice(0,0,new_node1,new_node2)
 
         // wrap function body in a try/catch
+        var def_func_node = new $Node('expression')
+        new $NodeJSCtx(def_func_node,'return function()')
+
         var try_node = new $Node('expression')
         new $NodeJSCtx(try_node,'try')
 
-        var def_func_node = new $Node('expression')
-        new $NodeJSCtx(def_func_node,'return function()')
-        try_node.add(def_func_node)
         for(var i=0;i<node.children.length;i++){
-            def_func_node.add(node.children[i])
+            try_node.add(node.children[i])
         }
+
+        def_func_node.add(try_node)
         var ret_node = new $Node('expression')
         var catch_node = new $Node('expression')
         var js = 'catch(err'+$loop_num+')'
-        js += '{$raise(err'+$loop_num+'.name,err'+$loop_num+'.message)}'
+        js += '{throw RuntimeError(err'+$loop_num+'.message)}'
         new $NodeJSCtx(catch_node,js)
         node.children = []
-        node.add(try_node)
-        node.add(catch_node)
+        def_func_node.add(catch_node)
+        node.add(def_func_node)
 
         var txt = ')('
         for(var i=0;i<this.env.length;i++){
@@ -795,7 +798,7 @@ function $FromCtx(context){
     this.expect = 'module'
     this.toString = function(){return '(from) '+this.module+' (import) '+this.names + '(parent module)' + this.parent_module + '(as)' + this.aliases}
     this.to_js = function(){ 
-        var res = '$import_from("'+this.module+'",['+this.names+']';
+        var res = '$import_from("'+this.module+'",'+this.names;
         if(this.parent_module!==undefined){res+=',"' + this.parent_module +'"'
         } else { res+=',undefined'}
         if(this.aliases != undefined) {
@@ -804,10 +807,10 @@ function $FromCtx(context){
               if (this.names[i] in this.aliases) {
                  a.push(this.aliases[this.names[i]])
               } else { 
-                 a.push(undefined)
+                 a.push(this.names[i])
               }
           }
-          res+=',[' + a + ']'
+          res+=',' + a 
         } else { res+=',undefined'}
 
         res += ')\n'
@@ -1105,15 +1108,6 @@ function $OpCtx(context,op){ // context is the left operand
     }
 }
 
-function $ParentClassCtx(context){ // subscription or slicing
-    this.type = 'parent_class'
-    this.expect = 'id'
-    this.toString = function(){return '('+this.tree+')'}
-    this.parent = context
-    this.tree = []
-    context.tree.push(this)
-}
-
 function $PassCtx(context){
     this.type = 'pass'
     this.toString = function(){return '(pass)'}
@@ -1190,7 +1184,7 @@ function $SubCtx(context){ // subscription or slicing
     this.parent = context
     this.tree = []
     this.to_js = function(){
-        var res = this.value.to_js()+'.__'+this.func+'__('
+        var res = this.value.to_js()+'.__getattr__("__'+this.func+'__")('
         if(this.tree.length===1){
             return res+this.tree[0].to_js()+')'
         }else{
@@ -1286,13 +1280,12 @@ function $TryCtx(context){
             var ctx = node.parent.children[pos].context.tree[0]
             if(ctx.type==='except'||
                 (ctx.type==='single_kw' && ctx.token==='finally')){
-                if(has_else){$_SyntaxError("'except' or 'finally' after 'else'")}
+                if(has_else){$_SyntaxError(context,"'except' or 'finally' after 'else'")}
                 ctx.error_name = '$err'+$loop_num
                 if(ctx.tree.length>0 && ctx.tree[0].alias!==null){
                     // syntax "except ErrorName as Alias"
                     var new_node = new $Node('expression')
-                    var js = 'var '+ctx.tree[0].alias+'='+ctx.tree[0].name
-                    js += '($err'+$loop_num+'.message)'
+                    var js = 'var '+ctx.tree[0].alias+'=$err'+$loop_num
                     new $NodeJSCtx(new_node,js)
                     node.parent.children[pos].insert(0,new_node)
                 }
@@ -1472,7 +1465,7 @@ function $arbo(ctx){
 }
 function $transition(context,token){
     //console.log('arbo '+$arbo(context))
-    //console.log('transition '+context+' token '+token)
+    //try{console.log('context '+context+' token '+token)}catch(err){console.log("can't print context "+err)}
 
     if(context.type==='abstract_expr'){
     
@@ -1569,7 +1562,7 @@ function $transition(context,token){
             return context
         }
         else if(token==='(' && context.expect==='(:'){
-            return new $ParentClassCtx(context)
+            return $transition(new $AbstractExprCtx(context,true),'(')
         }else if(token===':' && context.expect==='(:'){return context.parent}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
@@ -1622,6 +1615,11 @@ function $transition(context,token){
             }
         }else if(token==='('){return new $FuncArgs(context)}
         else if(token===':'){return context.parent}
+        else{$_SyntaxError(context,'token '+token+' after '+context)}
+
+    }else if(context.type==='del'){
+
+        if(token==='eol'){return $transition(context.parent,token)}
         else{$_SyntaxError(context,'token '+token+' after '+context)}
 
     }else if(context.type==='dict_or_set'){ 
@@ -1796,13 +1794,13 @@ function $transition(context,token){
             context.expect = 'id'
             return context
         }else if(token==='id' && context.expect==='id'){
-            context.names.push('"'+arguments[2]+'"')
+            context.names.push(arguments[2])
             context.expect = ','
             return context
         }else if(token==='op' && arguments[2]==='*' 
             && context.expect==='id'
             && context.names.length ===0){
-            context.names.push('"*"')
+            context.names.push('*')
             context.expect = 'eol'
             return context
         }else if(token===',' && context.expect===','){
@@ -1821,7 +1819,7 @@ function $transition(context,token){
             context.expect='alias'
             return context
         }else if(token==='id' && context.expect==='alias'){
-            context.aliases[context.names[context.names.length-1]]='"' + arguments[2] + '"'
+            context.aliases[context.names[context.names.length-1]]= arguments[2]
             context.expect=','
             return context
         }else if (token==='(' && context.expect === 'id') {
@@ -2067,18 +2065,6 @@ function $transition(context,token){
             return new $UnaryCtx(context,arguments[2])
         }else{return $transition(context.parent,token)}
 
-    }else if(context.type==='parent_class'){
-
-        if(token==='id' && context.expect==='id'){
-            new $IdCtx(context,arguments[2])
-            context.expect = ','
-            return context
-        }else if(token===',' && context.expect==','){
-            context.expect='id'
-            return context
-        }else if(token===')'){return context.parent}
-        else{$_SyntaxError(context,'token '+token+' after '+context)}
-
     }else if(context.type==='pass'){ 
 
         if(token==='eol'){return context.parent}
@@ -2192,7 +2178,7 @@ __BRYTHON__.py2js = function(src,module){
     if(src.charAt(src.length-1)!="\n"){src+='\n'}
     if(module===undefined){module='__main__'}
 
-    document.$py_src[module]=src 
+    document.$py_src[module]=src
     var root = $tokenize(src,module)
     root.transform()
     if(document.$debug>0){$add_line_num(root,null,module)}
@@ -2285,16 +2271,22 @@ function $tokenize(src,module){
                 // control that parent ended with ':'
                 if(context!==null){
                     if($indented.indexOf(context.tree[0].type)==-1){
-                        $IndentationError(module,'unexpected indent',pos)
+                        $pos = pos
+                        $_SyntaxError(context,'unexpected indent',pos)
                     }
                 }
                 // add a child to current node
                 current.add(new_node)
+            }else if(indent<=current.indent &&
+                $indented.indexOf(context.tree[0].type)>-1){
+                    $pos = pos
+                    $_SyntaxError(context,'expected an indented block',pos)
             }else{ // same or lower level
                 while(indent!==current.indent){
                     current = current.parent
                     if(current===undefined || indent>current.indent){
-                        $IndentationError(module,'unexpected indent',pos)
+                        $pos = pos
+                        $_SyntaxError(context,'unexpected indent',pos)
                     }
                 }
                 current.parent.add(new_node)
@@ -2449,7 +2441,7 @@ function $tokenize(src,module){
             if(br_stack==""){
                 $_SyntaxError(context,"Unexpected closing bracket")
             } else if(br_close[car]!=$last(br_stack)){
-                $_SyntaxError(context,"Unbalanced bracket",pos)
+                $_SyntaxError(context,"Unbalanced bracket")
             } else {
                 br_stack = br_stack.substr(0,br_stack.length-1)
                 $pos = pos
@@ -2522,7 +2514,7 @@ function brython(debug){
     document.$py_module_alias = {}
     document.$py_next_hash = -Math.pow(2,53)
     document.$debug = debug
-    document.$exc_stack = []
+    __BRYTHON__.exception_stack = []
     var elts = document.getElementsByTagName("script")
     var href = window.location.href
     var href_elts = href.split('/')

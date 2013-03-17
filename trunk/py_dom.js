@@ -126,17 +126,14 @@ function $DOMEvent(ev){
 }
 
 function $Clipboard(data){ // drag and drop dataTransfer
-    this.data = data
-    this.__class__ = "Clipboard"
-}
-$Clipboard.prototype.__getitem__ = function(name){
-    return this.data.getData(name)
-}
-$Clipboard.prototype.__setitem__ = function(name,value){
-    this.data.setData(name,value)
-}
-$Clipboard.prototype.__setattr__ = function(attr,value){
-    eval("this.data."+attr+"=value")
+    return {
+        data : data,
+        __class__ : "Clipboard",
+        __getattr__ : function(attr){return this[attr]},
+        __getitem__ : function(name){return data.getData(name)},
+        __setitem__ : function(name,value){data.setData(name,value)},
+        __setattr__ : function(attr,value){data[attr]=value}
+    }
 }
 
 function $OpenFile(file,mode,encoding){
@@ -181,27 +178,24 @@ function $OptionsClass(parent){
     // class for collection "options" of a SELECT tag
     // implements Python list interface
     this.parent = parent
-    
+
+    this.__class__ = 'options'
+   
+    this.__delitem__ = function(arg){parent.options.remove(arg)}
+
     this.__getattr__ = function(attr){
-        if('get_'+attr in this){return eval('this.get_'+attr)}
-        if(attr in this.parent.elt.options){
-            var obj = eval('this.parent.options.'+attr)
-            if((typeof obj)=='function'){
-                throw AttributeError("'options' object has no attribute '"+attr+'"')
+        if(this['get_'+attr]!==undefined){return this['get_'+attr]}
+        else if(this[attr]!==undefined){
+            var res = $JS2Py(this[attr])
+            return res
             }
-            return $JS2Py(obj)
-        }
+        else{throw AttributeError("'DOM.Options' object has no attribute '"+attr+"'")}
     }
     
-    this.__class__ = 'options'
-
     this.__getitem__ = function(key){
         return $DOMNode(parent.options[key])
     }
-    this.__delitem__ = function(arg){
-        parent.options.remove(arg)
-    }
-
+    
     this.__len__ = function() {return parent.options.length}
 
     this.__setattr__ = function(attr,value){
@@ -211,6 +205,8 @@ function $OptionsClass(parent){
     this.__setitem__ = function(attr,value){
         parent.options[attr]= $JS2Py(value)
     }
+    
+    this.__str__ = function(){return "<object Options wraps "+parent.options+">"}
 
     this.get_append = function(element){
         parent.options.add(element)
@@ -230,6 +226,9 @@ function $OptionsClass(parent){
     }
     
     this.get_remove = function(arg){parent.options.remove(arg)}
+    
+    this.toString = this.__str__
+    
 }
 
 function JSObject(obj){
@@ -310,7 +309,7 @@ function DOMNode(){} // define a Node object
 function $DOMNode(elt){ 
     // returns the element, enriched with an attribute $brython_id for 
     // equality testing and with all the attributes of Node
-    if(!('$brython_id' in elt)){
+    if(elt['$brython_id']===undefined){
         // add a unique id for comparisons
         elt.$brython_id=Math.random().toString(36).substr(2, 8)
         // add attributes of Node to element
@@ -346,14 +345,14 @@ DOMNode.prototype.__delitem__ = function(key){
 }
 
 DOMNode.prototype.__eq__ = function(other){
-    if('isEqualNode' in this){return this.isEqualNode(other)}
-    else if('$brython_id' in this){return this.$brython_id===other.$brython_id}
+    if(this.isEqualNode!==undefined){return this.isEqualNode(other)}
+    else if(this.$brython_id!==undefined){return this.$brython_id===other.$brython_id}
     else{throw NotImplementedError('__eq__ is not implemented')}
 }
 
 DOMNode.prototype.__getattr__ = function(attr){
     if(attr==='__class__'){return DOMObject}
-    if('get_'+attr in this){return this['get_'+attr]()}
+    if(this['get_'+attr]!==undefined){return this['get_'+attr]()}
     if(this.getAttribute!==undefined){
         var res = this.getAttribute(attr)
         if(res){return res}
@@ -440,10 +439,10 @@ DOMNode.prototype.__setattr__ = function(attr,value){
         }
     }else{
         attr = attr.replace('_','-')
-        if('set_'+attr in this){return this['set_'+attr](value)}
+        if(this['set_'+attr]!==undefined){return this['set_'+attr](value)}
         var res = this.getAttribute(attr)
         if(res!==undefined){this.setAttribute(attr,value)}
-        else if(attr in this){this[attr]=value}
+        else if(this[attr]!==undefined){this[attr]=value}
         else{setattr(this,attr,value)}
     }
 }

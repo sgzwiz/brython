@@ -15,7 +15,7 @@ function list(){
         throw TypeError("list() takes at most 1 argument ("+arguments.length+" given)")
     }
     var res = []
-    res.__init__(arguments[0])
+    list.__init__(res,arguments[0])
     return res
 }
 
@@ -157,7 +157,7 @@ list.__hash__ = function(self){throw TypeError("unhashable type: 'list'")}
 list.__in__ = function(self,item){return item.__contains__(self)}
 
 list.__init__ = function(self){
-    self.splice(0,self.length)
+    while(self.__len__()>0){self.pop()}
     if(arguments.length===1){return}
     var arg = arguments[1]
     for(var i=0;i<arg.__len__();i++){self.push(arg.__item__(i))}
@@ -220,7 +220,7 @@ list.__setitem__ = function(self,arg,value){
 
 list.__str__ = function(self){
     if(self===undefined){return "<class 'list'>"}
-    var res = "[",i=null,items=self.valueOf()
+    var res = "[",items=self.valueOf()
     for(var i=0;i<items.length;i++){
         var x = items[i]
         if(isinstance(x,str)){res += "'"+x+"'"} 
@@ -270,8 +270,11 @@ list.remove = function(self,elt){
 }
 
 list.pop = function(self,pos){
-    if(pos===undefined){return self.pop()}
-    else if(arguments.length==2){
+    if(pos===undefined){ // can't use self.pop() : too much recursion !
+        var res = self[self.length-1]
+        self.splice(self.length-1,1)
+        return res
+    }else if(arguments.length==2){
         if(isinstance(pos,int)){
             var res = self[pos]
             self.splice(pos,1)
@@ -352,33 +355,40 @@ function $ListClass(items){
 
 // add Brython attributes to Javascript Array
 
+
+// set other Array.prototype attributes
+
+for(var attr in list){
+    if(typeof list[attr]==='function'){list[attr].__str__=function(){return "<list method "+attr+">"}}
+    var func = (function(attr){
+        return function(){
+            var args = [this]
+            for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
+            return list[attr].apply(this,args)
+        }
+    })(attr)
+    func.__str__ = (function(attr){
+        return function(){return "<method-wrapper '"+attr+"' of list object>"}
+    })(attr)
+    Array.prototype[attr] = func
+}
+
 Array.prototype.__class__ = list
 
 Array.prototype.__getattr__ = function(attr){
     if(attr==='__class__'){return this.__class__} // may be list or tuple
+    if(list[attr]===undefined){
+        throw AttributeError("'"+this.__class__.__name__+"' object has no attribute '"+attr+"'")
+    }
     var obj = this
     var res = function(){
         var args = [obj]
         for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
         return list[attr].apply(obj,args)
     }
-    res.__str__ = function(){return "<built-in method "+attr+" of list object>"}
+    res.__str__ = function(){return "<built-in method "+attr+" of "+this.__class__.__name__+" object>"}
     return res
 }
-
-// set other Array.prototype attributes
-
-for(var attr in list){
-    if(Array.prototype[attr]===undefined){
-        Array.prototype[attr]=(function(attr){
-            return function(){
-                var args = [this]
-                for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
-                return list[attr].apply(this,args)
-            }
-        })(attr)
-    }
-}
-
 return list
 }()
+
