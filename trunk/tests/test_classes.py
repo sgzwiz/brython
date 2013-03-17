@@ -25,6 +25,7 @@ assert obj.test()=='test in foo'
 assert obj.test1(2)=='test1test1'
 assert obj.test2()=='test2'
 
+#there is an error here, displayed on web console
 assert obj.machin == 99
 
-print('passed all tests...')
+print('passed all tests..')
