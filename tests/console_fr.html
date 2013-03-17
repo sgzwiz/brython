@@ -12,16 +12,20 @@
 <script src="../py_string.js"></script>
 <script src="../py_dom.js"></script>
 <script src="../py_ajax.js"></script>
-<script src="../py_local_storage.js"></script>
 
 <script type="text/python">
 import sys
 import time
 import dis
 
+if sys.has_local_storage:
+    from local_storage import storage
+else:
+    storage = False
+
 def reset_src():
-    if sys.has_local_storage:
-        doc['src'].value = local_storage["py_src"]
+    if storage:
+        doc['src'].value = storage["py_src"]
 
 def to_str(xx):
     return str(xx)
@@ -42,13 +46,20 @@ output = ''
 
 def show_console():
     doc["console"].value = output
+    doc["console"].cols = 60
+
+def clear_text():
+    log(" event clear")
+    doc['console'].value=''
+    doc['src'].value=''
 
 def run():
     global output
     doc["console"].value=''
+    doc["console"].cols = 60
     src = doc["src"].value
-    if sys.has_local_storage:
-        local_storage["py_src"]=src
+    if storage:
+        storage["py_src"]=src
     t0 = time.time()
     exec(src)
     output = doc["console"].value
@@ -56,6 +67,7 @@ def run():
 
 def show_js():
     src = doc["src"].value
+    doc["console"].cols = 90
     doc["console"].value = dis.dis(src)
 </script>
 </head>
