@@ -34,8 +34,8 @@ function $_SyntaxError(context,msg,indent){
     var module = tree_node.module
     var line_num = tree_node.line_num
     document.$line_info = [line_num,module]
-    if(indent===undefined){throw SyntaxError(msg)}
-    else{throw IndentationError(msg)}
+    if(indent===undefined){$SyntaxError(module,msg,$pos)}
+    else{throw $IndentationError(module,msg,$pos)}
 }
 
 var $first_op_letter = {}
@@ -1465,7 +1465,7 @@ function $arbo(ctx){
 }
 function $transition(context,token){
     //console.log('arbo '+$arbo(context))
-    //try{console.log('context '+context+' token '+token)}catch(err){console.log("can't print context "+err)}
+    //console.log('context '+context+' token '+token)
 
     if(context.type==='abstract_expr'){
     
@@ -1483,8 +1483,10 @@ function $transition(context,token){
         else if(token==='{'){return new $DictOrSetCtx(new $ExprCtx(context,'dict_or_set',commas))}
         else if(token==='not'){return new $NotCtx(new $ExprCtx(context,'not',commas))}
         else if(token==='lambda'){return new $LambdaCtx(new $ExprCtx(context,'lambda',commas))}
-        else if(token==='op' && '+-'.search(arguments[2])){ // unary + or -
-            return new $UnaryCtx(context,arguments[2])
+        else if(token==='op'){
+            if('+-'.search(arguments[2])>-1){ // unary + or -
+                return new $UnaryCtx(context,arguments[2])
+            }else{$_SyntaxError(context,'token '+token+' after '+context)}
         }else if(token==='='){$_SyntaxError(context,token)}
         else{return $transition(context.parent,token,arguments[2])}
 
