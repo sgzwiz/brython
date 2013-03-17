@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130317-111626
+// version 1.1.20130317-093414
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -15,7 +15,7 @@ if(__BRYTHON__.has_local_storage){
 __BRYTHON__.local_storage=function(){return JSObject(localStorage)}
 }
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130317-111626"]
+__BRYTHON__.version_info=[1,1,"20130317-093414"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -1762,6 +1762,9 @@ throw ImportError("No module named '"+module+"'")}, 5000)
 return[$xmlhttp,fake_qs,timer]
 }
 function $import_js(module,alias,names){
+$import_js_generic(module, alias, names, __BRYTHON__.brython_path+'libs/')
+}
+function $import_js_generic(module,alias,names,path){
 var imp=$importer()
 var $xmlhttp=imp[0],fake_qs=imp[1],timer=imp[2],res=null
 $xmlhttp.onreadystatechange=function(){
@@ -1775,7 +1778,7 @@ res.message="No module named '"+module+"'"
 }
 }
 }
-$xmlhttp.open('GET',__BRYTHON__.brython_path+'libs/'+module+'.js'+fake_qs,false)
+$xmlhttp.open('GET',path+module+'.js'+fake_qs,false)
 if('overrideMimeType' in $xmlhttp){$xmlhttp.overrideMimeType("text/plain")}
 $xmlhttp.send()
 if(res.constructor===Error){throw res}
@@ -1814,17 +1817,17 @@ eval(names[i]+'=$module[names[i]]')
 }
 }catch(err){throw ImportError(err.message)}
 }
-function $import_py_search_path(module,alias,names){
+function $import_module_search_path(module,alias,names){
 var modnames=[module, '__init__']
+var import_mod=[$import_js_generic, $import_py]
 for(var i=0;i<__BRYTHON__.path.length;i++){
 for(var j=0;j < modnames.length;j++){
 var path=__BRYTHON__.path[i]
 if(modnames[j]=='__init__')path +='/' + module
-try{
-$import_py(module,alias,names,path)
-return
-}catch(err){
-if(err.name!=='ImportError'){throw err}
+for(var k=0;k < import_mod.length;k++){
+try{import_mod[k](module,alias,names,path);return
+}catch(err){if(err.name!=='ImportError'){throw err}
+}
 }
 }
 }
@@ -1916,7 +1919,7 @@ eval(alias+'.__file__ = "' + module_path + '"')
 eval('throw '+err.name+'(err.message)')
 }
 }
-$import_funcs=[$import_js,$import_py_search_path]
+$import_funcs=[$import_js, $import_module_search_path]
 function $import_single(name,alias,names){
 for(var j=0;j<$import_funcs.length;j++){
 try{$import_funcs[j](name,alias,names);return}
