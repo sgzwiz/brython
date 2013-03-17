@@ -221,11 +221,12 @@ list.__setitem__ = function(self,arg,value){
 list.__str__ = function(self){
     if(self===undefined){return "<class 'list'>"}
     var res = "[",items=self.valueOf()
-    for(var i=0;i<items.length;i++){
-        var x = items[i]
+    for(var i=0;i<self.length;i++){
+        var x = self[i]
         if(isinstance(x,str)){res += "'"+x+"'"} 
-        else{res += x.__str__()}
-        if(i<items.length-1){res += ','}
+        else if(x['__str__']!==undefined){res += x.__str__()}
+        else{res += x.toString()}
+        if(i<self.length-1){res += ','}
     }
     return res+']'
 }

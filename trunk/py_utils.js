@@ -186,7 +186,6 @@ function $src_error(name,module,msg,pos) {
     err.message = msg
     err.info = info
     err.py_error = true
-    if(document.$stderr!==null){document.$stderr_buff = err.message}
     throw err
 }
 
@@ -234,7 +233,7 @@ function $resolve_attr(obj,factory,attr){
             try{
                 return $resolve_attr(obj,factory.parents[i],attr)
             }catch(err){
-                console.log(err)
+                void(0)
             }
         }
         throw AttributeError("'"+factory.__name__+"' object has no attribute '"+attr+"'")
@@ -305,7 +304,7 @@ function $class_constructor(class_name,factory,parents){
                 var args = [obj]
                 for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
                 init_func.apply(null,arguments)
-            }catch(err){console.log(err)}
+            }catch(err){void(0)}
         }
         return obj
     }

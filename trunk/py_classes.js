@@ -296,6 +296,9 @@ function exec(src){
         console.log(err)
         if(err.py_error===undefined){err = RuntimeError(err+'')}
         var trace = err.__name__+': '+err.message
+        if(err.__name__=='SyntaxError'||err.__name__==='IndentationError'){
+            trace += err.info
+        }
         if(document.$stderr){document.$stderr.__getattr__('write')(trace)}
         else{err.message += err.info}
         throw err
@@ -1095,16 +1098,10 @@ function $NoneClass(){
     this.__eq__ = function(other){return other===None}
     this.__getattr__ = function(attr){
         if(this[attr]!==undefined){return this[attr]}
-        else{throw AttributeError("'NoneType' object has no attribute '" + attr +"'")}
+        else{throw AttributeError("'NoneType' object has no attribute 'b'")}
     }
     this.__hash__ = function(){return 0}
     this.__str__ = function(){return 'None'}
-
-    this.__gt__ = function(other){throw TypeError('unorderable types: NoneType() > ' + other.__class__.__name__ + '()')}
-    this.__ge__ = function(other){throw TypeError('unorderable types: NoneType() >= ' + other.__class__.__name__ + '()')}
-    this.__lt__ = function(other){throw TypeError('unorderable types: NoneType() < ' + other.__class__.__name__ + '()')}
-    this.__le__ = function(other){throw TypeError('unorderable types: NoneType() <= ' + other.__class__.__name__ + '()')}
-    this.__ne__ = function(other){throw TypeError('unorderable types: NoneType() != ' + other.__class__.__name__ + '()')}
 }
 None = new $NoneClass()
 
