@@ -197,13 +197,14 @@ req.send(data)
 <hr>
 <a name="locstor"><h3>Local storage</h3>
 
-The local storage defined by HTML5 (the <tt>Storage</tt> class and <tt>localStorage</tt> object of Javascript) can be accessed with <code>local_storage</code>. This is used as a typical Python dictionary, with these differences: the search for a nonexistent key returns <code>None</code> instead of raising an exception, and deleting a nonexistent key does not trigger an exception
+The local storage defined by HTML5 can be accessed with the module <code>local_storage</code>. This is used as a typical Python dictionary, with these differences: the search for a nonexistent key returns <code>None</code> instead of raising an exception, and deleting a nonexistent key does not trigger an exception
 
 <h4>Example</h4>
-<pre>local_storage['foo'] = 'bar'
-log(local_storage['foo'])
-del local_storage['foo']
-log(local_storage['foo']) # prints None
+<pre>from local_storage import storage
+storage['foo']='bar'
+log(storage['foo'])
+del storage['foo']
+log(storage['foo']) # prints None
 </pre>
 
 </body>
