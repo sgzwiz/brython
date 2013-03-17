@@ -12,13 +12,17 @@
 <script src="../py_string.js"></script>
 <script src="../py_dom.js"></script>
 <script src="../py_ajax.js"></script>
-<script src="../py_local_storage.js"></script>
 
 <script type="text/python">
 import sys
 import time
 import random
 import dis
+
+if sys.has_local_storage:
+    from local_storage import storage
+else:
+    storage = False
 
 _rand=random.random()   #do we need to have a new random number each time
                         #we load a module, during a single execution?
@@ -69,8 +73,8 @@ def run():
     global output
     doc["console"].value=''
     src = doc["src"].value
-    if sys.has_local_storage:
-        local_storage["py_src"]=src
+    if storage:
+        storage["py_src"]=src
     t0 = time.time()
     exec(src)
     output = doc["console"].value
