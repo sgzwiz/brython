@@ -232,14 +232,6 @@ function $OptionsClass(parent){
     this.get_remove = function(arg){parent.options.remove(arg)}
 }
 
-function $Location(){
-    var obj = new object()
-    for(var x in window.location){obj[x]=window.location[x]}
-    obj.__class__ = new $class(this,'Location')
-    obj.toString = function(){return window.location.toString()}
-    return obj
-}
-
 function JSObject(obj){
     return new $JSObject(obj)
 }
