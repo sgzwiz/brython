@@ -18,7 +18,6 @@ class foo(bar,truc):
 
 obj = foo()
 assert str(bar.test)=="<function bar.test>"
-assert str(obj.test)=="<bound method foo.test of <object 'foo'>>"
 assert obj.A == 8
 assert obj.x == 0
 assert obj.test()=='test in foo'
@@ -27,5 +26,16 @@ assert obj.test2()=='test2'
 
 #there is an error here, displayed on web console
 assert obj.machin == 99
+
+class stack(list):
+
+    def dup(self):
+        if len(self):
+            self.append(self[-1])
+
+x = stack([1,7])
+assert str(x)=='[1,7]'
+x.dup()
+assert str(x)=='[1,7,7]'
 
 print('passed all tests..')
