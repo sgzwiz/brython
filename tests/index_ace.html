@@ -82,7 +82,6 @@ import sys
 import time
 import random
 import dis
-import aceeditor
 from local_storage import storage
 
 _rand=random.random()   #do we need to have a new random number each time
@@ -100,10 +99,9 @@ sys.stdout.write = write
 sys.stderr = object()
 sys.stderr.write = write
 
-editor=aceeditor.aceeditor()
-editor.edit("editor")
+editor=JSObject(ace).edit("editor")
 editor.setTheme("ace/theme/cobalt")
-editor.setMode("ace/mode/python")
+editor.getSession().setMode("ace/mode/python")
 
 def clear_text():
     editor.setValue('')
