@@ -367,4 +367,47 @@ assert x.split('h',1) == ['aZj', 'khZyuy']
 t = (1,2)
 assert t and t, 'Failed short circuit with tuple'
 
+
+#issue 103
+m = None
+try:
+  assert m >= 0
+  print('Error, TypeError should have been raised for None >= 0')
+except:
+  pass
+
+try:
+  assert m > 0
+  print('Error, TypeError should have been raised for None > 0')
+except:
+  pass
+
+try:
+  assert m < 0
+  print('Error, TypeError should have been raised for None < 0')
+except:
+  pass
+
+try:
+  assert m <= 0
+  print('Error, TypeError should have been raised for None <= 0')
+except:
+  pass
+
+try:
+  assert m != 0
+  print('Error, TypeError should have been raised for None != 0')
+except:
+  pass
+
+try:
+  assert m <> 0
+except SyntaxError:
+  pass
+except:
+  print('Error, SyntaxError should have been raised for None <> 0')
+  print('This test failed')
+
+
 print('passed all tests..')
+

@@ -1095,10 +1095,16 @@ function $NoneClass(){
     this.__eq__ = function(other){return other===None}
     this.__getattr__ = function(attr){
         if(this[attr]!==undefined){return this[attr]}
-        else{throw AttributeError("'NoneType' object has no attribute 'b'")}
+        else{throw AttributeError("'NoneType' object has no attribute '" + attr +"'")}
     }
     this.__hash__ = function(){return 0}
     this.__str__ = function(){return 'None'}
+
+    this.__gt__ = function(other){throw TypeError('unorderable types: NoneType() > ' + other.__class__.__name__ + '()')}
+    this.__ge__ = function(other){throw TypeError('unorderable types: NoneType() >= ' + other.__class__.__name__ + '()')}
+    this.__lt__ = function(other){throw TypeError('unorderable types: NoneType() < ' + other.__class__.__name__ + '()')}
+    this.__le__ = function(other){throw TypeError('unorderable types: NoneType() <= ' + other.__class__.__name__ + '()')}
+    this.__ne__ = function(other){throw TypeError('unorderable types: NoneType() != ' + other.__class__.__name__ + '()')}
 }
 None = new $NoneClass()
 
