@@ -30,10 +30,10 @@ a.sort_link{margin-left:10px;text-decoration:none}
             option = src.options[selected]
             del src.options[selected]
             dest.options.append(option)
-            dest.selectedIndex = -1
+            option.selected = False
         
         def up(src):
-            selected = src.selectedIndex
+            selected = int(src.selectedIndex)
             if selected == -1 or selected == 0:
                 return
             option = src.options[selected]
@@ -41,7 +41,7 @@ a.sort_link{margin-left:10px;text-decoration:none}
             src.options.insert(selected-1,option)
         
         def down(src):
-            selected = src.selectedIndex
+            selected = int(src.selectedIndex)
             if selected == -1 or selected == len(src.options)-1:
                 return
             options = src.options
