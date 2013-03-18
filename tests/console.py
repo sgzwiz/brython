@@ -1,5 +1,6 @@
 import sys
 import time
+import random
 
 #this sucks..  cannot find dis since "root" path is blah/test
 #we might need to create a variable we pass via the brython function
@@ -8,6 +9,8 @@ import time
 
 sys.path.append("../Lib")
 import dis
+
+_rand=random.random()
 
 editor=JSObject(ace).edit("editor")
 editor.getSession().setMode("ace/mode/python")
@@ -61,6 +64,19 @@ def run():
     exec(src)
     output = doc["console"].value
     print('<completed in %s ms>' %(time.time()-t0))
+
+# load a Python script
+def on_complete(req):
+    editor.setValue(req.text)
+    editor.scrollToRow(0)
+    editor.gotoLine(0)
+
+def load(evt):
+    _name=evt.target.value
+    req = ajax()
+    req.on_complete = on_complete
+    req.open('GET',_name+'?foo=%s' % _rand,False)
+    req.send()
 
 def show_js():
     src = editor.getValue()
