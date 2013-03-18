@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130317-093414
+// version 1.1.20130317-192954
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -15,7 +15,7 @@ if(__BRYTHON__.has_local_storage){
 __BRYTHON__.local_storage=function(){return JSObject(localStorage)}
 }
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130317-093414"]
+__BRYTHON__.version_info=[1,1,"20130317-192954"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -945,10 +945,15 @@ this.__bool__=function(){return False}
 this.__eq__=function(other){return other===None}
 this.__getattr__=function(attr){
 if(this[attr]!==undefined){return this[attr]}
-else{throw AttributeError("'NoneType' object has no attribute 'b'")}
+else{throw AttributeError("'NoneType' object has no attribute '" + attr +"'")}
 }
 this.__hash__=function(){return 0}
 this.__str__=function(){return 'None'}
+this.__gt__=function(other){throw TypeError('unorderable types: NoneType() > ' + other.__class__.__name__ + '()')}
+this.__ge__=function(other){throw TypeError('unorderable types: NoneType() >= ' + other.__class__.__name__ + '()')}
+this.__lt__=function(other){throw TypeError('unorderable types: NoneType() < ' + other.__class__.__name__ + '()')}
+this.__le__=function(other){throw TypeError('unorderable types: NoneType() <= ' + other.__class__.__name__ + '()')}
+this.__ne__=function(other){throw TypeError('unorderable types: NoneType() != ' + other.__class__.__name__ + '()')}
 }
 None=new $NoneClass()
 Exception=function(msg){
@@ -1762,7 +1767,7 @@ throw ImportError("No module named '"+module+"'")}, 5000)
 return[$xmlhttp,fake_qs,timer]
 }
 function $import_js(module,alias,names){
-$import_js_generic(module, alias, names, __BRYTHON__.brython_path+'libs/')
+$import_js_generic(module, alias, names, __BRYTHON__.brython_path+'libs')
 }
 function $import_js_generic(module,alias,names,path){
 var imp=$importer()
@@ -1778,10 +1783,10 @@ res.message="No module named '"+module+"'"
 }
 }
 }
-$xmlhttp.open('GET',path+module+'.js'+fake_qs,false)
+$xmlhttp.open('GET',path+'/'+module+'.js'+fake_qs,false)
 if('overrideMimeType' in $xmlhttp){$xmlhttp.overrideMimeType("text/plain")}
 $xmlhttp.send()
-if(res.constructor===Error){throw res}
+if(res.constructor===Error){res.name="NotFoundError";throw res}
 try{
 eval(res)
 if(eval('$module')===undefined){
@@ -1792,7 +1797,7 @@ if(alias===undefined){alias=module}
 eval(alias+'=$module')
 eval(alias+'.__class__ = $type')
 eval(alias+'.__str__ = function(){return "<module \''+module+"'>\"}")
-eval(alias+'.__file__ = "' +__BRYTHON__.brython_path+'libs/'+ module + '.js"')
+eval(alias+'.__file__ = "'+path + '/' + module + '.js"')
 }else{
 if(names.length===1 && names[0]==='*'){
 for(var name in $module){
@@ -1815,18 +1820,18 @@ eval(names[i]+'=$module[names[i]]')
 }
 }
 }
-}catch(err){throw ImportError(err.message)}
+}catch(err){throw NotFoundError(err.message)}
 }
 function $import_module_search_path(module,alias,names){
 var modnames=[module, '__init__']
 var import_mod=[$import_js_generic, $import_py]
 for(var i=0;i<__BRYTHON__.path.length;i++){
-for(var j=0;j < modnames.length;j++){
 var path=__BRYTHON__.path[i]
+for(var j=0;j < modnames.length;j++){
 if(modnames[j]=='__init__')path +='/' + module
 for(var k=0;k < import_mod.length;k++){
 try{import_mod[k](module,alias,names,path);return
-}catch(err){if(err.name!=='ImportError'){throw err}
+}catch(err){if(err.name!=="NotFoundError"){throw err}
 }
 }
 }
@@ -1848,7 +1853,7 @@ res=Error('ImportError',"No module named '"+module+"'")
 var module_path=path+'/'+module+'.py'
 $xmlhttp.open('GET', module_path+fake_qs,false)
 $xmlhttp.send()
-if(res.constructor===Error){res.name='ImportError';throw res}
+if(res.constructor===Error){res.name='NotFoundError';throw res}
 document.$py_module_path[module]=module_path
 var root=__BRYTHON__.py2js(res,module)
 var body=root.children

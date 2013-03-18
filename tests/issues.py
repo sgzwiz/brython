@@ -373,32 +373,42 @@ m = None
 try:
   assert m >= 0
   print('Error, TypeError should have been raised for None >= 0')
-except:
+except TypeError:
   pass
+except:
+  print('Error, TypeError should have been raised for None >= 0')
 
 try:
   assert m > 0
   print('Error, TypeError should have been raised for None > 0')
-except:
+except TypeError:
   pass
+except:
+  print('Error, TypeError should have been raised for None > 0')
 
 try:
   assert m < 0
   print('Error, TypeError should have been raised for None < 0')
-except:
+except TypeError:
   pass
+except:
+  print('Error, TypeError should have been raised for None < 0')
 
 try:
   assert m <= 0
   print('Error, TypeError should have been raised for None <= 0')
-except:
+except TypeError:
   pass
+except:
+  print('Error, TypeError should have been raised for None <= 0')
 
 try:
   assert m != 0
   print('Error, TypeError should have been raised for None != 0')
-except:
+except TypeError:
   pass
+except:
+  print('Error, TypeError should have been raised for None <= 0')
 
 try:
   assert m <> 0
@@ -407,7 +417,6 @@ except SyntaxError:
 except:
   print('Error, SyntaxError should have been raised for None <> 0')
   print('This test failed')
-
 
 print('passed all tests..')
 
