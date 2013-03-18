@@ -1101,7 +1101,25 @@ function $NoneClass(){
         else{throw AttributeError("'NoneType' object has no attribute 'b'")}
     }
     this.__hash__ = function(){return 0}
+    this.__ne__ = function(other){return other!==None}
     this.__str__ = function(){return 'None'}
+    var comp_ops = ['ge','gt','le','lt']
+    for(var key in $comps){ // None is not orderable with any type
+        if(comp_ops.indexOf($comps[key])>-1){
+            this['__'+$comps[key]+'__']=(function(k){
+                return function(other){
+                throw TypeError("unorderable types: NoneType() "+$comps[k]+" "+
+                    other.__class__.__name__)}
+            })(key)
+        }
+    }
+    for(var func in this){
+        if(typeof this[func]==='function'){
+            this[func].__str__ = (function(f){
+                return function(){return "<mthod-wrapper "+f+" of NoneType object>"}
+            })(func)
+        }
+    }
 }
 None = new $NoneClass()
 
