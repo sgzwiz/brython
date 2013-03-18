@@ -2,81 +2,29 @@
 <head>
 <meta charset="iso-8859-1">
 <link rel="stylesheet" href="../brython.css">
+<link rel="stylesheet" href="console.css">
 
-<script src="../brython_builtins.js"></script>
-<script src="../py2js.js"></script>
-<script src="../py_utils.js"></script>
-<script src="../py_classes.js"></script>
-<script src="../py_import.js"></script>
-<script src="../py_list.js"></script>
-<script src="../py_string.js"></script>
-<script src="../py_dom.js"></script>
-<script src="../py_ajax.js"></script>
+<script type="text/javascript" src="../brython_builtins.js"></script>
+<script type="text/javascript" src="../py2js.js"></script>
+<script type="text/javascript" src="../py_utils.js"></script>
+<script type="text/javascript" src="../py_classes.js"></script>
+<script type="text/javascript" src="../py_import.js"></script>
+<script type="text/javascript" src="../py_list.js"></script>
+<script type="text/javascript" src="../py_string.js"></script>
+<script type="text/javascript" src="../py_dom.js"></script>
+<script type="text/javascript" src="../py_ajax.js"></script>
 
-<script type="text/python">
-import sys
-import time
-import dis
-
-if sys.has_local_storage:
-    from local_storage import storage
-else:
-    storage = False
-
-def reset_src():
-    if storage:
-        doc['src'].value = storage["py_src"]
-
-def to_str(xx):
-    return str(xx)
-
-doc['version'].text = '.'.join(map(to_str,sys.version_info))
-
-class cons_out:
-
-    def __init__(self,target):
-        self.target = doc[target]
-    def write(self,data):
-        self.target.value += str(data)
-
-sys.stdout = cons_out("console")
-sys.stderr = cons_out("console")
-
-output = ''
-
-def show_console():
-    doc["console"].value = output
-    doc["console"].cols = 60
-
-def clear_text():
-    log(" event clear")
-    doc['console'].value=''
-    doc['src'].value=''
-
-def run():
-    global output
-    doc["console"].value=''
-    doc["console"].cols = 60
-    src = doc["src"].value
-    if storage:
-        storage["py_src"]=src
-    t0 = time.time()
-    exec(src)
-    output = doc["console"].value
-    print('<done in %s ms>' %(time.time()-t0))
-
-def show_js():
-    src = doc["src"].value
-    doc["console"].cols = 90
-    doc["console"].value = dis.dis(src)
+<script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript">
 </script>
+
+<script type="text/python" src="console.py"></script>
 </head>
-<body onload="brython(1);reset_src()">
+<body onload="brython(1)">
 <center>
 <table id="banner" cellpadding=0 cellspacing=0>
 <tr>
 <td><a class="banner" href="../index.html">Home</a></td>
-<td><a class="banner" href="../tests/console_en.html">Console</a></td>
+<td><a class="banner" href="console_en.html">Console</a></td>
 <td><a class="banner" href="../gallery/gallery_en.html">Gallery</a></td>
 <td><a class="banner" href="../doc/en/index.html">Documentation</a>
 <td><a class="banner" href="http://code.google.com/p/brython/downloads/list" target="_blank">Download</a></td>
@@ -87,29 +35,75 @@ def show_js():
 
 <div style="text-align:center">
 <img src="../brython.png"></img><br><b>browser python</b>
+<br>Brython version: <span id="version"></span>
+</div>
+</center>
+
+<div id="container">
+<div id="left-div">
+<div style="padding: 3px 3px 3px 3px;">
+Theme: <select id="ace_theme" onChange="change_theme(event)">
+<optgroup label="Bright">
+<option value="ace/theme/chrome">Chrome</option>
+<option value="ace/theme/clouds">Clouds</option>
+<option value="ace/theme/crimson_editor">Crimson Editor</option>
+<option value="ace/theme/dawn">Dawn</option>
+<option value="ace/theme/dreamweaver">Dreamweaver</option>
+<option value="ace/theme/eclipse">Eclipse</option>
+<option value="ace/theme/github">GitHub</option>
+<option value="ace/theme/solarized_light">Solarized Light</option>
+<option value="ace/theme/textmate">TextMate</option>
+<option value="ace/theme/tomorrow">Tomorrow</option>
+<option value="ace/theme/xcode">XCode</option>
+</optgroup>
+<optgroup label="Dark">
+<option value="ace/theme/ambiance">Ambiance</option>
+<option value="ace/theme/chaos">Chaos</option>
+<option value="ace/theme/clouds_midnight">Clouds Midnight</option>
+<option value="ace/theme/cobalt">Cobalt</option>
+<option value="ace/theme/idle_fingers">idleFingers</option>
+<option value="ace/theme/kr_theme">krTheme</option>
+<option value="ace/theme/merbivore">Merbivore</option>
+<option value="ace/theme/merbivore_soft">Merbivore Soft</option>
+<option value="ace/theme/mono_industrial">Mono Industrial</option>
+<option value="ace/theme/monokai">Monokai</option>
+<option value="ace/theme/pastel_on_dark">Pastel on dark</option>
+<option value="ace/theme/solarized_dark">Solarized Dark</option>
+<option value="ace/theme/twilight">Twilight</option>
+<option value="ace/theme/tomorrow_night">Tomorrow Night</option>
+<option value="ace/theme/tomorrow_night_blue">Tomorrow Night Blue</option>
+<option value="ace/theme/tomorrow_night_bright">Tomorrow Night Bright</option>
+<option value="ace/theme/tomorrow_night_eighties">Tomorrow Night 80s</option>
+<option value="ace/theme/vibrant_ink">Vibrant Ink</option>
+</optgroup>
+</select> 
+</div>
+  <div id="editor"></div>
 </div>
 
-<table width=80%>
-<tr><td style="text-align:center"><b>Python</b>
-</td>
-<td>&nbsp;</td>
-<th><button onClick="show_console()">Console</button></th>
-<th><button onClick="show_js()">Javascript</button></th>
-</tr>
-<tr>
-<td colspan><textarea id="src" cols=60 rows=20>for i in range(10):
-    print(i)</textarea></td>
-<td><button onClick="run()">run</button>
+<div id="center-div">
+<div style="float:left; height:50%"></div>
+<div style="clear:both;">
+<button onClick="run()">run</button>
 <p>
-<button onClick="clear_text()">clear</button></td>
-<td colspan=2><textarea id="console" cols=60 rows=20></textarea></td>
-</tr>
-<tr><td colspan=2>
-<p>Brython version <span id="version"></span>
-<p>Report bugs in the <a href="http://code.google.com/p/brython/issues/list">Issue Tracker</a>
+<button onClick="clear_text()">clear</button>
+</div>
+</div>
+
+<div id="right-div">
+<div style="padding: 3px 3px 3px 3px;">
+  <button onClick="show_console()">Console</button>
+  <button onClick="show_js()">Javascript</button>
+</div>
+<div style="width:100%;height:100%;">
+<textarea id="console"></textarea>
+</div>
+</div>
+
+<div style="float:left;margin-top:50px">
+<p>Report bugs in the <a href="http://code.google.com/p/brython/issues/list">Issue Tracker</a></p>
 <p><a href='index.html'>Tests page</p>
-</td></tr>
-</table>
-</center>
+</div>
+
 </body>
 </html>
