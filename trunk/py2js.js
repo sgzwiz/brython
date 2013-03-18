@@ -933,7 +933,9 @@ function $KwArgCtx(context){
     context.parent.tree.pop()
     context.parent.tree.push(this)
     this.to_js = function(){
-        var res = '$Kw("'+this.tree[0].to_js()+'",'
+        var key = this.tree[0].to_js()
+        if(key.substr(0,2)=='$$'){key=key.substr(2)}
+        var res = '$Kw("'+key+'",'
         res += $to_js(this.tree.slice(1,this.tree.length))+')'
         return res
     }
