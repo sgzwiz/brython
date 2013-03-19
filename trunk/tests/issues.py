@@ -367,6 +367,24 @@ assert x.split('h',1) == ['aZj', 'khZyuy']
 t = (1,2)
 assert t and t, 'Failed short circuit with tuple'
 
+# issue 96
+assert 'top' in {'top':True}, 'top was mangled: %s'%{'top':True}
+assert 'top' in dict(top=True), 'top was mangled: %s'%dict(top=True)
+
+# issue 100
+a = [round(kk) for kk in [1.1,2.2,3.3]]
+assert str(a)=='[1,2,3]'
+
+b = [1.0,2.0,3.0]
+assert str(b)=='[1.0,2.0,3.0]'
+
+assert str([value for value in [1.0,2.0,3.0]])=='[1.0,2.0,3.0]'
+# issue 102
+try:
+    eval('1<>0')
+except SyntaxError:
+    pass
+
 
 #issue 103
 m = None
@@ -403,20 +421,16 @@ except:
   print('Error, TypeError should have been raised for None <= 0')
 
 try:
-  assert m != 0
-  print('Error, TypeError should have been raised for None != 0')
-except TypeError:
-  pass
-except:
-  print('Error, TypeError should have been raised for None <= 0')
-
-try:
-  assert m <> 0
+  exec("assert m <> 0")
 except SyntaxError:
   pass
 except:
   print('Error, SyntaxError should have been raised for None <> 0')
   print('This test failed')
+
+# set and dict comprehensions
+assert {x for x in range(4)}=={0,1,2,3}
+assert {x,2*x for x in range(4)}=={0:0,1:2,2:4,3:6}
 
 print('passed all tests..')
 
