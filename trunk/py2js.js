@@ -34,7 +34,7 @@ function $_SyntaxError(context,msg,indent){
     var module = tree_node.module
     var line_num = tree_node.line_num
     document.$line_info = [line_num,module]
-    if(indent===undefined){$SyntaxError(module,msg,$pos)}
+    if(indent===undefined){$SyntaxError(module,'invalid syntax',$pos)}
     else{throw $IndentationError(module,msg,$pos)}
 }
 
@@ -648,6 +648,7 @@ function $DictOrSetCtx(context){
     this.real = 'dict_or_set'
     this.expect = 'id'
     this.closed = false
+    this.start = $pos
     this.toString = function(){
         if(this.real==='dict'){return '(dict) {'+this.tree+'}'}
         else if(this.real==='set'){return '(set) {'+this.tree+'}'}
@@ -664,6 +665,13 @@ function $DictOrSetCtx(context){
                 if(i<this.items.length-2){res+=','}
             }
             return res+'])'+$to_js(this.tree)
+        }else if(this.real==='set_comp'){return 'set('+$to_js(this.items)+')'+$to_js(this.tree)}
+        else if(this.real==='dict_comp'){
+            console.log('expression '+this.items[0].expression)
+            console.log('items '+this.items[0].type)
+            var key_items = this.items[0].expression[0].to_js()
+            var value_items = this.items[0].expression[1].to_js()
+            return 'dict('+$to_js(this.items)+')'+$to_js(this.tree)
         }else{return 'set(['+$to_js(this.items)+'])'+$to_js(this.tree)}
     }
 }
@@ -978,7 +986,7 @@ function $ListOrTupleCtx(context,real){
     context.tree.push(this)
     this.to_js = function(){
         if(this.real==='list'){return '['+$to_js(this.tree)+']'}
-        else if(this.real==='list_comp'||this.real==='gen_expr'){
+        else if(['list_comp','gen_expr','dict_or_set_comp'].indexOf(this.real)>-1){
             var res_env=[],local_env=[],env=[]
             var ctx_node = this
             while(ctx_node.parent!==undefined){ctx_node=ctx_node.parent}
@@ -1034,8 +1042,12 @@ function $ListOrTupleCtx(context,real){
                 res += '"'+txt+'"'
                 if(i<this.intervals.length-1){res+=','}
             }
+            if(this.real==='dict_or_set_comp'){console.log('exprss '+this.expression)}
             if(this.real==='list_comp'){return '$list_comp('+res+')'}
-            else{return '$gen_expr('+res+')'}
+            else if(this.real==='dict_or_set_comp'){
+                if(this.expression.length===1){return '$gen_expr('+res+')'}
+                else{return '$dict_comp('+res+')'}
+            }else{return '$gen_expr('+res+')'}
         }else if(this.real==='tuple'){
             if(this.tree.length===1 && this.has_comma===undefined){return this.tree[0].to_js()}
             else{return 'tuple('+$to_js(this.tree)+')'}
@@ -1638,7 +1650,7 @@ function $transition(context,token){
         }else{
             if(context.expect===','){
                 if(token==='}'){
-                    if((context.real==='set')||
+                    if(['set','set_comp','dict_comp'].indexOf(context.real)>-1||
                         (context.real==='dict'&&context.tree.length%2===0)){
                         context.items = context.tree
                         context.tree = []
@@ -1658,6 +1670,19 @@ function $transition(context,token){
                         context.expect='id'
                         return context
                     }else{$_SyntaxError(context,'token '+token+' after '+context)}
+                }else if(token==='for'){
+                    // comprehension
+                    if(context.real==='dict_or_set'){context.real = 'set_comp'}
+                    else{context.real='dict_comp'}
+                    var lst = new $ListOrTupleCtx(context,'dict_or_set_comp')
+                    lst.intervals = [context.start+1]
+                    context.tree.pop()
+                    lst.expression = context.tree
+                    context.tree = [lst]
+                    lst.tree = []
+                    var comp = new $ComprehensionCtx(lst)
+                    return new $TargetListCtx(new $CompForCtx(comp))
+
                 }else{$_SyntaxError(context,'token '+token+' after '+context)}   
             }else if(context.expect==='id'){
                 if(token==='}'&&context.tree.length===0){ // empty dict
@@ -1973,6 +1998,9 @@ function $transition(context,token){
                     context.closed = true
                     if(context.real==='list_comp'){context.intervals.push($pos)}
                     return context
+                }else if(context.real==='dict_or_set_comp' && token==='}'){
+                    context.intervals.push($pos)
+                    return $transition(context.parent,token)
                 }else if(token===','){
                     if(context.real==='tuple'){context.has_comma=true}
                     context.expect = 'id'
@@ -2572,4 +2600,5 @@ function brython(debug){
         }
     }
 }
+
 
