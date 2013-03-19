@@ -232,6 +232,26 @@ dict.keys = function(self){
     return new $iterator(self.$keys,"dict keys")
 }
 
+dict.update = function(self){
+    var params = []
+    for(var i=1;i<arguments.length;i++){params.push(arguments[i])}
+    var $ns=$MakeArgs('dict.update',params,[],{},'args','kw')
+    var args = $ns['args']
+    if(args.length>0 && isinstance(args[0],dict)){
+        var other = args[0]
+        for(var i=0;i<other.$keys.length;i++){
+            dict.__setitem__(self,other.$keys[i],other.$values[i])
+        }
+    }
+    var kw = $ns['kw']
+    console.log('kw '+kw.__class__)
+    var keys = list(kw.keys())
+    for(var i=0;i<keys.__len__();i++){
+        dict.__setitem__(self,keys[i],kw.__getitem__(keys[i]))
+    }
+        
+}
+
 dict.values = function(self){
     return new $iterator(self.$values,"dict values")
 }
@@ -947,11 +967,13 @@ $SetClass.prototype.__in__ = function(item){return item.__contains__(this)}
 
 $SetClass.prototype.__len__ = function(){return int(this.items.length)}
 
-$SetClass.prototype.__ne__ = function(other){return !(this.__eq__(other))}
-
 $SetClass.prototype.__item__ = function(i){return this.items[i]}
 
+$SetClass.prototype.__ne__ = function(other){return !(this.__eq__(other))}
+
 $SetClass.prototype.__not_in__ = function(item){return !(item.__contains__(this))}
+
+$SetClass.prototype.__str__ = $SetClass.prototype.toString
 
 $SetClass.prototype.add = function(item){
     var i=0
