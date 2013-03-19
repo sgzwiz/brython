@@ -22,7 +22,7 @@ else:
 
 def reset_src():
     if storage:
-       editor.setValue('%s' % storage["py_src"])
+       editor.setValue(storage["py_src"])
     else:
        editor.setValue('for i in range(10):\n\tprint(i)')
 
@@ -52,17 +52,22 @@ def show_console():
 
 def clear_text():
     editor.setValue('')
+    if sys.has_local_storage:
+        storage["py_src"]=''
+
     doc["console"].value=''
 
 def run():
     global output
     doc["console"].value=''
     src = editor.getValue()
-    if sys.has_local_storage:
-        storage["py_src"]=src
+    if storage:
+       storage["py_src"]=src
+
     t0 = time.time()
     exec(src)
     output = doc["console"].value
+
     print('<completed in %s ms>' %(time.time()-t0))
 
 # load a Python script
@@ -91,10 +96,11 @@ def change_theme(evt):
 
 def reset_theme():
     if storage:
-       if storage["ace_theme"].startswith("ace/theme/"):
-          editor.setTheme('%s' % storage["ace_theme"])
+       if storage["ace_theme"] is not None:
+          if storage["ace_theme"].startswith("ace/theme/"):
+             editor.setTheme(storage["ace_theme"])
 
-          doc["ace_theme"].value=storage["ace_theme"]
+             doc["ace_theme"].value=storage["ace_theme"]
 
 reset_src()
 reset_theme()

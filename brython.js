@@ -1,5 +1,5 @@
 // brython.js www.brython.info
-// version 1.1.20130317-192954
+// version 1.1.20130318-195129
 // version compiled from commented, indented source files at http://code.google.com/p/brython/
 __BRYTHON__=new Object()
 __BRYTHON__.__getattr__=function(attr){return this[attr]}
@@ -15,7 +15,7 @@ if(__BRYTHON__.has_local_storage){
 __BRYTHON__.local_storage=function(){return JSObject(localStorage)}
 }
 __BRYTHON__.has_json=typeof(JSON)!=="undefined"
-__BRYTHON__.version_info=[1,1,"20130317-192954"]
+__BRYTHON__.version_info=[1,1,"20130318-195129"]
 __BRYTHON__.path=[]
 function abs(obj){
 if(isinstance(obj,int)){return int(Math.abs(obj))}
@@ -266,6 +266,9 @@ catch(err){
 console.log(err)
 if(err.py_error===undefined){err=RuntimeError(err+'')}
 var trace=err.__name__+': '+err.message
+if(err.__name__=='SyntaxError'||err.__name__==='IndentationError'){
+trace +=err.info
+}
 if(document.$stderr){document.$stderr.__getattr__('write')(trace)}
 else{err.message +=err.info}
 throw err
@@ -945,15 +948,28 @@ this.__bool__=function(){return False}
 this.__eq__=function(other){return other===None}
 this.__getattr__=function(attr){
 if(this[attr]!==undefined){return this[attr]}
-else{throw AttributeError("'NoneType' object has no attribute '" + attr +"'")}
+else{throw AttributeError("'NoneType' object has no attribute '"+attr+"'")}
 }
 this.__hash__=function(){return 0}
+this.__ne__=function(other){return other!==None}
 this.__str__=function(){return 'None'}
-this.__gt__=function(other){throw TypeError('unorderable types: NoneType() > ' + other.__class__.__name__ + '()')}
-this.__ge__=function(other){throw TypeError('unorderable types: NoneType() >= ' + other.__class__.__name__ + '()')}
-this.__lt__=function(other){throw TypeError('unorderable types: NoneType() < ' + other.__class__.__name__ + '()')}
-this.__le__=function(other){throw TypeError('unorderable types: NoneType() <= ' + other.__class__.__name__ + '()')}
-this.__ne__=function(other){throw TypeError('unorderable types: NoneType() != ' + other.__class__.__name__ + '()')}
+var comp_ops=['ge','gt','le','lt']
+for(var key in $comps){
+if(comp_ops.indexOf($comps[key])>-1){
+this['__'+$comps[key]+'__']=(function(k){
+return function(other){
+throw TypeError("unorderable types: NoneType() "+$comps[k]+" "+
+other.__class__.__name__)}
+})(key)
+}
+}
+for(var func in this){
+if(typeof this[func]==='function'){
+this[func].__str__=(function(f){
+return function(){return "<mthod-wrapper "+f+" of NoneType object>"}
+})(func)
+}
+}
 }
 None=new $NoneClass()
 Exception=function(msg){
@@ -1187,11 +1203,12 @@ throw TypeError('list indices must be integer, not '+str(arg.__class__))
 list.__str__=function(self){
 if(self===undefined){return "<class 'list'>"}
 var res="[",items=self.valueOf()
-for(var i=0;i<items.length;i++){
-var x=items[i]
+for(var i=0;i<self.length;i++){
+var x=self[i]
 if(isinstance(x,str)){res +="'"+x+"'"}
-else{res +=x.__str__()}
-if(i<items.length-1){res +=','}
+else if(x['__str__']!==undefined){res +=x.__str__()}
+else{res +=x.toString()}
+if(i<self.length-1){res +=','}
 }
 return res+']'
 }
@@ -1993,8 +2010,8 @@ var tree_node=ctx_node.node
 var module=tree_node.module
 var line_num=tree_node.line_num
 document.$line_info=[line_num,module]
-if(indent===undefined){throw SyntaxError(msg)}
-else{throw IndentationError(msg)}
+if(indent===undefined){$SyntaxError(module,msg,$pos)}
+else{throw $IndentationError(module,msg,$pos)}
 }
 var $first_op_letter={}
 for(op in $operators){$first_op_letter[op.charAt(0)]=0}
@@ -2793,7 +2810,9 @@ this.tree=[C.tree[0]]
 C.parent.tree.pop()
 C.parent.tree.push(this)
 this.to_js=function(){
-var res='$Kw("'+this.tree[0].to_js()+'",'
+var key=this.tree[0].to_js()
+if(key.substr(0,2)=='$$'){key=key.substr(2)}
+var res='$Kw("'+key+'",'
 res +=$to_js(this.tree.slice(1,this.tree.length))+')'
 return res
 }
@@ -3285,8 +3304,10 @@ else if(token==='['){return new $ListOrTupleCtx(new $ExprCtx(C,'list',commas),'l
 else if(token==='{'){return new $DictOrSetCtx(new $ExprCtx(C,'dict_or_set',commas))}
 else if(token==='not'){return new $NotCtx(new $ExprCtx(C,'not',commas))}
 else if(token==='lambda'){return new $LambdaCtx(new $ExprCtx(C,'lambda',commas))}
-else if(token==='op' && '+-'.search(arguments[2])){
+else if(token==='op'){
+if('+-'.search(arguments[2])>-1){
 return new $UnaryCtx(C,arguments[2])
+}else{$_SyntaxError(C,'token '+token+' after '+C)}
 }else if(token==='='){$_SyntaxError(C,token)}
 else{return $transition(C.parent,token,arguments[2])}
 }else if(C.type==='assert'){
@@ -4383,14 +4404,13 @@ info="\nmodule '"+module+"' line "+line_num
 info +='\n'+lines[line_num-1]+'\n'
 var lpos=pos-line_pos[line_num]
 for(var i=0;i<lpos;i++){info+=' '}
-info +='^'
+info +='^\n'
 err=new Error()
 err.name=name
 err.__name__=name
 err.message=msg
 err.info=info
 err.py_error=true
-if(document.$stderr!==null){document.$stderr_buff=err.message}
 throw err
 }
 function $SyntaxError(module,msg,pos){
@@ -4434,7 +4454,7 @@ for(var i=0;i<factory.parents.length;i++){
 try{
 return $resolve_attr(obj,factory.parents[i],attr)
 }catch(err){
-console.log(err)
+void(0)
 }
 }
 throw AttributeError("'"+factory.__name__+"' object has no attribute '"+attr+"'")
@@ -4500,7 +4520,7 @@ var init_func=$resolve_attr(obj,factory,'__init__')
 var args=[obj]
 for(var i=0;i<arguments.length;i++){args.push(arguments[i])}
 init_func.apply(null,arguments)
-}catch(err){console.log(err)}
+}catch(err){void(0)}
 }
 return obj
 }

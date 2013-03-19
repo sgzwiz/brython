@@ -1098,7 +1098,7 @@ function $NoneClass(){
     this.__eq__ = function(other){return other===None}
     this.__getattr__ = function(attr){
         if(this[attr]!==undefined){return this[attr]}
-        else{throw AttributeError("'NoneType' object has no attribute 'b'")}
+        else{throw AttributeError("'NoneType' object has no attribute '"+attr+"'")}
     }
     this.__hash__ = function(){return 0}
     this.__ne__ = function(other){return other!==None}
