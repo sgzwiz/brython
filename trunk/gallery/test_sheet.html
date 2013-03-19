@@ -10,13 +10,14 @@
 Edit values, then close the browser and open it again, the values are stored locally
 <p>
 <script type="text/python">
+from local_storage import storage
 
 def on_complete(req):
     log(req.text)
 
 def update(elt):
-    local_storage[elt.id]=elt.value
-    log(local_storage[elt.id])
+    storage[elt.id]=elt.value
+    log(storage[elt.id])
 
 nb_cols = 3
 nb_lines = 5
@@ -27,7 +28,7 @@ for i in range(nb_lines):
     row = TR()
     for j in range(nb_cols):
         cell_id = "cell_%i_%i" %(i,j)
-        value = local_storage[cell_id] or ""
+        value = storage[cell_id] or ""
         row <= TD(INPUT(id=cell_id,value=value,onchange="update(this)"))
     tb <= row
 t <= tb
