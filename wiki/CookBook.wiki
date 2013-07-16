@@ -1,5 +1,4 @@
 #summary Brython cookbook
-#labels Featured
 
 = Basics =
 
