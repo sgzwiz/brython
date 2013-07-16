@@ -1,5 +1,4 @@
 #summary Tips for programers who want to contribute to Brython development
-#labels Featured
 
 = Development process =
 
